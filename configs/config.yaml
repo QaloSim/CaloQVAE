@@ -7,21 +7,19 @@ save_model: 0
 
 save_state: 1
 load_state: 0
-save_hists: 0
-run_path: /home/akajal/DiVAE/outputs/2021-09-26/18-12-07/wandb/run-20210926_181208-2xdc9ez1/files/GumBoltCaloV6_calo_default.pth
+save_hists: 1
+
+run_path: /home/akajal/DiVAE/outputs/2022-01-10/14-24-43/wandb/run-20220110_142443-2qiguhz0/files/GumBoltCaloV6_calo_default_latest.pth
  
 input_model: 
 create_plots: 0
-#output path is set in code to hydra's current working directory
-#variable is then used downstream to set paths.
-output_path: outputs
+
+output_path: /fast_scratch/akajal/outputs
 device: gpu
 gpu_list:
   - 4
 
 task:
-  - train
-  - validate
   - test
 
 defaults:

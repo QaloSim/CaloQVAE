@@ -15,12 +15,13 @@ class EngineBase(object):
     def __init__(self, cfg=None, **kwargs):
         super(EngineBase,self).__init__()
 
-        self._config=cfg
+        self._config = cfg
         
-        self._model=None
-        self._optimiser=None
-        self._data_mgr=None
-        self._device=None
+        self._model = None
+        self._optimiser = None
+        self._data_mgr = None
+        self._device = None
+        self._model_creator = None
 
     @property
     def model(self):
@@ -54,6 +55,15 @@ class EngineBase(object):
     @device.setter
     def device(self, device):
         self._device=device
+        
+    @property
+    def model_creator(self):
+        return self._model_creator
+    
+    @model_creator.setter
+    def model_creator(self, model_creator):
+        assert model_creator is not None
+        self._model_creator = model_creator
     
     def generate_samples(self):
         raise NotImplementedError
