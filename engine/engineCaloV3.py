@@ -26,6 +26,7 @@ class EngineCaloV3(Engine):
         logger.info("Setting up engine Calo.")
         super(EngineCaloV3, self).__init__(cfg, **kwargs)
         self._hist_handler = HistHandler(cfg)
+        self._best_model_loss = torch.nan_to_num(torch.tensor(float('inf')))
 
     def fit(self, epoch, is_training=True, mode="train"):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
@@ -45,6 +46,7 @@ class EngineCaloV3(Engine):
 
         num_batches = len(data_loader)
         log_batch_idx = max(num_batches//self._config.engine.n_batches_log_train, 1)
+        valid_batch_idx = max(num_batches//self._config.engine.n_valid_per_epoch, 1)
         num_epochs = self._config.engine.n_epochs
         num_plot_samples = self._config.engine.n_plot_samples
         total_batches = num_batches*num_epochs
@@ -58,21 +60,10 @@ class EngineCaloV3(Engine):
             for batch_idx, (input_data, label) in enumerate(data_loader):
                 self._optimiser.zero_grad()
                 
-                in_data_flat = [image.flatten(start_dim=1) for image in input_data]
-                in_data = torch.cat(in_data_flat, dim=1)
-                
-                true_energy = label[0]
-                
-                # Scaled the raw data to GeV units
-                if not self._config.data.scaled:
-                    in_data = in_data/1000.
-                    
-                in_data = in_data.to(self._device)
-                true_energy = true_energy.to(self._device).float()
+                in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
                 
                 fwd_output=self._model((in_data, true_energy), is_training)
-                pos_weight_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy())/100., dtype=torch.float, device=in_data.device)
-                batch_loss_dict = self._model.loss(in_data, fwd_output, pos_weight_data)
+                batch_loss_dict = self._model.loss(in_data, fwd_output)
                     
                 if is_training:
                     gamma = min((((epoch-1)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), 1.0)
@@ -95,9 +86,11 @@ class EngineCaloV3(Engine):
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
                     else:
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"]
-                        
                     batch_loss_dict["loss"].backward()
                     self._optimiser.step()
+                    # Trying this to free up memory on the GPU and run validation during a training epoch
+                    # - hopefully backprop will work with the code above - didn't work
+                    # batch_loss_dict["loss"].detach()
                 else:
                     batch_loss_dict["gamma"] = 1.0
                     batch_loss_dict["epoch"] = epoch
@@ -110,46 +103,26 @@ class EngineCaloV3(Engine):
                             val_loss_dict[key] += value
                         except KeyError:
                             val_loss_dict[key] = value
-                            
-                    # Update the histogram
-                    if self._config.data.scaled:
-                        # Divide by 1000. to scale the data to GeV units
-                        in_data_t = self._data_mgr.inv_transform(in_data.detach().cpu().numpy())/1000.
-                        recon_data_t = self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy())/1000.
                         
-                        # Samples with uniformly distributed energies - [0, 100]
-                        sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
-                        sample_data_t = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000.
-                        
-                        self._hist_handler.update(in_data_t, recon_data_t, sample_data_t)
-                        
-                        # Samples with specific energies
-                        conditioning_energies = self._config.engine.sample_energies
-                        conditioned_samples = []
-                        for energy in conditioning_energies:
-                            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
-                            sample_data_t = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000.
-                            conditioned_samples.append(torch.tensor(sample_data_t))
-                        
-                        conditioned_samples = torch.cat(conditioned_samples, dim=0).numpy()
-                        self._hist_handler.update_samples(conditioned_samples)
-                    else:
-                        sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
-                        self._hist_handler.update(in_data.detach().cpu().numpy(),
-                                                  fwd_output.output_activations.detach().cpu().numpy(),
-                                                  sample_data.detach().cpu().numpy())
-                        
-                        # Samples with specific energies
-                        conditioning_energies = self._config.engine.sample_energies
-                        conditioned_samples = []
-                        for energy in conditioning_energies:
-                            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
-                            sample_data = sample_data.detach().cpu().numpy()
-                            conditioned_samples.append(torch.tensor(sample_data))
-                        
-                        conditioned_samples = torch.cat(conditioned_samples, dim=0).numpy()
-                        self._hist_handler.update_samples(conditioned_samples)
+                    self._update_histograms(in_data, fwd_output.output_activations)
                     
+                if mode == "train" and (batch_idx % valid_batch_idx) == 0:
+                    valid_loss_dict = self._validate()
+                    
+                    if "hit_loss" in valid_loss_dict.keys():
+                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"]
+                    else:
+                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"]
+                        
+                    # Check the loss over the validation set is 
+                    if valid_loss_dict["loss"] < self._best_model_loss:
+                        self._best_model_loss = valid_loss_dict["loss"]
+                        # Save the best model here
+                        config_string = "_".join(str(i) for i in [self._config.model.model_type,
+                                                                  self._config.data.data_type,
+                                                                  self._config.tag, "best"])
+                        self._model_creator.save_state(config_string)
+                        
                 if (batch_idx % log_batch_idx) == 0:
                     logger.info('Epoch: {} [{}/{} ({:.0f}%)]\t Batch Loss: {:.4f}'.format(epoch,
                                                                                           batch_idx,
@@ -201,20 +174,8 @@ class EngineCaloV3(Engine):
                         
                     if is_training:
                         wandb.log(batch_loss_dict)
-                        
-                        prior_weights = self._model.prior.weights.detach().cpu().numpy()
-                        prior_visible_bias = self._model.prior.visible_bias.detach().cpu().numpy()
-                        prior_hidden_bias = self._model.prior.hidden_bias.detach().cpu().numpy()
-                        
-                        # Tracking RBM parameter distributions during training
-                        wandb.log({"prior._weights":wandb.Histogram(prior_weights),
-                                   "prior._visible_bias":wandb.Histogram(prior_visible_bias),
-                                   "prior._hidden_bias":wandb.Histogram(prior_hidden_bias)})
-                        
-                        # Tracking the range of RBM parameters
-                        wandb.log({"prior._weights_max":np.amax(prior_weights), "prior._weights_min":np.amin(prior_weights),
-                                   "prior._visible_bias_max":np.amax(prior_visible_bias), "prior._visible_bias_min":np.amin(prior_visible_bias),
-                                   "prior._hidden_bias_max":np.amax(prior_hidden_bias), "prior._hidden_bias_min":np.amin(prior_hidden_bias)})
+                        if (batch_idx % (num_batches//100)) == 0:
+                            self._log_rbm_wandb()
                         
         if not is_training:
             val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}
@@ -238,7 +199,144 @@ class EngineCaloV3(Engine):
                     val_loss_dict.pop(key)
                     
             wandb.log(val_loss_dict)
-
+            
+    def _preprocess(self, input_data, label):
+        """
+        Preprocess the calo image data
+        - Flatten the images into a 504-d vector
+        - If not scaled, divide by 1000. to scale to GeV units
+        - Load the data on the GPU
+        """
+        in_data_flat = [image.flatten(start_dim=1) for image in input_data]
+        in_data = torch.cat(in_data_flat, dim=1)
+                
+        true_energy = label[0]
+                
+        # Scaled the raw data to GeV units
+        if not self._config.data.scaled:
+            in_data = in_data/1000.
+                    
+        in_data = in_data.to(self._device)
+        true_energy = true_energy.to(self._device).float()
+        
+        return in_data, true_energy, in_data_flat
+    
+    def _update_histograms(self, in_data, output_activations):
+        """
+        Update the coffea histograms' distributions
+        """
+        # Samples with uniformly distributed energies - [0, 100]
+        sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
+        
+        # Update the histogram
+        if self._config.data.scaled:
+            # Divide by 1000. to scale the data to GeV units
+            in_data_t = self._data_mgr.inv_transform(in_data.detach().cpu().numpy())/1000.
+            recon_data_t = self._data_mgr.inv_transform(output_activations.detach().cpu().numpy())/1000.
+            sample_data_t = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000.
+            self._hist_handler.update(in_data_t, recon_data_t, sample_data_t)                  
+        else:
+            self._hist_handler.update(in_data.detach().cpu().numpy(),
+                                      output_activations.detach().cpu().numpy(),
+                                      sample_data.detach().cpu().numpy())
+                        
+        # Samples with specific energies
+        conditioning_energies = self._config.engine.sample_energies
+        conditioned_samples = []
+        for energy in conditioning_energies:
+            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
+            sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
+            conditioned_samples.append(torch.tensor(sample_data))
+                        
+        conditioned_samples = torch.cat(conditioned_samples, dim=0).numpy()
+        self._hist_handler.update_samples(conditioned_samples)
+            
+    def _validate(self):
+        logger.debug("engineCaloV3::validate() : Running validation during a training epoch.")
+        self._model.eval()
+        data_loader = self.data_mgr.val_loader
+        n_val_batches = self._config.engine.n_val_batches
+        
+        # Accumulate metrics over several batches
+        epoch_loss_dict = {}
+        
+        # Validation loop
+        with torch.set_grad_enabled(False):
+            for idx in range(n_val_batches):
+                input_data, label = next(iter(data_loader))
+                in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
+                
+                fwd_output = self._model((in_data, true_energy), False)
+                batch_loss_dict = self._model.loss(in_data, fwd_output)
+            
+                # Initialize the accumulating dictionary keys and values
+                if idx == 0:
+                    for key in list(batch_loss_dict.keys()):
+                        epoch_loss_dict[key] = batch_loss_dict[key].detach()
+                # Add loss values for the current batch to accumulating dictionary
+                else:
+                    for key in list(batch_loss_dict.keys()):
+                        epoch_loss_dict[key] += batch_loss_dict[key].detach()
+                    
+        # Average the accumulated loss values
+        ret_loss_dict = {}
+        for key in list(epoch_loss_dict.keys()):
+            ret_loss_dict[key] = epoch_loss_dict[key]/n_val_batches
+        
+        # Reset the model state back to training
+        self._model.train()
+        
+        # Return the loss dictionary
+        return ret_loss_dict
+        
+    def _log_rbm_wandb(self):
+        """
+        Log RBM parameter values in wandb
+        - Logs the histogram for the rbm parameter distributions
+        - Logs the range of the rbm parameters
+        """
+        prior_weights = self._model.prior.weights.detach().cpu().numpy()
+        prior_visible_bias = self._model.prior.visible_bias.detach().cpu().numpy()
+        prior_hidden_bias = self._model.prior.hidden_bias.detach().cpu().numpy()
+        
+        prior_weights = prior_weights.flatten()
+        prior_weights = prior_weights[prior_weights.nonzero()]
+                        
+        # Tracking RBM parameter distributions during training
+        prior_weights_hist = np.histogram(prior_weights, range=(-2, 2), bins=512)
+        prior_weights_hist_vals = np.log(prior_weights_hist[0])
+        prior_weights_hist_vals = np.where(np.isinf(prior_weights_hist_vals), 0., prior_weights_hist_vals)
+        prior_weights_hist = (prior_weights_hist_vals, prior_weights_hist[1])
+        
+        wandb.log({"prior._weights":wandb.Histogram(np_histogram=prior_weights_hist),
+                   "prior._visible_bias":wandb.Histogram(prior_visible_bias),
+                   "prior._hidden_bias":wandb.Histogram(prior_hidden_bias)})
+                        
+        # Tracking the range of RBM parameters
+        wandb.log({"prior._weights_max":np.amax(prior_weights), "prior._weights_min":np.amin(prior_weights),
+                   "prior._visible_bias_max":np.amax(prior_visible_bias), "prior._visible_bias_min":np.amin(prior_visible_bias),
+                   "prior._hidden_bias_max":np.amax(prior_hidden_bias), "prior._hidden_bias_min":np.amin(prior_hidden_bias)})
+        
+    def _log_rbm_hist_wandb(self):
+        """
+        Log RBM parameter custom histograms in wandb
+        """
+        prior_weights = self._model.prior.weights.detach().cpu().numpy()
+        prior_visible_bias = self._model.prior.visible_bias.detach().cpu().numpy()
+        prior_hidden_bias = self._model.prior.hidden_bias.detach().cpu().numpy()
+        
+        prior_weights = prior_weights.flatten()
+        prior_weights = prior_weights[prior_weights.nonzero()]
+        
+        # Tracking the range of RBM parameters
+        wandb.log({"prior._weights_max":np.amax(prior_weights), "prior._weights_min":np.amin(prior_weights),
+                   "prior._visible_bias_max":np.amax(prior_visible_bias), "prior._visible_bias_min":np.amin(prior_visible_bias),
+                   "prior._hidden_bias_max":np.amax(prior_hidden_bias), "prior._hidden_bias_min":np.amin(prior_hidden_bias)})
+        
+        weights = [[weight] for weight in prior_weights]
+        weights_table = wandb.Table(data=weights, columns=["weights"])
+        wandb.log({"rbm_weights": wandb.plot.histogram(weights_table, "weights", title=None)})
+        
 if __name__=="__main__":
     logger.info("Willkommen!")
     engine=Engine()

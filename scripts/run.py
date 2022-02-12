@@ -121,6 +121,8 @@ def run(config=None):
     engine.optimiser = torch.optim.Adam(model.parameters(), lr=config.engine.learning_rate)
     #add the model instance to the engine namespace
     engine.model = model
+    # add the modelCreator instance to engine namespace
+    engine.model_creator = modelCreator
     
     #no need to train if we load from file.
     if config.load_model:
@@ -142,8 +144,8 @@ def run(config=None):
         if "validate" in config.task:
             engine.fit(epoch=epoch, is_training=False, mode="validate")
             
-        if "test" in config.task:
-            engine.fit(epoch=epoch, is_training=False, mode="test")
+    if "test" in config.task:
+        engine.fit(epoch=epoch, is_training=False, mode="test")
     
     #save our trained model
     #also save the current configuration with the same tag for bookkeeping
@@ -154,7 +156,7 @@ def run(config=None):
         modelCreator.save_model(config_string)
         
     if config.save_state:
-        config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
+        config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag, "latest"])
         modelCreator.save_state(config_string)
 
     if config.create_plots:
