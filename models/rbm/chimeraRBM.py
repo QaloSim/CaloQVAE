@@ -77,6 +77,10 @@ class ChimeraRBM(RBM):
             # Coupling between RBM qubits
             if (edge[0] in visible_qubit_idxs and edge[1] in hidden_qubit_idxs) or (edge[0] in hidden_qubit_idxs and edge[1] in visible_qubit_idxs):
                 pruned_edge_list.append(edge)
+                
+        self._visible_qubit_idxs = visible_qubit_idxs
+        self._hidden_qubit_idxs = hidden_qubit_idxs
+        self._pruned_edge_list = pruned_edge_list
 
         #print("left = ", visible_qubit_idxs)
         #print("right = ", hidden_qubit_idxs)
@@ -95,8 +99,8 @@ class ChimeraRBM(RBM):
         logger.debug("weights_mask = ", weights_mask)
                         
         #arbitrarily scaled by 0.01 
-        self._weights = nn.Parameter(torch.randn(n_visible, n_hidden), requires_grad=require_grad)
-        #self._weights = nn.Parameter(-3.*torch.rand(n_visible, n_hidden) + 1., requires_grad=require_grad)
+        #self._weights = nn.Parameter(torch.randn(n_visible, n_hidden), requires_grad=require_grad)
+        self._weights = nn.Parameter(-3.*torch.rand(n_visible, n_hidden) + 1., requires_grad=require_grad)
         self._weights_mask = nn.Parameter(weights_mask, requires_grad=False)
         
         # Set this only if you want to use a fully connected RBM - be very careful here since the class
@@ -112,13 +116,37 @@ class ChimeraRBM(RBM):
     def weights(self):
         return self._weights * self._weights_mask
     
+    @weights.setter
+    def weights(self, weights):
+        self._weights = weights
+    
     @property
     def visible_bias(self):
         return self._visible_bias
     
+    @visible_bias.setter
+    def visible_bias(self, v_bias):
+        self._visible_bias = v_bias
+    
     @property
     def hidden_bias(self):
         return self._hidden_bias
+    
+    @hidden_bias.setter
+    def hidden_bias(self, h_bias):
+        self._hidden_bias = h_bias
+    
+    @property
+    def visible_qubit_idxs(self):
+        return self._visible_qubit_idxs
+    
+    @property
+    def hidden_qubit_idxs(self):
+        return self._hidden_qubit_idxs
+    
+    @property
+    def pruned_edge_list(self):
+        return self._pruned_edge_list
         
 if __name__=="__main__":
     logger.debug("Testing chimeraRBM")
