@@ -20,8 +20,13 @@ class PCD(BaseSampler):
     def get_batch_size(self):
         return self._batch_size
     
-    def get_rbm(self):
+    @property
+    def rbm(self):
         return self._RBM
+    
+    @rbm.setter
+    def rbm(self, rbm):
+        self._RBM = rbm
         
     def hidden_samples(self, visible_states):
         """

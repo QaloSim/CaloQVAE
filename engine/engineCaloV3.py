@@ -175,7 +175,8 @@ class EngineCaloV3(Engine):
                     if is_training:
                         wandb.log(batch_loss_dict)
                         if (batch_idx % (num_batches//100)) == 0:
-                            self._log_rbm_wandb()
+                            #self._log_rbm_wandb()
+                            pass
                         
         if not is_training:
             val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}

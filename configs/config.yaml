@@ -6,15 +6,15 @@ load_model: 0
 save_model: 0
 
 save_state: 1
-load_state: 0
+load_state: 1
 save_hists: 1
 
-run_path: /home/akajal/DiVAE/outputs/2022-01-10/14-24-43/wandb/run-20220110_142443-2qiguhz0/files/GumBoltCaloV6_calo_default_latest.pth
+run_path: /home/akajal/DiVAE/outputs/2022-03-11/15-21-04/wandb/run-20220311_152104-2junzvyl/files/GumBoltCaloCRBM_calo_default_latest.pth
  
 input_model: 
 create_plots: 0
 
-output_path: /fast_scratch/akajal/outputs
+output_path: /fast_scratch_1/akajal/outputs
 device: gpu
 gpu_list:
   - 4

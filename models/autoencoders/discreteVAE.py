@@ -79,8 +79,9 @@ class DiVAE(AutoEncoderBase):
         Returns:
             
         """
-        clipped_mean=torch.clamp(self._dataset_mean,0.001,0.999).detach()
-        return -torch.log(1/clipped_mean-1)
+        #clipped_mean=torch.clamp(self._dataset_mean,0.001,0.999).detach()
+        #return -torch.log(1/clipped_mean-1)
+        return 0.
 
     def create_networks(self):
         logger.debug("Creating Network Structures")
