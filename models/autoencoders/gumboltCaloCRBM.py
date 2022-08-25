@@ -5,13 +5,18 @@ CRBM - Change the prior and sampler to Chimera RBM
 # Python imports
 import math
 import torch
+import numpy as np
 
 # DiVAE.models imports
 from models.autoencoders.gumboltCaloV6 import GumBoltCaloV6
 from models.networks.hierarchicalEncoderV2 import HierarchicalEncoderV2
 
 from models.rbm.chimeraRBM import ChimeraRBM
+from models.rbm.qimeraRBM import QimeraRBM
 from models.samplers.pcd import PCD
+
+from dwave.system import DWaveSampler
+from notebooks.nbutils import *
 
 from DiVAE import logging
 logger = logging.getLogger(__name__)
@@ -69,6 +74,9 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         
         self._level_1_qubit_idxs = level_1_qubit_idxs
         self._level_2_qubit_idxs = level_2_qubit_idxs
+        
+        # Initialize the DWave QPU sampler
+        self._qpu_sampler = DWaveSampler(solver={"topology__type":"chimera", "chip_id":"DW_2000Q_6"})
                         
     def _create_prior(self):
         """
@@ -76,7 +84,8 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         """
         logger.debug("GumBoltCaloCRBM::_create_prior")
         num_rbm_nodes_per_layer=self._config.model.n_latent_hierarchy_lvls*self._latent_dimensions//2
-        return ChimeraRBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer)
+        return QimeraRBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer,
+                         bernoulli=self._config.model.bernoulli)
  
     def _create_sampler(self, rbm=None):
         """
@@ -149,3 +158,62 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         
         kl_loss = entropy + pos_energy + neg_energy
         return kl_loss, entropy, pos_energy, neg_energy
+    
+    def generate_samples(self, num_samples=64, true_energy=None):
+        """
+        generate_samples()
+        
+        Overrides generate samples in gumboltCaloV5.py
+        """
+        # Extract the RBM parameters
+        crbm_weights = self.prior.weights
+        crbm_vbias = self.prior.visible_bias
+        crbm_hbias = self.prior.hidden_bias
+        crbm_edgelist = self.prior.pruned_edge_list
+        
+        qubit_idxs = self.prior.visible_qubit_idxs + self.prior.hidden_qubit_idxs
+        
+        visible_idx_map = {visible_qubit_idx:i for i, visible_qubit_idx in enumerate(self.prior.visible_qubit_idxs)}
+        hidden_idx_map = {hidden_qubit_idx:i for i, hidden_qubit_idx in enumerate(self.prior.hidden_qubit_idxs)}
+        
+        # Convert the RBM parameters into Ising parameters
+        dwave_weights = -(crbm_weights/4.)
+        dwave_vbias = -(crbm_vbias/2. + torch.sum(crbm_weights, dim=1)/4.)
+        dwave_hbias = -(crbm_hbias/2. + torch.sum(crbm_weights, dim=0)/4.)
+        
+        dwave_weights = torch.clamp(dwave_weights, min=-2., max=1.)
+        dwave_vbias = torch.clamp(dwave_vbias, min=-2., max=2.)
+        dwave_hbias = torch.clamp(dwave_hbias, min=-2., max=2.)
+        
+        dwave_weights_np = dwave_weights.detach().cpu().numpy()
+        biases = torch.cat((dwave_vbias, dwave_hbias)).detach().cpu().numpy()
+        
+        # Initialize the values of biases and couplers
+        h = {qubit_idx:bias for qubit_idx, bias in zip(qubit_idxs, biases)}
+        J = {}
+        for edge in crbm_edgelist:
+            if edge[0] in self.prior.visible_qubit_idxs:
+                J[edge] = dwave_weights_np[visible_idx_map[edge[0]]][hidden_idx_map[edge[1]]]
+            else:
+                J[edge] = dwave_weights_np[visible_idx_map[edge[1]]][hidden_idx_map[edge[0]]]
+        
+        response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+        dwave_samples, dwave_energies = batch_dwave_samples(response)
+        dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(crbm_weights.device)
+        
+        # Convert spin Ising samples to binary RBM samples
+        _ZERO = torch.tensor(0., dtype=torch.float).to(crbm_weights.device)
+        _MINUS_ONE = torch.tensor(-1., dtype=torch.float).to(crbm_weights.device)
+        
+        dwave_samples = torch.where(dwave_samples == _MINUS_ONE, _ZERO, dwave_samples)
+        
+        if true_energy is None:
+            true_e = torch.rand((num_samples, 1), device=crbm_weights.device).detach() * 100.
+        else:
+            true_e = torch.ones((num_samples, 1), device=crbm_weights.device).detach() * true_energy
+        prior_samples = torch.cat([dwave_samples, true_e], dim=1)
+            
+        output_hits, output_activations = self.decoder(prior_samples)
+        beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+        samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)      
+        return true_e, samples

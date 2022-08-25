@@ -15,6 +15,7 @@ data/MNIST/
 MNIST/
 #configs/
 *.code-workspace
+sandbox/
 
 ##############################################
 #### Automatically created

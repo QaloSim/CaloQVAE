@@ -1,5 +1,5 @@
 """
-PyTorch implementation of a restricted Boltzmann machine with a Chimera topology
+PyTorch implementation of a restricted Boltzmann machine with a Chimera-QPU topology
 """
 import numpy as np
 import torch
@@ -7,6 +7,8 @@ import math
 
 from torch import nn
 from torch.distributions import Distribution, Normal, Uniform
+
+from dwave.system import DWaveSampler
 
 from models.rbm.rbm import RBM
 
@@ -16,18 +18,13 @@ logger = logging.getLogger(__name__)
 _CELL_SIDE_QUBITS = 4
 _MAX_ROW_COLS = 16
 
-class ChimeraRBM(RBM):
-    def __init__(self, n_visible, n_hidden, **kwargs):
-        super(ChimeraRBM, self).__init__(n_visible, n_hidden, **kwargs)
+class QimeraRBM(RBM):
+    def __init__(self, n_visible, n_hidden, bernoulli=False, **kwargs):
+        super(QimeraRBM, self).__init__(n_visible, n_hidden, **kwargs)
 
         self._n_visible=n_visible
         self._n_hidden=n_hidden
         
-        # random weights and biases for all layers
-        # weights between visible and hidden nodes. 784x128 (that is 28x28 input
-        # size, 128 arbitrary choice)
-        # if requires_grad=False : we calculate the weight update ourselves, not
-        # through backpropagation
         require_grad=True
         
         n_cells = max(math.ceil(n_visible/_CELL_SIDE_QUBITS), math.ceil(n_hidden/_CELL_SIDE_QUBITS))
@@ -38,42 +35,36 @@ class ChimeraRBM(RBM):
         
         visible_qubit_idxs = []
         hidden_qubit_idxs = []
-        edge_list = []
+        
+        qpu_sampler = DWaveSampler(solver={"topology__type":"chimera", "chip_id":"DW_2000Q_6"})
+        qpu_nodes = qpu_sampler.nodelist
+        qpu_edges = qpu_sampler.edgelist
         
         for row in range(n_rows):
             for col in range(n_cols):
                 for n in range(_CELL_SIDE_QUBITS):
-                    if len(visible_qubit_idxs) < n_visible:
+                    if (len(visible_qubit_idxs) < n_visible) or (len(hidden_qubit_idxs) < n_hidden):
                         idx = 8*row + 8*col*_MAX_ROW_COLS + n
                         # Even cell
                         if (row+col)%2 == 0:
-                            visible_qubit_idxs.append(idx)
-                            hidden_qubit_idxs.append(idx+4)
+                            if idx in qpu_nodes:
+                                visible_qubit_idxs.append(idx)
+                            if idx+4 in qpu_nodes:
+                                hidden_qubit_idxs.append(idx+4)
                         # Odd cell
                         else:
-                            hidden_qubit_idxs.append(idx)
-                            visible_qubit_idxs.append(idx+4)
-                        
-                        # Add inner couplings within a K4,4 cell
-                        for m in range(_CELL_SIDE_QUBITS):
-                            opp_idx = 8*row + 8*col*_MAX_ROW_COLS + 4 + m
-                            edge_list.append((idx, opp_idx))
-                        
-                        # Add external couplings
-                        # Horizontal couplings
-                        if (col+1) < n_cols:
-                            end_idx = 8*row + 8*(col+1)*_MAX_ROW_COLS + n
-                            edge_list.append((idx, end_idx))
-                    
-                        # Vertical couplings
-                        if (row+1) < n_rows:
-                            end_idx = 8*(row+1) + 8*col*_MAX_ROW_COLS + n
-                            edge_list.append((idx+4, end_idx+4))
-                            
+                            if idx in qpu_nodes:
+                                hidden_qubit_idxs.append(idx)
+                            if idx+4 in qpu_nodes:
+                                visible_qubit_idxs.append(idx+4)
+                                
+        # Remove extra nodes from the qubit idxs lists
+        visible_qubit_idxs = visible_qubit_idxs[:n_visible]
+        hidden_qubit_idxs = hidden_qubit_idxs[:n_hidden]
                             
         # Prune the edgelist to remove couplings between qubits not in the RBM
         pruned_edge_list = []
-        for edge in edge_list:
+        for edge in qpu_edges:
             # Coupling between RBM qubits
             if (edge[0] in visible_qubit_idxs and edge[1] in hidden_qubit_idxs) or (edge[0] in hidden_qubit_idxs and edge[1] in visible_qubit_idxs):
                 pruned_edge_list.append(edge)
@@ -81,31 +72,25 @@ class ChimeraRBM(RBM):
         self._visible_qubit_idxs = visible_qubit_idxs
         self._hidden_qubit_idxs = hidden_qubit_idxs
         self._pruned_edge_list = pruned_edge_list
-
-        #print("left = ", visible_qubit_idxs)
-        #print("right = ", hidden_qubit_idxs)
-        #print("edge_list = ", pruned_edge_list)
         
         # Chimera-RBM matrix
         visible_qubit_idx_map = {visible_qubit_idx:i for i, visible_qubit_idx in enumerate(visible_qubit_idxs)}
         hidden_qubit_idx_map = {hidden_qubit_idx:i for i, hidden_qubit_idx in enumerate(hidden_qubit_idxs)}
         
         weights_mask = torch.zeros(n_visible, n_hidden, requires_grad=False)
-        for edge in pruned_edge_list:
-            if edge[0] in visible_qubit_idxs:
-                weights_mask[visible_qubit_idx_map[edge[0]], hidden_qubit_idx_map[edge[1]]] = 1.
-            else:
-                weights_mask[visible_qubit_idx_map[edge[1]], hidden_qubit_idx_map[edge[0]]] = 1.
-        logger.debug("weights_mask = ", weights_mask)
+        if not bernoulli:
+            for edge in pruned_edge_list:
+                if edge[0] in visible_qubit_idxs:
+                    weights_mask[visible_qubit_idx_map[edge[0]], hidden_qubit_idx_map[edge[1]]] = 1.
+                else:
+                    weights_mask[visible_qubit_idx_map[edge[1]], hidden_qubit_idx_map[edge[0]]] = 1.
+            logger.debug("weights_mask = ", weights_mask)
                         
         #arbitrarily scaled by 0.01 
-        #self._weights = nn.Parameter(torch.randn(n_visible, n_hidden), requires_grad=require_grad)
-        self._weights = nn.Parameter(-3.*torch.rand(n_visible, n_hidden) + 1., requires_grad=require_grad)
-        self._weights_mask = nn.Parameter(weights_mask, requires_grad=False)
+        self._weights = nn.Parameter(torch.randn(n_visible, n_hidden), requires_grad=require_grad)
+        #self._weights = nn.Parameter(3.*torch.rand(n_visible, n_hidden) + 1., requires_grad=require_grad)
         
-        # Set this only if you want to use a fully connected RBM - be very careful here since the class
-        # is used for ChimeraRBM
-        #self._weights_mask = nn.Parameter(torch.ones(n_visible, n_hidden, requires_grad=False), requires_grad=False)
+        self._weights_mask = nn.Parameter(weights_mask, requires_grad=False)
 
         # all biases initialised to 0.5
         self._visible_bias = nn.Parameter(torch.ones(n_visible) * 0.5, requires_grad=require_grad)
@@ -118,7 +103,11 @@ class ChimeraRBM(RBM):
     
     @weights.setter
     def weights(self, weights):
-        self._weights = weights
+        self._weights = nn.Parameter(weights)
+        
+    @property
+    def weights_mask(self):
+        return self._weights_mask
     
     @property
     def visible_bias(self):
@@ -126,7 +115,7 @@ class ChimeraRBM(RBM):
     
     @visible_bias.setter
     def visible_bias(self, v_bias):
-        self._visible_bias = v_bias
+        self._visible_bias = nn.Parameter(v_bias)
     
     @property
     def hidden_bias(self):
@@ -134,7 +123,7 @@ class ChimeraRBM(RBM):
     
     @hidden_bias.setter
     def hidden_bias(self, h_bias):
-        self._hidden_bias = h_bias
+        self._hidden_bias = nn.Parameter(h_bias)
     
     @property
     def visible_qubit_idxs(self):
@@ -150,6 +139,7 @@ class ChimeraRBM(RBM):
         
 if __name__=="__main__":
     logger.debug("Testing chimeraRBM")
-    cRBM = ChimeraRBM(8, 8)
+    cRBM = QimeraRBM(8, 8)
     print(cRBM.weights)
     logger.debug("Success")
+    
