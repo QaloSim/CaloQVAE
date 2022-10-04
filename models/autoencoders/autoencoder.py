@@ -10,7 +10,7 @@ from models.autoencoders.autoencoderbase import AutoEncoderBase
 from models.networks.basicCoders import BasicEncoder,BasicDecoder
 
 #logging module with handmade settings.
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 logging.getLogger().setLevel(logging.INFO)
 

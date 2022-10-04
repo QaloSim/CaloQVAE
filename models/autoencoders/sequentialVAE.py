@@ -16,7 +16,7 @@ from models.autoencoders.variationalAE import VariationalAutoEncoder
 
 from utils.helpers import OutputContainer
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class SequentialVariationalAutoEncoder(AutoEncoder):

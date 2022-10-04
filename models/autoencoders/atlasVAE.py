@@ -10,7 +10,7 @@ from torch.nn.modules.activation import Sigmoid
 # DiVAE.models imports
 from models.autoencoders.variationalAE import VariationalAutoEncoder
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class ATLASVAE(VariationalAutoEncoder):

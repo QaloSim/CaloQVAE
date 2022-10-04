@@ -10,7 +10,7 @@ import torch.nn as nn
 from models.networks.networks import Network, NetworkV2, NetworkV3
 
 #logging module with handmade settings.
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class BasicEncoder(Network):

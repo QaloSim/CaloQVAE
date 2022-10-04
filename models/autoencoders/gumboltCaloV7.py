@@ -14,7 +14,7 @@ from models.autoencoders.gumbolt import GumBolt
 from models.networks.basicCoders import BasicDecoder
 from models.networks.hierarchicalEncoder import HierarchicalEncoder
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class GumBoltCaloV7(GumBolt):

@@ -6,7 +6,7 @@ import torch
 from torch import nn
 
 from models.samplers.baseSampler import BaseSampler
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class ContrastiveDivergence(BaseSampler):

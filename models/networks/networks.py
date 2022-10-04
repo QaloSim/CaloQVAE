@@ -7,7 +7,7 @@ Author: Eric Drechsler (eric_drechsler@sfu.ca)
 import torch.nn as nn
 
 #logging module with handmade settings.
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 #Base Class

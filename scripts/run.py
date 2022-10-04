@@ -35,7 +35,7 @@ sys.path.append(os.getcwd())
 import wandb
 
 #self defined imports
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from data.dataManager import DataManager

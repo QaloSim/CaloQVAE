@@ -11,7 +11,7 @@ from torch.nn import ReLU, MSELoss, BCELoss
 # DiVAE.models imports
 from models.autoencoders.gumbolt import GumBolt
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class GumBoltCalo(GumBolt):

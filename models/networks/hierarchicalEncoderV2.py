@@ -10,7 +10,7 @@ import torch.nn as nn
 from models.networks.hierarchicalEncoder import HierarchicalEncoder
 
 #logging module with handmade settings.
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class HierarchicalEncoderV2(HierarchicalEncoder):

@@ -6,7 +6,7 @@ import h5py
 from torch.utils.data import random_split, Dataset, Subset
 from torchvision import transforms
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 #class wrapper containing Calorimeter images and returning energy as target
@@ -123,17 +123,7 @@ class CaloImageContainer(Dataset):
             calo_images[key]=CaloImage(image=torch.Tensor(ds),layer=key)
 
         self._images=calo_images
-        self._true_energies=input_data["energy"][:]
-        self._overflow_energies=input_data["overflow"][:]
-
-def get_calo_datasets(inFiles={}, particle_type=["gamma"], layer_subset=[], frac_train_dataset=0.6, frac_test_dataset=0.2):
-    
-    #read in all input files for all jet types and layers
-    dataStore={}
-    for key,fpath in inFiles.items():     
-        in_data=h5py.File(fpath,'r')
-        #for each particle_type, create a Container instance for our needs   
-        dataStore[key]=CaloImageContainer(  particle_type=key,
+        self._true_energies=input_data["energy"][:]outputskey,
                                             input_data=in_data,
                                             layer_subset=layer_subset)
         #convert image dataframes to tensors and get energies

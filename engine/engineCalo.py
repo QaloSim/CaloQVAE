@@ -15,7 +15,7 @@ from engine.engine import Engine
 from utils.histHandler import HistHandler
 from utils.plotting.plotCalo import plot_calo_images
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class EngineCalo(Engine):

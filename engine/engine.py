@@ -12,7 +12,7 @@ import wandb
 
 from engine.engineBase import EngineBase
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class Engine(EngineBase):

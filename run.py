@@ -31,7 +31,7 @@ if par_dir not in sys.path:
 import wandb
 
 #self defined imports
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from data.dataManager import DataManager

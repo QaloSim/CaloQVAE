@@ -11,7 +11,7 @@ from models.autoencoders.autoencoder import AutoEncoder
 from models.networks.hierarchicalEncoder import HierarchicalEncoder
 
 #logging module with handmade settings.
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 logging.getLogger().setLevel(logging.INFO)
 

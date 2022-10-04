@@ -8,7 +8,7 @@ import numpy as np
 import joblib
 from torch.utils.data import DataLoader
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from data.mnist import get_mnist_datasets
