@@ -1,3 +1,26 @@
+######################
+##### Manual Additions
+######################
+.DS_Store
+*.swp
+*.save
+.vscode/
+output/
+sources/
+.gif
+venv_divae/
+outputs/
+wandb/
+data/MNIST/
+MNIST/
+#configs/
+*.code-workspace
+sandbox/
+
+##############################################
+#### Automatically created
+##############################################
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
