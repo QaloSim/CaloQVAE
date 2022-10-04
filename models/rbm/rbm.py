@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torch.distributions import Distribution, Normal, Uniform
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class RBM(nn.Module):

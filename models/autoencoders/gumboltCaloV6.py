@@ -7,7 +7,7 @@ V6 - Changed hierarchical encoder creation
 from models.autoencoders.gumboltCaloV5 import GumBoltCaloV5
 from models.networks.hierarchicalEncoderV2 import HierarchicalEncoderV2
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class GumBoltCaloV6(GumBoltCaloV5):

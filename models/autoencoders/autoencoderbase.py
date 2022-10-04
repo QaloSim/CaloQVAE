@@ -12,7 +12,7 @@ import torch
 import torch.nn as nn
 
 #logging module with handmade settings.
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from utils.helpers import OutputContainer

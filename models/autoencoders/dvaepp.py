@@ -20,7 +20,7 @@ from utils.dists.distributions import Bernoulli
 from models.networks.hierarchicalEncoder import HierarchicalEncoder
 from models.networks.basicCoders import BasicDecoder
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class DiVAEPP(DiVAE):

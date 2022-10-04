@@ -7,7 +7,7 @@ import torch
 # Weights and Biases
 import wandb
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class EngineBase(object):

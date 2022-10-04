@@ -16,7 +16,7 @@ from models.networks.basicCoders import BasicDecoderV2, BasicDecoderV3
 # DiVAE.utils imports
 from utils.dists.gumbelmod import GumbelMod
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class GumBoltCaloV3(GumBolt):

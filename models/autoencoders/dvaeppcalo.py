@@ -11,7 +11,7 @@ from torch.nn import ReLU, MSELoss
 # DiVAE.models imports
 from models.autoencoders.dvaepp import DiVAEPP
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class DiVAEPPCalo(DiVAEPP):

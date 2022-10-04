@@ -15,7 +15,7 @@ from models.samplers.gibbsSampler import GibbsSampler
 from utils.dists.distributions import Bernoulli
 
 #logging module with handmade settings.
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class DiVAE(AutoEncoderBase):

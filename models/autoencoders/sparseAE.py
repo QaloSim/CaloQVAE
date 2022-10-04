@@ -10,7 +10,7 @@ import torch
 from models.autoencoders.autoencoder import AutoEncoder
 
 #logging module with handmade settings.
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 # Vanilla Autoencoder implementation

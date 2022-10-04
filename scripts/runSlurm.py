@@ -10,7 +10,7 @@ import hydra
 import wandb
 
 #self defined imports
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from  scripts.run import run

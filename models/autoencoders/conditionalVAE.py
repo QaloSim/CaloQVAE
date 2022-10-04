@@ -9,7 +9,7 @@ import torch
 from models.autoencoders.variationalAE import VariationalAutoEncoder
 
 #logging module with handmade settings.
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class ConditionalVariationalAutoEncoder(VariationalAutoEncoder):

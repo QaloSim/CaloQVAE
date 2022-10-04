@@ -18,7 +18,7 @@ from models.samplers.pcd import PCD
 from dwave.system import DWaveSampler
 from notebooks.nbutils import *
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 _CELL_SIDE_QUBITS = 4

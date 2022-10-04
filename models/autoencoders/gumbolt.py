@@ -17,7 +17,7 @@ from models.networks.basicCoders import BasicDecoder
 # DiVAE.utils imports
 from utils.dists.distributions import Bernoulli
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class GumBolt(DiVAEPP):

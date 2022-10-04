@@ -10,7 +10,7 @@ from torch.distributions import Distribution, Normal, Uniform
 
 from models.rbm.rbm import RBM
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 _CELL_SIDE_QUBITS = 4
