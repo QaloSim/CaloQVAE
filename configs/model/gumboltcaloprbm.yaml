@@ -1,21 +1,14 @@
-model_type: GumBoltCaloCRBM
+model_type: GumBoltCaloPRBM
 activation_fct: relu
 beta_smoothing_fct: 5
 output_smoothing_fct: 9
 decoder_hidden_nodes:
   - 800
-  - 700
-  - 600
-  - 550  
+  - 700 
   - 500
 encoder_hidden_nodes:
   - 500
-  - 450
   - 400
-  - 350
   - 300
-n_latent_hierarchy_lvls: 2
-n_latent_nodes: 1000
-
-mapping: bipartite
-bernoulli : 1
+n_latent_hierarchy_lvls: 4
+n_latent_nodes: 128

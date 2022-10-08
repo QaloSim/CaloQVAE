@@ -34,10 +34,6 @@ class DiVAE(AutoEncoderBase):
         for num_nodes in range(0,len(dec_node_list)-1):
             nodepair=(dec_node_list[num_nodes],dec_node_list[num_nodes+1])
             self._decoder_nodes.append(nodepair)
-
-        #TODO change names globally
-        #TODO one wd factor for both SimpleDecoder and encoder
-        self.weight_decay_factor=self._config.engine.weight_decay_factor
         
         # TODO - Model attributes can be directly imported from the config model dict
         # by iterating over and using (k,v) in dict.items() and using setattr(self, k, v)
@@ -49,14 +45,6 @@ class DiVAE(AutoEncoderBase):
         #number of latent nodes in the prior - output nodes for each level of
         #the hierarchy.
         self.n_latent_nodes=self._config.model.n_latent_nodes
-        
-        # number of layers in encoder before latent layer. These layers map
-        #input to the latent layer. 
-        self.n_encoder_layers=self._config.model.n_encoder_layers
-
-        #each hierarchy has NN with n_encoder_layers_enc layers
-        #number of deterministic nodes in each encoding layer. 
-        self.n_encoder_layer_nodes=self._config.model.n_encoder_layer_nodes
 
         #added to output activation of last decoder layer in forward call
         self._train_bias=self.set_train_bias()
@@ -107,8 +95,8 @@ class DiVAE(AutoEncoderBase):
             input_dimension=self._flat_input_size,
             n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
             n_latent_nodes=self.n_latent_nodes,
-            n_encoder_layer_nodes=self.n_encoder_layer_nodes,
-            n_encoder_layers=self.n_encoder_layers,
+            n_encoder_layer_nodes=self.config.model.n_encoder_layer_nodes,
+            n_encoder_layers=self.config.model.n_encoder_layers,
             skip_latent_layer=False,
             cfg=self._config)
 
@@ -121,11 +109,6 @@ class DiVAE(AutoEncoderBase):
         logger.debug("_create_prior")
         num_rbm_nodes_per_layer=self._config.model.n_latent_hierarchy_lvls*self._latent_dimensions//2
         return RBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer)
-   
-    def weight_decay_loss(self):
-        #TODO Implement weight decay
-        logger.debug("ERROR weight_decay_loss NOT IMPLEMENTED")
-        return NotImplementedError
 
     def loss(self, input_data, fwd_out):
         logger.debug("loss")

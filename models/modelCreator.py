@@ -10,7 +10,7 @@ import os
 import torch
 import wandb
 
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 #import defined models
@@ -32,6 +32,7 @@ from models.autoencoders.gumboltCaloV5 import GumBoltCaloV5
 from models.autoencoders.gumboltCaloV6 import GumBoltCaloV6
 from models.autoencoders.gumboltCaloV7 import GumBoltCaloV7
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
+from models.autoencoders.gumboltCaloPRBM import GumBoltCaloPRBM
 from models.autoencoders.atlasVAE import ATLASVAE
 
 _MODEL_DICT={
@@ -53,6 +54,7 @@ _MODEL_DICT={
     "GumBoltCaloV6": GumBoltCaloV6,
     "GumBoltCaloV7": GumBoltCaloV7,
     "GumBoltCaloCRBM": GumBoltCaloCRBM,
+    "GumBoltCaloPRBM": GumBoltCaloPRBM,
     "ATLASVAE": ATLASVAE
 }
 
@@ -64,19 +66,19 @@ class ModelCreator(object):
         self._model=None
         self._default_activation_fct=None
     
-    def init_model(self,load_from_file=False, dataMgr=None):
+    def init_model(self, dataMgr=None):
 
         for key, model_class in _MODEL_DICT.items(): 
             if key.lower()==self._config.model.model_type.lower():
                 logger.info("Initialising Model Type {0}".format(self._config.model.model_type))
-                
+
                 #TODO change init arguments. Ideally, the model does not carry
                 #specific information about the dataset. 
-                self.model=model_class(
-                            flat_input_size=dataMgr.get_flat_input_size(),
-                            train_ds_mean=dataMgr.get_train_dataset_mean(),
-                            activation_fct=self._default_activation_fct,
-                            cfg=self._config)
+                self.model = model_class(
+                    flat_input_size=dataMgr.get_flat_input_size(),
+                    train_ds_mean=dataMgr.get_train_dataset_mean(),
+                    activation_fct=self._default_activation_fct,
+                    cfg=self._config)
                 
                 return self.model
         logger.error("Unknown Model Type. Make sure your model is registered in modelCreator._MODEL_DICT.")
@@ -98,13 +100,6 @@ class ModelCreator(object):
     @default_activation_fct.setter
     def default_activation_fct(self, act_fct):
         self._default_activation_fct=act_fct
-
-    def save_model(self,cfg_string='test'):
-        logger.info("Saving Model")
-        f = open(os.path.join(wandb.run.dir, "{0}.pth".format(cfg_string)),'wb')
-        torch.save(self._model.state_dict(), f)
-        f.close()
-        return
     
     def save_state(self, cfg_string='test'):
         logger.info("Saving state")
@@ -134,15 +129,7 @@ class ModelCreator(object):
                     print("Loading weights for module = ", module)
                     getattr(self._model, module).load_state_dict(checkpoint[module])
 
-    def load_model(self):
-        logger.info("Loading Model")
-        #load_state_dict is a pytorch method (https://pytorch.org/tutorials/beginner/saving_loading_models.html)
-        self._model.load_state_dict(torch.load(self._config.input_model))
-        return
-
 if __name__=="__main__":
     logger.info("Willkommen!")
     mm=ModelCreator()
     logger.info("Success!")
-
-

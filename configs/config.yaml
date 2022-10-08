@@ -2,27 +2,20 @@ tag: default
 debug: False
 load_data_from_pkl: 0
 
-load_model: 0
-save_model: 0
-
 save_state: 1
-load_state: 1
+load_state: 0
 save_hists: 1
-
-run_path: /home/akajal/DiVAE/outputs/2022-03-11/15-21-04/wandb/run-20220311_152104-2junzvyl/files/GumBoltCaloCRBM_calo_default_latest.pth
- 
-input_model: 
-create_plots: 0
 
 output_path: /fast_scratch_1/akajal/outputs
 device: gpu
 gpu_list:
-  - 4
+  - 3
 
 task:
-  - test
+  - train
+  - validate
 
 defaults:
-  - model: gumboltcalocrbm
+  - model: gumboltcaloprbm
   - data: calo
   - engine: dvaecalo_training

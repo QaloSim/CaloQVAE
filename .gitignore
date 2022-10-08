@@ -16,6 +16,7 @@ MNIST/
 #configs/
 *.code-workspace
 sandbox/
+nohup.out
 
 ##############################################
 #### Automatically created

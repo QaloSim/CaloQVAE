@@ -1,9 +1,0 @@
-
-create_gif: 0
-create_plots: 0
-generate_samples: 1
-n_generate_samples: 10
-n_plot_samples: 5
-save_model: 1
-train: 1
-test: 0

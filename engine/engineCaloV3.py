@@ -62,7 +62,7 @@ class EngineCaloV3(Engine):
                 
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
                 
-                fwd_output=self._model((in_data, true_energy), is_training)
+                fwd_output = self._model((in_data, true_energy), is_training)
                 batch_loss_dict = self._model.loss(in_data, fwd_output)
                     
                 if is_training:
@@ -174,7 +174,7 @@ class EngineCaloV3(Engine):
                         
                     if is_training:
                         wandb.log(batch_loss_dict)
-                        if (batch_idx % (num_batches//100)) == 0:
+                        if (batch_idx % max((num_batches//100), 1)) == 0:
                             #self._log_rbm_wandb()
                             pass
                         

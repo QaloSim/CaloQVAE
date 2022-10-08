@@ -48,7 +48,7 @@ def main(cfg=None):
     #initialise wandb logging. Note that this function has many more options,
     #reference: https://docs.wandb.ai/ref/python/init
     #this is the setting for individual, ungrouped runs
-    wandb.init(entity="qvae", project="divae", config=cfg)
+    wandb.init(project="caloqvae", entity="qvae", config=cfg)
     #run the ting
     run(config=cfg)
 
@@ -74,7 +74,7 @@ def run(config=None):
 
     #instantiate the chosen model
     #loads from file 
-    model=modelCreator.init_model(load_from_file=config.load_model, dataMgr=dataMgr)
+    model=modelCreator.init_model(dataMgr=dataMgr)
     #create the NN infrastructure
     model.create_networks()
     #Not printing much useful info at the moment to avoid clutter. TODO optimise
@@ -91,7 +91,7 @@ def run(config=None):
             print(devids[0])
             dev = device(devids[0])
             if len(devids) > 1:
-                logger.info("Using DataParallel on {}".format(devids))
+                logger.info(f"Using DataParallel on {devids}")
                 model = DataParallel(model, device_ids=list(config.gpu_list))
             logger.info("CUDA available")
         else:
@@ -118,75 +118,37 @@ def run(config=None):
     #add device instance to engine namespace
     engine.device=dev    
     #instantiate and register optimisation algorithm
-    engine.optimiser = torch.optim.Adam(model.parameters(), lr=config.engine.learning_rate)
+    engine.optimiser = torch.optim.Adam(model.parameters(),
+                                        lr=config.engine.learning_rate)
     #add the model instance to the engine namespace
     engine.model = model
     # add the modelCreator instance to engine namespace
     engine.model_creator = modelCreator
-    
-    #no need to train if we load from file.
-    if config.load_model:
-        #return pre-trained model after loading from file
-        #Attention: the order here matters - the model must be initialised and
-        #networks created. Internally, weights and biases of the NN are set to the
-        #pretrained values but need to have been instantiated first.
-        modelCreator.load_model()
-        logger.info("Model loaded from file, skipping training.")
-    
+
     if config.load_state:
-        config_string="_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
+        assert config.run_path != 0
+        config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
         modelCreator.load_state(config.run_path, dev)
-    
+
     for epoch in range(1, config.engine.n_epochs+1):
         if "train" in config.task:
             engine.fit(epoch=epoch, is_training=True, mode="train")
-            
+
         if "validate" in config.task:
             engine.fit(epoch=epoch, is_training=False, mode="validate")
-            
+
     if "test" in config.task:
         engine.fit(epoch=epoch, is_training=False, mode="test")
-    
-    #save our trained model
-    #also save the current configuration with the same tag for bookkeeping
-    if config.save_model:
-        #save our trained model
-        date=datetime.datetime.now().strftime("%y%m%d")
-        config_string="_".join(str(i) for i in [config.model.model_type,config.data.data_type,date,config.tag])
-        modelCreator.save_model(config_string)
-        
+
     if config.save_state:
-        config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag, "latest"])
+        config_string = "_".join(str(i) for i in [config.model.model_type, 
+                                                  config.data.data_type,
+                                                  config.tag, "latest"])
         modelCreator.save_state(config_string)
 
-    if config.create_plots:
-        #call a forward method derivative - for output object.
-        eval_output=engine.evaluate()
-        
-        #sample generation
-        if config.generate_samples:
-            output_generated=engine.generate_samples()
-            eval_output.output_generated=output_generated
-
-        #instantiate plotting infrastructure
-        pp=PlotProvider(data_container=eval_output,
-                        plotFunctions=config.plotting.plotFunctions,
-                        config_string=config_string,
-                        date_tag=date,
-                        cfg=config)
-        
-        #TODO is there a neater integration than to add this as member?
-        pp.data_dimensions=dataMgr.get_input_dimensions()
-        
-        #call all the registered plot functions (hydra config)
-        pp.plot(eval_output)
-    
     logger.info("run() finished successfully.")
 
 if __name__=="__main__":
     logger.info("Starting main executable.")
-
     main()
-
     logger.info("Auf Wiedersehen!")
-

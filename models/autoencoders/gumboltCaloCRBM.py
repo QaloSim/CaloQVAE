@@ -9,7 +9,6 @@ import numpy as np
 
 # DiVAE.models imports
 from models.autoencoders.gumboltCaloV6 import GumBoltCaloV6
-from models.networks.hierarchicalEncoderV2 import HierarchicalEncoderV2
 
 from models.rbm.chimeraRBM import ChimeraRBM
 from models.rbm.qimeraRBM import QimeraRBM
@@ -95,7 +94,10 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             PCD Sampler
         """
         logger.debug("GumBoltCaloCRBM::_create_sampler")
-        return PCD(batch_size=self._config.engine.rbm_batch_size, RBM=self.prior, n_gibbs_sampling_steps=self._config.engine.n_gibbs_sampling_steps)
+        return PCD(batch_size=self._config.engine.rbm_batch_size,
+                   RBM=self.prior,
+                   n_gibbs_sampling_steps\
+                       =self._config.engine.n_gibbs_sampling_steps)
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):
         """
@@ -123,7 +125,8 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         # Compute positive energy expval using hierarchical posterior samples
         
         # Number of hidden and visible variables on each side of the RBM
-        num_var_rbm = (self.n_latent_hierarchy_lvls * self._latent_dimensions)//2
+        num_var_rbm = (self.n_latent_hierarchy_lvls 
+                       * self._latent_dimensions)//2
         
         # Compute positive energy contribution to the KL divergence
         if "mapping" in self._config.model and self._config.model.mapping.lower()=="chains":

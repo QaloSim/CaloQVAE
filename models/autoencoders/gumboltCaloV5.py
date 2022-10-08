@@ -92,8 +92,11 @@ class GumBoltCaloV5(GumBolt):
             prior_samples = torch.cat([rbm_vis, rbm_hid, true_e], dim=1)
             
             output_hits, output_activations = self.decoder(prior_samples)
-            beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-            sample = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
+            beta = torch.tensor(self._config.model.beta_smoothing_fct,
+                                dtype=torch.float, device=output_hits.device,
+                                requires_grad=False)
+            sample = self._energy_activation_fct(output_activations) \
+                * self._hit_smoothing_dist_mod(output_hits, beta, False)
             
             true_energies.append(true_e) 
             samples.append(sample)
@@ -102,8 +105,11 @@ class GumBoltCaloV5(GumBolt):
     
     def _create_decoder(self):
         logger.debug("GumBoltCaloV5::_create_decoder")
-        self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1, self._decoder_nodes[0][1])
-        return BasicDecoderV3(node_sequence=self._decoder_nodes, activation_fct=self._activation_fct,  cfg=self._config)
+        self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
+                                  self._decoder_nodes[0][1])
+        return BasicDecoderV3(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              cfg=self._config)
     
     def _create_encoder(self):
         """
