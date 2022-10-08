@@ -12,7 +12,6 @@ from models.autoencoders.dvaepp import DiVAEPP
 from models.rbm.rbm import RBM
 from models.samplers.pcd import PCD
 from models.networks.hierarchicalEncoder import HierarchicalEncoder
-from models.networks.basicCoders import BasicDecoder
 
 # DiVAE.utils imports
 from utils.dists.distributions import Bernoulli
@@ -104,7 +103,7 @@ class GumBolt(DiVAEPP):
         neg_energy = - self.energy_exp(rbm_vis, rbm_hid)
         
         kl_loss = entropy + pos_energy + neg_energy
-        return kl_loss, entropy, pos_energy, neg_energy 
+        return kl_loss, entropy, pos_energy, neg_energy
         
     def energy_exp(self, rbm_vis, rbm_hid):
         """
@@ -127,7 +126,7 @@ class GumBolt(DiVAEPP):
         # Change H.size() from (batchSize * nHid) to (batchSize * nHid * 1)
         hid = rbm_hid.unsqueeze(2)
         
-        batch_energy = (- torch.matmul(vis, torch.matmul(w, hid)).reshape(-1) 
+        batch_energy = (- torch.matmul(vis, torch.matmul(w, hid)).reshape(-1)
                         - torch.matmul(rbm_vis, vbias)
                         - torch.matmul(rbm_hid, hbias))
         

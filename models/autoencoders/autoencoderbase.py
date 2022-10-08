@@ -41,13 +41,13 @@ class AutoEncoderBase(nn.Module):
         
         # number of nodes in latent layer
         self._latent_dimensions=self._config.model.n_latent_nodes
-        
+
         if len(flat_input_size)>1:
             logger.warning("Attention. Input data is a list with more than one image,\
              i.e. jet shower data with a sequence of calorimeter images. This only works for certain models.")
-            self._flat_input_size=flat_input_size
+            self._flat_input_size = flat_input_size
         else:
-            self._flat_input_size=flat_input_size[0]
+            self._flat_input_size = flat_input_size[0]
 
         self._activation_fct=activation_fct
 

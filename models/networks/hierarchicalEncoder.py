@@ -1,8 +1,12 @@
-"""
+f"""
 Hierarchical Encoder
 
 Author: Eric Drechsler (eric_drechsler@sfu.ca)
 """
+
+#logging module with handmade settings.
+from CaloQVAE import logging
+logger = logging.getLogger(__name__)
 
 import torch
 import torch.nn as nn
@@ -13,16 +17,12 @@ from utils.dists.mixtureexp import MixtureExp
 from utils.dists.mixtureexpmod import MixtureExpMod
 from utils.dists.gumbelmod import GumbelMod
 
-_SMOOTHER_DICT = {"SpikeExp" : SpikeAndExponentialSmoother, 
+_SMOOTHER_DICT = {"SpikeExp" : SpikeAndExponentialSmoother,
                   "MixtureExp" : MixtureExp,
                   "Gumbel" : None}
 _SMOOTHER_MOD_DICT = {"MixtureExp" : MixtureExpMod,
                       "SpikeExp" : None,
                       "Gumbel" : GumbelMod}
-
-#logging module with handmade settings.
-from CaloQVAE import logging
-logger = logging.getLogger(__name__)
 
 class HierarchicalEncoder(BasicEncoder):
     def __init__(self, activation_fct=nn.ReLU(), input_dimension=784, n_latent_hierarchy_lvls=4, n_latent_nodes=100, n_encoder_layer_nodes=200, n_encoder_layers=2, skip_latent_layer=False, smoother="SpikeExp", **kwargs):
@@ -72,10 +72,10 @@ class HierarchicalEncoder(BasicEncoder):
         #for each hierarchy level create a network. Input unit count will increase
         #per level.
         for lvl in range(self.n_latent_hierarchy_lvls):
-            network=self._create_hierarchy_network(level=lvl, skip_latent_layer=skip_latent_layer)
+            network=self._create_hierarchy_network(level=lvl)
             self._networks.append(network)
 
-    def _create_hierarchy_network(self,level=0, skip_latent_layer=False):       
+    def _create_hierarchy_network(self, level=0):       
         #skip_latent_layer: instead of having a single latent layer, use
         #Gaussian trick of VAE: construct mu+eps*sqrt(var) on each hierarchy level
         # this is done outside this class...  
@@ -84,10 +84,6 @@ class HierarchicalEncoder(BasicEncoder):
             layers = [self.num_input_nodes] + list(self._config.model.encoder_hidden_nodes) + [self.n_latent_nodes]
         else:
             layers=[self.num_input_nodes+(level*self.n_latent_nodes)]+[self.n_encoder_layer_nodes]*self.n_encoder_layers+[self.n_latent_nodes]
-        
-        #in case we want to sample gaussian variables
-        if skip_latent_layer: 
-            layers=[self.num_input_nodes+level*self.n_latent_nodes]+[self.n_encoder_layer_nodes]*self.n_encoder_layers
 
         moduleLayers=nn.ModuleList([])
         for l in range(len(layers)-1):

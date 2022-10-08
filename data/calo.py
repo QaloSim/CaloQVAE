@@ -123,14 +123,25 @@ class CaloImageContainer(Dataset):
             calo_images[key]=CaloImage(image=torch.Tensor(ds),layer=key)
 
         self._images=calo_images
-        self._true_energies=input_data["energy"][:]outputskey,
+        self._true_energies=input_data["energy"][:]
+        self._overflow_energies=input_data["overflow"][:]
+
+def get_calo_datasets(inFiles={}, particle_type=["gamma"], layer_subset=[],
+                      frac_train_dataset=0.6, frac_test_dataset=0.2):
+
+    #read in all input files for all jet types and layers
+    dataStore={}
+    for key,fpath in inFiles.items():     
+        in_data=h5py.File(fpath,'r')
+        #for each particle_type, create a Container instance for our needs   
+        dataStore[key]=CaloImageContainer(  particle_type=key,
                                             input_data=in_data,
                                             layer_subset=layer_subset)
         #convert image dataframes to tensors and get energies
         dataStore[key].process_data(input_data=in_data)
 
-    assert len(particle_type)==1, "Currently only datasets for one particle type at a time\
-         can be retrieved. Requested {0}".format(particle_type)
+    assert len(particle_type)==1, f"Currently one particle type at a time\
+         can be retrieved. Requested {particle_type}"
     ptype=particle_type[0]
 
     #let's split our datasets
@@ -154,60 +165,3 @@ class CaloImageContainer(Dataset):
     val_dataset = dataStore[ptype].create_subset(idx_list=val_idx_list, label="val")
 
     return train_dataset, test_dataset, val_dataset
-
-if __name__=="__main__":
-    inFiles={
-        'gamma':    '/Users/drdre/inputz/CaloGAN_EMShowers/gamma.hdf5',
-        'eplus':    '/Users/drdre/inputz/CaloGAN_EMShowers/eplus.hdf5',        
-        'piplus':   '/Users/drdre/inputz/CaloGAN_EMShowers/piplus.hdf5'         
-    }
-    train_dataset,test_dataset,val_dataset = get_calo_datasets( 
-                                                    particle_type=['gamma'], 
-                                                    layer_subset=['layer_0','layer_1','layer_2'],
-                                                    inFiles=inFiles, 
-                                                    frac_train_dataset=0.6,
-                                                    frac_test_dataset=0.2
-                                                    )
-    print(len(train_dataset))
-    print(len(test_dataset))
-    print(len(val_dataset))
-    
-    from torch.utils.data import DataLoader
-    train_loader=DataLoader(   
-    train_dataset,
-    batch_size=10, 
-    shuffle=True)       
-    test_loader=DataLoader(   
-    test_dataset,
-    batch_size=10, 
-    shuffle=True)                                    
-    val_loader=DataLoader(   
-    val_dataset,
-    batch_size=10, 
-    shuffle=True)  
-
-    train_energy_list=[]
-    test_energy_list=[]
-    val_energy_list=[]
-
-
-    # for batch_idx, (input_data, label) in enumerate(train_loader):
-    #     train_energy_list.append(label)
-    # for batch_idx, (input_data, label) in enumerate(test_loader):
-    #     test_energy_list.append(label)
-    # for batch_idx, (input_data, label) in enumerate(val_loader):
-    #     val_energy_list.append(label)
-    
-    # for (energy,overflow) in train_energy_list:
-    #     for (e2,o2) in test_energy_list:
-    #         if torch.all(torch.eq(energy,e2)):
-    #             print("Duplicated entry discovered!")
-
-    for batch_idx, (input_data, label) in enumerate(train_loader):
-        print("Batch Idx: ", batch_idx)
-        print("Number of images per event: ",len(input_data))
-        print("Image shapes: ")
-        print("Flat size:", train_dataset.get_flattened_input_sizes() )
-        print("Shape:", train_dataset.get_input_dimensions())
-        print(label[0], label[1])
-        exit()
