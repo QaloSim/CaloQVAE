@@ -49,7 +49,8 @@ def main(cfg=None):
     # reference: https://docs.wandb.ai/ref/python/init
     # this is the setting for individual, ungrouped runs
     # Use mode='disabled' to prevent logging
-    wandb.init(project="caloqvae", entity="qvae", config=cfg)
+    mode = 'online' if cfg.wandb_enabled else 'disabled'
+    wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
     # run the ting
     run(config=cfg)
 
