@@ -75,10 +75,7 @@ class EngineCaloV3(Engine):
                     else:
                         kl_gamma = 0.
                         
-                    if ae_enabled:
-                        ae_gamma = 1.
-                    else:
-                        ae_gamma = 0.
+                    ae_gamma = 1. if ae_enabled else 0.
                         
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs

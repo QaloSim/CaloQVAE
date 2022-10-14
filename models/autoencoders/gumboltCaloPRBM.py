@@ -85,16 +85,17 @@ class GumBoltCaloPRBM(gcv6.GumBoltCaloV6):
 
         :return energy expectation value over the current batch
         """
-        w_dict, b_dict = self.prior.weight_dict.copy(), \
-            self.prior.bias_dict.copy()
-        
+        w_dict = self.prior.weight_dict
+        b_dict = self.prior.bias_dict
+
+        w_dict_cp = {}
+
         # Broadcast weight matrices (n_nodes_pa, n_nodes_pb) to
         # (batch_size, n_nodes_pa, n_nodes_pb)
         for key in w_dict.keys():
-            w_dict[key] = torch.nn.Parameter(w_dict[key] +
-                                             torch.zeros((p0_state.size(0),) +
-                                            w_dict[key].size(),
-                                            device=w_dict[key].device))
+            w_dict_cp[key] = w_dict[key] + torch.zeros((p0_state.size(0),) +
+                                                    w_dict[key].size(),
+                                                    device=w_dict[key].device)
 
         # Prepare px_state_t for torch.bmm()
         # Change px_state.size() to (batch_size, 1, n_nodes_px)
@@ -114,17 +115,17 @@ class GumBoltCaloPRBM(gcv6.GumBoltCaloV6):
             torch.matmul(p2_state, b_dict['2']) - \
             torch.matmul(p3_state, b_dict['3']) - \
             torch.bmm(p0_state_t,
-                      torch.bmm(w_dict['01'], p1_state_i)).reshape(-1) - \
+                      torch.bmm(w_dict_cp['01'], p1_state_i)).reshape(-1) - \
             torch.bmm(p0_state_t,
-                      torch.bmm(w_dict['02'], p2_state_i)).reshape(-1) - \
+                      torch.bmm(w_dict_cp['02'], p2_state_i)).reshape(-1) - \
             torch.bmm(p0_state_t,
-                      torch.bmm(w_dict['03'], p3_state_i)).reshape(-1) - \
+                      torch.bmm(w_dict_cp['03'], p3_state_i)).reshape(-1) - \
             torch.bmm(p1_state_t,
-                      torch.bmm(w_dict['12'], p2_state_i)).reshape(-1) - \
+                      torch.bmm(w_dict_cp['12'], p2_state_i)).reshape(-1) - \
             torch.bmm(p1_state_t,
-                      torch.bmm(w_dict['13'], p3_state_i)).reshape(-1) - \
+                      torch.bmm(w_dict_cp['13'], p3_state_i)).reshape(-1) - \
             torch.bmm(p2_state_t,
-                      torch.bmm(w_dict['23'], p3_state_i)).reshape(-1)
+                      torch.bmm(w_dict_cp['23'], p3_state_i)).reshape(-1)
 
         return torch.mean(batch_energy, dim=0)
 

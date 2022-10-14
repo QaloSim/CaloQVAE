@@ -45,14 +45,18 @@ from models.modelCreator import ModelCreator
 
 @hydra.main(config_path="../configs", config_name="config")
 def main(cfg=None):
-    #initialise wandb logging. Note that this function has many more options,
-    #reference: https://docs.wandb.ai/ref/python/init
-    #this is the setting for individual, ungrouped runs
+    # initialise wandb logging. Note that this function has many more options,
+    # reference: https://docs.wandb.ai/ref/python/init
+    # this is the setting for individual, ungrouped runs
+    # Use mode='disabled' to prevent logging
     wandb.init(project="caloqvae", entity="qvae", config=cfg)
-    #run the ting
+    # run the ting
     run(config=cfg)
 
 def run(config=None):
+    """
+    Run m
+    """
 
     #create model handling object
     modelCreator=ModelCreator(cfg=config)
@@ -70,7 +74,7 @@ def run(config=None):
         modelCreator.default_activation_fct=torch.nn.Tanh()
     else:
         logger.warning("Setting identity as default activation fct")
-        modelCreator.default_activation_fct=torch.nn.Identity() 
+        modelCreator.default_activation_fct=torch.nn.Identity()
 
     #instantiate the chosen model
     #loads from file 
@@ -79,6 +83,9 @@ def run(config=None):
     model.create_networks()
     #Not printing much useful info at the moment to avoid clutter. TODO optimise
     model.print_model_info()
+
+    for name, param in model.named_parameters():
+        print(name, param.requires_grad)
 
     # Load the model on the GPU if applicable
     dev = None
@@ -147,6 +154,7 @@ def run(config=None):
         modelCreator.save_state(config_string)
 
     logger.info("run() finished successfully.")
+
 
 if __name__=="__main__":
     logger.info("Starting main executable.")

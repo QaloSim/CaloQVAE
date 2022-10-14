@@ -27,7 +27,8 @@ class ShowerDepthHist(object):
         
         layer_energies = {}
         for layer, layer_idxs in self._layer_dict.items():
-            layer_energies[layer] = [dataset[:, layer_idxs[0]:layer_idxs[1]].sum(axis=1) for dataset in datasets]
+            layer_energies[layer] = [dataset[:, layer_idxs[0]:layer_idxs[1]]
+                                     .sum(axis=1) for dataset in datasets]
             
         layer_energies_keys = list(layer_energies.keys())
         
@@ -36,10 +37,13 @@ class ShowerDepthHist(object):
         
         for idx in range(1, len(layer_energies_keys)):
             layer = layer_energies_keys[idx]
-            curr_datasets = [curr_dataset+(layer_dataset*(idx)) for layer_dataset,curr_dataset in zip(layer_energies[layer],curr_datasets)]
+            curr_datasets = [curr_dataset+(layer_dataset*(idx)) for
+                             layer_dataset, curr_dataset in
+                             zip(layer_energies[layer], curr_datasets)]
             
         for dataset in curr_datasets:
             dataset = dataset.reshape(-1)
+            dataset[dataset == 0.] = 1.
             
         datasets = [dataset.sum(axis=1) for dataset in datasets]
         lfracs = [np.divide(curr_dataset, dataset) for curr_dataset, dataset in zip(curr_datasets, datasets)]
