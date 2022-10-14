@@ -23,14 +23,23 @@ class FracTotalEnergyHist(object):
         self._scale = "log"
     
     def update(self, in_data, recon_data, sample_data):
+        """Update the histograms
+        """
         labels = ["input", "recon", "samples"]
         datasets = [in_data, recon_data, sample_data]
-        layer_datasets = [dataset[:, self._start_idx:self._end_idx] for dataset in datasets]
-        
+        layer_datasets = [dataset[:, self._start_idx:self._end_idx]
+                          for dataset in datasets]
+
         layer_datasets = [dataset.sum(axis=1) for dataset in layer_datasets]
-        datasets = [dataset.sum(axis=1) for dataset in datasets]
         
-        lfracs = [np.divide(layer_dataset, dataset) for layer_dataset, dataset in zip(layer_datasets, datasets)]
+        sum_datasets = []
+        for dataset in datasets:
+            sum_dataset = dataset.sum(axis=1)
+            sum_dataset[sum_dataset == 0.] = 1.
+            sum_datasets.append(sum_dataset)
+            
+        lfracs = [np.divide(layer_dataset, dataset) for layer_dataset,
+                  dataset in zip(layer_datasets, sum_datasets)]
         
         for label, lfrac in zip(labels, lfracs):
             self._hist.fill(dataset=label, f=lfrac)

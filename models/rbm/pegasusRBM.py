@@ -25,15 +25,14 @@ class PegasusRBM(nn.Module):
         # Dict of RBM weights for different partition combinations
         for key in itertools.combinations(range(self._num_partitions), 2):
             str_key = ''.join([str(key[i]) for i in range(len(key))])
-            self._weight_dict[str_key] = nn.Parameter(torch.randn((
-                self._nodes_per_partition, self._nodes_per_partition),
-                requires_grad=True))
+            self._weight_dict[str_key] = nn.Parameter(
+                torch.randn(self._nodes_per_partition,
+                            self._nodes_per_partition), requires_grad=True)
 
         # Dict of RBM biases for each partition
         for i in range(self._num_partitions):
             self._bias_dict[str(i)] = nn.Parameter(
-                torch.randn(self._nodes_per_partition),
-                requires_grad=True)
+                torch.randn(self._nodes_per_partition), requires_grad=True)
 
     @property
     def nodes_per_partition(self):
