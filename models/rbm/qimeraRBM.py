@@ -40,9 +40,9 @@ class QimeraRBM(RBM):
         qpu_nodes = qpu_sampler.nodelist
         qpu_edges = qpu_sampler.edgelist
         
-        ## The n_rows+1 and n_cols+2 ensure that we get correct number of visible and hidden qubits
+        ## The n_rows+1 and n_cols+1 ensure that we get correct number of visible and hidden qubits
         for row in range(n_rows+1):    
-            for col in range(n_cols+2):
+            for col in range(n_cols+1):
                 for n in range(_CELL_SIDE_QUBITS):
                     if (len(visible_qubit_idxs) < n_visible) or (len(hidden_qubit_idxs) < n_hidden):
                         idx = 8*row + 8*col*_MAX_ROW_COLS + n
