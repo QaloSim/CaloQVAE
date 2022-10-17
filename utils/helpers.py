@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import pandas as pd
 import gif
-from DiVAE import logging
+from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from types import SimpleNamespace
@@ -48,4 +48,4 @@ class OutputContainer(SimpleNamespace):
         """
         out=[str(key) for key,_ in self.__dict__.items()]
         logger.info("OutputContainer keys: {0}".format(out))
-        
+
