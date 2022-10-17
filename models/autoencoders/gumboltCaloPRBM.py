@@ -129,7 +129,7 @@ class GumBoltCaloPRBM(gcv6.GumBoltCaloV6):
 
         return torch.mean(batch_energy, dim=0)
 
-    def generate_samples(self, n_samples: int = 128, true_energy: int = None):
+    def generate_samples(self, n_samples: int = 128, true_energy: int = -1):
         """Generate data samples by decoding RBM samples
 
         :param n_samples (int): No. of data samples to generate in one shot
@@ -146,7 +146,7 @@ class GumBoltCaloPRBM(gcv6.GumBoltCaloV6):
             p0_state, p1_state, p2_state, p3_state \
                 = self.sampler.block_gibbs_sampling()
 
-            if true_energy is None:
+            if true_energy == -1:
                 # true_e ~ U[1, 100]
                 true_e = (torch.rand((p0_state.size(0), 1),
                                      device=p0_state.device) * 99.) + 1.

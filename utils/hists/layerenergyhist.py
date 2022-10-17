@@ -5,10 +5,6 @@ Per layer energy Histogram
 # Coffea histogramming library
 from utils.hists.totalenergyhist import TotalEnergyHist
 
-# DiVAE logging
-from DiVAE import logging
-logger = logging.getLogger(__name__)
-
 class LayerEnergyHist(TotalEnergyHist):
     def __init__(self, start_idx, end_idx, min_bin=0, max_bin=100, n_bins=100):
         super(LayerEnergyHist, self).__init__(min_bin, max_bin, n_bins)

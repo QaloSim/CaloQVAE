@@ -6,10 +6,6 @@ Max Layer Depth histogram
 from coffea import hist
 import numpy as np
 
-# DiVAE logging
-from DiVAE import logging
-logger = logging.getLogger(__name__)
-
 class MaxDepthHist(object):
     def __init__(self, layer_dict):
         self._layer_dict = layer_dict

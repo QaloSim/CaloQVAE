@@ -60,10 +60,10 @@ def run(config=None):
     """
 
     #create model handling object
-    modelCreator=ModelCreator(cfg=config)
+    modelCreator = ModelCreator(cfg=config)
 
     #container for our Dataloaders
-    dataMgr=DataManager(cfg=config)
+    dataMgr = DataManager(cfg=config)
     #initialise data loaders
     dataMgr.init_dataLoaders()
     #run pre processing: get/set input dimensions and mean of train dataset
