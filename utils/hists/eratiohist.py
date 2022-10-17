@@ -6,10 +6,6 @@ E_ratio histogram
 from coffea import hist
 import numpy as np
 
-# DiVAE logging
-from DiVAE import logging
-logger = logging.getLogger(__name__)
-
 class ERatioHist(object):
     def __init__(self, start_idx, end_idx, min_bin=0, max_bin=1, n_bins=50):
         self._hist = hist.Hist(label="Events",

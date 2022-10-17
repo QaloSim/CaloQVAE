@@ -6,10 +6,6 @@ Total energy Histogram
 from coffea import hist
 import numpy as np
 
-# DiVAE logging
-from DiVAE import logging
-logger = logging.getLogger(__name__)
-
 # Dataset labels
 _LABELS = ["input", "recon", "samples"]
 

@@ -6,10 +6,6 @@ Fraction of energy per layer histogram
 from coffea import hist
 import numpy as np
 
-# DiVAE logging
-from DiVAE import logging
-logger = logging.getLogger(__name__)
-
 class FracTotalEnergyHist(object):
     def __init__(self, start_idx, end_idx, min_bin=1e-4, max_bin=1, n_bins=40):
         min_bin = 1e-4 if min_bin < 1e-4 else min_bin

@@ -6,10 +6,6 @@ Input Energy - Recon Energy Histogram
 from coffea import hist
 import numpy as np
 
-# DiVAE logging
-from DiVAE import logging
-logger = logging.getLogger(__name__)
-
 class DiffEnergyHist(object):
     def __init__(self, edge_bin=50, n_bins=100):
         self._hist = hist.Hist(label="Events",
