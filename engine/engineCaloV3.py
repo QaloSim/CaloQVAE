@@ -107,13 +107,19 @@ class EngineCaloV3(Engine):
                     valid_loss_dict = self._validate()
                     
                     if "hit_loss" in valid_loss_dict.keys():
-                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"]
+                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] +\
+                            valid_loss_dict["kl_loss"] +\
+                            valid_loss_dict["hit_loss"]
                     else:
-                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"]
+                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] +\
+                            valid_loss_dict["kl_loss"]
                         
                     # Check the loss over the validation set is 
                     if valid_loss_dict["loss"] < self._best_model_loss:
-                        self._best_model_loss = valid_loss_dict["loss"]
+                        self._best_model_loss = valid_loss_dict["ae_loss"]
+                        if "hit_loss" in valid_loss_dict.keys():
+                            self._best_model_loss += \
+                                valid_loss_dict["hit_loss"]
                         # Save the best model here
                         config_string = "_".join(str(i) for i in [self._config.model.model_type,
                                                                   self._config.data.data_type,
@@ -176,12 +182,17 @@ class EngineCaloV3(Engine):
                             pass
                         
         if not is_training:
-            val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}
+            val_loss_dict = {**val_loss_dict, 
+                             **self._hist_handler.get_hist_images(),
+                             **self._hist_handler.get_scatter_plots()}
             
             if self._config.save_hists:
                 hist_dict = self._hist_handler.get_hist_dict()
                 for key in hist_dict.keys():
-                    path = os.path.join(wandb.run.dir, "{0}.coffea".format(self._config.data.particle_type + "_" + str(key)))
+                    path = os.path.join(wandb.run.dir,
+                                        "{0}.coffea".format(
+                                            self._config.data.particle_type +
+                                            "_" + str(key)))
                     coffea.util.save(hist_dict[key], path)
                 
             self._hist_handler.clear()
@@ -190,7 +201,8 @@ class EngineCaloV3(Engine):
             # Modify the logging keys to prefix with 'val_'
             for key in list(val_loss_dict.keys()):
                 try:
-                    val_loss_dict['val_' + str(key)] = val_loss_dict[key]/num_batches
+                    val_loss_dict['val_' + str(key)] =\
+                        val_loss_dict[key] / num_batches
                     val_loss_dict.pop(key)
                 except TypeError:
                     val_loss_dict['val_' + str(key)] = val_loss_dict[key]
@@ -224,7 +236,8 @@ class EngineCaloV3(Engine):
         Update the coffea histograms' distributions
         """
         # Samples with uniformly distributed energies - [0, 100]
-        sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
+        _, sample_data = self._model.generate_samples(
+            self._config.engine.n_valid_batch_size)
         
         # Update the histogram
         if self._config.data.scaled:
@@ -242,7 +255,7 @@ class EngineCaloV3(Engine):
         conditioning_energies = self._config.engine.sample_energies
         conditioned_samples = []
         for energy in conditioning_energies:
-            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
+            _, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
             sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
             conditioned_samples.append(torch.tensor(sample_data))
                         
@@ -262,7 +275,7 @@ class EngineCaloV3(Engine):
         with torch.set_grad_enabled(False):
             for idx in range(n_val_batches):
                 input_data, label = next(iter(data_loader))
-                in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
+                in_data, true_energy, _ = self._preprocess(input_data, label)
                 
                 fwd_output = self._model((in_data, true_energy), False)
                 batch_loss_dict = self._model.loss(in_data, fwd_output)
@@ -271,7 +284,8 @@ class EngineCaloV3(Engine):
                 if idx == 0:
                     for key in list(batch_loss_dict.keys()):
                         epoch_loss_dict[key] = batch_loss_dict[key].detach()
-                # Add loss values for the current batch to accumulating dictionary
+                # Add loss values for the current batch to accumulating
+                # dictionary
                 else:
                     for key in list(batch_loss_dict.keys()):
                         epoch_loss_dict[key] += batch_loss_dict[key].detach()
@@ -334,8 +348,3 @@ class EngineCaloV3(Engine):
         weights = [[weight] for weight in prior_weights]
         weights_table = wandb.Table(data=weights, columns=["weights"])
         wandb.log({"rbm_weights": wandb.plot.histogram(weights_table, "weights", title=None)})
-        
-if __name__=="__main__":
-    logger.info("Willkommen!")
-    engine=Engine()
-    logger.info("Success!")

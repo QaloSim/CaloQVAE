@@ -40,11 +40,13 @@ class QimeraRBM(RBM):
         qpu_nodes = qpu_sampler.nodelist
         qpu_edges = qpu_sampler.edgelist
         
-        ## The n_rows+1 and n_cols+1 ensure that we get correct number of visible and hidden qubits
-        for row in range(n_rows+1):    
+        # The n_rows+1 and n_cols+1 ensure that we get correct number of
+        # visible and hidden qubits
+        for row in range(n_rows+1):
             for col in range(n_cols+1):
                 for n in range(_CELL_SIDE_QUBITS):
-                    if (len(visible_qubit_idxs) < n_visible) or (len(hidden_qubit_idxs) < n_hidden):
+                    if (len(visible_qubit_idxs) < n_visible) or \
+                        (len(hidden_qubit_idxs) < n_hidden):
                         idx = 8*row + 8*col*_MAX_ROW_COLS + n
                         # Even cell
                         if (row+col)%2 == 0:
@@ -88,7 +90,8 @@ class QimeraRBM(RBM):
             logger.debug("weights_mask = ", weights_mask)
                         
         #arbitrarily scaled by 0.01 
-        self._weights = nn.Parameter(torch.randn(n_visible, n_hidden), requires_grad=require_grad)
+        self._weights = nn.Parameter(torch.randn(n_visible, n_hidden),
+                                     requires_grad=require_grad)
         #self._weights = nn.Parameter(3.*torch.rand(n_visible, n_hidden) + 1., requires_grad=require_grad)
         
         self._weights_mask = nn.Parameter(weights_mask, requires_grad=False)
