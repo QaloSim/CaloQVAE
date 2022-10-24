@@ -162,7 +162,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         kl_loss = entropy + pos_energy + neg_energy
         return kl_loss, entropy, pos_energy, neg_energy
     
-    def generate_samples(self, num_samples=64, true_energy=None):
+    def generate_samples_qpu(self, num_samples=64, true_energy=None):
         """
         generate_samples()
         
