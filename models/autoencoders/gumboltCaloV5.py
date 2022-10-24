@@ -43,19 +43,24 @@ class GumBoltCaloV5(GumBolt):
         logger.debug("forward")
         
         #see definition for explanation
-        out=self._output_container.clear()
+        out = self._output_container.clear()
         
 	    #Step 1: Feed data through encoder
         in_data = torch.cat([x[0], x[1]], dim=1)
-        out.beta, out.post_logits, out.post_samples = self.encoder(in_data, is_training)
+        out.beta, out.post_logits, out.post_samples = self.encoder(in_data,
+                                                                   is_training)
         post_samples = torch.cat(out.post_samples, 1)
         post_samples = torch.cat([post_samples, x[1]], dim=1)
         
         output_hits, output_activations = self.decoder(post_samples)
         
         out.output_hits = output_hits
-        beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        beta = torch.tensor(self._config.model.output_smoothing_fct,
+                            dtype=torch.float, device=output_hits.device,
+                            requires_grad=False)
+        out.output_activations = self._energy_activation_fct(
+            output_activations) * self._hit_smoothing_dist_mod(
+            output_hits, beta, is_training)
         return out
     
     def loss(self, input_data, fwd_out):
