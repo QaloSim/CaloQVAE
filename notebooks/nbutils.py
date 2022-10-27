@@ -210,7 +210,7 @@ def batch_dwave_samples(response, qubit_idxs):
     batch_samples = np.array(samples)
     batch_energies = np.array(energies).reshape(-1)
         
-    return batch_samples, batch_energies
+    return batch_samples, batch_energies, origSamples
 
 def plot_betas(betas):
     """
