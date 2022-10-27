@@ -241,3 +241,24 @@ def load_state(model, run_path, device):
             if module in local_module_keys:
                 print("Loading weights for module = ", module)
                 getattr(model, module).load_state_dict(checkpoint[module])
+
+
+def plot_energies(energies1, energies2, binwidth):
+    """
+    Plot the energies of the samples produced by the histograms   
+    UPDATE: bin now found using bin boundaries
+    """
+    fig, ax = plt.subplots(figsize=(40, 16))
+    data = np.concatenate((energies1,energies2), axis=0)
+    bins =  np.arange(min(data), max(data) + binwidth, binwidth)
+    ax.hist(energies1, bins=bins, label = "dwave energies")  
+    ax.hist(energies2, bins=bins, label = "auxiliary RBM energies", alpha=0.5) 
+    plt.legend(loc='upper right', fontsize=30)
+    ax.set_xlabel("Energy", fontsize=60)
+    ax.set_ylabel("Frequency", fontsize=60)
+    
+    ax.tick_params(axis='both', which='major', labelsize=60)
+    ax.grid(True)
+    
+    plt.show()
+    plt.close()
