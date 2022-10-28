@@ -243,7 +243,7 @@ def load_state(model, run_path, device):
                 getattr(model, module).load_state_dict(checkpoint[module])
 
 
-def plot_energies(energies1, energies2, binwidth):
+def plot_energies(energies1, energies2, binwidth, beta=None, save_image=False):
     """
     Plot the energies of the samples produced by the histograms   
     UPDATE: bin now found using bin boundaries
@@ -259,6 +259,10 @@ def plot_energies(energies1, energies2, binwidth):
     
     ax.tick_params(axis='both', which='major', labelsize=60)
     ax.grid(True)
+    if (beta!=None):
+        plt.title("Beta = "+str(beta), fontsize=60)
     
-    plt.show()
+    if (save_image==False): 
+        plt.show()
     plt.close()
+    return fig
