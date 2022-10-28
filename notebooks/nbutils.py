@@ -243,7 +243,7 @@ def load_state(model, run_path, device):
                 getattr(model, module).load_state_dict(checkpoint[module])
 
 
-def plot_energies(energies1, energies2, binwidth, beta=None, save_image=False):
+def plot_energies(energies1, energies2, binwidth=1, beta=None, save_image=False):
     """
     Plot the energies of the samples produced by the histograms   
     UPDATE: bin now found using bin boundaries
@@ -254,15 +254,88 @@ def plot_energies(energies1, energies2, binwidth, beta=None, save_image=False):
     ax.hist(energies1, bins=bins, label = "dwave energies")  
     ax.hist(energies2, bins=bins, label = "auxiliary RBM energies", alpha=0.5) 
     plt.legend(loc='upper right', fontsize=30)
+    if (beta!=None):
+        plt.title(r'$\beta_{eff}^{*} = $'+format(beta,'.3f'), fontsize = 60)
     ax.set_xlabel("Energy", fontsize=60)
     ax.set_ylabel("Frequency", fontsize=60)
     
     ax.tick_params(axis='both', which='major', labelsize=60)
     ax.grid(True)
-    if (beta!=None):
-        plt.title("Beta = "+str(beta), fontsize=60)
     
     if (save_image==False): 
         plt.show()
     plt.close()
     return fig
+
+
+def save_run_info(run_info, ising_weights, ising_vbias, ising_hbias, aux_crbm_energy_exps, dwave_energies, betas):
+    """
+    Inputs are the parameters whose infromation we want to save
+    run_info is a string which is customised by the user to store
+    custom information regarding a particular run.
+    Data is saved in notebooks/Beta_estimation_data/beta_run_info
+    """
+    base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
+    if os.path.exists(base_dir) == False:
+        os.mkdir(base_dir)
+    weight_dir = base_dir+'/'+'ising_weights.pt'
+    vbias_dir = base_dir+'/'+'ising_vbias.pt'
+    hbias_dir = base_dir+'/'+'ising_hbias.pt'
+    classical_energies_dir = base_dir+'/'+'aux_crbm_energy_exps.pt'
+    dwave_energies_dir = base_dir+'/'+'dwave_energies.pt'
+    betas_dir = base_dir+'/betas.pt'
+
+    torch.save(ising_weights, weight_dir)
+    torch.save(ising_vbias, vbias_dir)
+    torch.save(ising_hbias, hbias_dir)
+    torch.save(aux_crbm_energy_exps, classical_energies_dir)
+    torch.save(dwave_energies, dwave_energies_dir)
+    torch.save(betas, betas_dir)
+
+
+def recover_saved_parameters(run_info):
+    """
+    This should be used after saving information using save_run_info function
+    Returns: ising_weights, ising_vbias, ising_hbias, aux_crbm_energy_exps, 
+    dwave_energies, betas of a given run
+    """
+    base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
+    ising_weights = torch.load(base_dir+'/'+'ising_weights.pt')
+    ising_vbias = torch.load(base_dir+'/'+'ising_vbias.pt')
+    ising_hbias = torch.load(base_dir+'/'+'ising_hbias.pt')
+    aux_crbm_energy_exps = torch.load(base_dir+'/'+'aux_crbm_energy_exps.pt')
+    dwave_energies = torch.load(base_dir+'/'+'dwave_energies.pt')
+    betas = torch.load(base_dir+'/'+'betas.pt')
+    return ising_weights, ising_vbias, ising_hbias, aux_crbm_energy_exps, dwave_energies, betas
+
+
+def save_energy_plots(run_info, dwave_energies, aux_crbm_energy_exps, betas, generate_gif=True, duration=1350):
+    """
+    This saves energy plots using the plot_energies helper function.
+    A GIF is also generated for convenience. 
+    A smaller duration increases frequency of the GIF
+    """
+    base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
+    image_dir = base_dir+'/plots'
+    if os.path.exists(base_dir) == False:
+        print("Incorrect run info")
+        return 0
+    if os.path.exists(image_dir) == False:
+        os.mkdir(image_dir)
+    for i in range(len(dwave_energies)):
+        str_beta = format(betas[i], '.3f') # convert to string in 3 decimal places
+        fig = plot_energies(dwave_energies[i], aux_crbm_energy_exps, 1, beta=betas[i], save_image=True) # make sure to add true false stuff
+        image_file = image_dir+'/beta='+str_beta+'_fig_'+str(i+1)+'.jpg'
+        fig.savefig(image_file)
+        plt.close()
+    print("Plots saved in {0}".format(image_dir))
+    
+    if (generate_gif==True):
+        images = []
+        for i in range(len(dwave_energies)):
+            str_beta = format(betas[i], '.3f')
+            images.append(Image.open(image_dir+'/beta='+str_beta+'_fig_'+str(i+1)+'.jpg'))
+
+        images[0].save(image_dir+'/beta_energies.gif',
+                       save_all=True, append_images=images[1:], optimize=False, duration=duration, loop=0)
+        print("GIF saved in {0}".format(image_dir))
