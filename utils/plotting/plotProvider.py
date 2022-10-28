@@ -9,8 +9,6 @@ import torch
 import numpy as np
 import importlib
 
-from DiVAE import logging
-logger = logging.getLogger(__name__)
 
 class PlotProvider(object):
     def __init__(self, data_container=None, plotFunctions=['plot_MNIST_output'], cfg=None, **kwargs):
