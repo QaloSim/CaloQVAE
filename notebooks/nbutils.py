@@ -2,6 +2,10 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+# Extra imports for image and data processing
+from PIL import Image, ImageDraw
+import json
 
 def sample_energies(rbm, rbm_vis, rbm_hid):
     """
@@ -275,6 +279,9 @@ def save_run_info(run_info, ising_weights, ising_vbias, ising_hbias, aux_crbm_en
     custom information regarding a particular run.
     Data is saved in notebooks/Beta_estimation_data/beta_run_info
     """
+    folder_dir = 'notebooks/Beta_estimation_data'
+    if os.path.exists(folder_dir) == False:
+        os.mkdir(folder_dir)
     base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
     if os.path.exists(base_dir) == False:
         os.mkdir(base_dir)
@@ -339,3 +346,19 @@ def save_energy_plots(run_info, dwave_energies, aux_crbm_energy_exps, betas, gen
         images[0].save(image_dir+'/beta_energies.gif',
                        save_all=True, append_images=images[1:], optimize=False, duration=duration, loop=0)
         print("GIF saved in {0}".format(image_dir))
+
+
+def initialize_ising(n_vis, n_hid):
+    """
+    This function randomly initializes an Ising model with random J and h in the given ranges
+    Inputs: nunmbers of visible and hidden nodes
+    Output: Ising Weights and Biases
+    * UPDATE: J is now drawn from a Gaussian distribution instead of a Uniform distribution
+    """
+    #wlim = [-0.5,0.5]
+    #ising_weights = torch.nn.Parameter((wlim[1]-wlim[0])*torch.rand(n_vis, n_hid) + wlim[0], requires_grad=False) 
+    ising_weights = torch.normal(0, 0.2, size=(n_hid, n_hid))
+    hlim = [-2,2]
+    ising_vbias = torch.nn.Parameter((hlim[1]-hlim[0])*torch.rand(n_vis)+hlim[0], requires_grad=False)
+    ising_hbias = torch.nn.Parameter((hlim[1]-hlim[0])*torch.rand(n_hid)+hlim[0], requires_grad=False)
+    return ising_weights, ising_vbias, ising_hbias
