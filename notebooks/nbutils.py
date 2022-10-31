@@ -348,17 +348,23 @@ def save_energy_plots(run_info, dwave_energies, aux_crbm_energy_exps, betas, gen
         print("GIF saved in {0}".format(image_dir))
 
 
-def initialize_ising(n_vis, n_hid):
+def initialize_ising(n_vis, n_hid, nmean = None, std=None, wlim=None, hlim=None):
     """
     This function randomly initializes an Ising model with random J and h in the given ranges
     Inputs: nunmbers of visible and hidden nodes
     Output: Ising Weights and Biases
     * UPDATE: J is now drawn from a Gaussian distribution instead of a Uniform distribution
+              Custom std,mean and limits can now added for J (i.e. J can be uniform/normal
+              depending on input parameters)
+    * TO-DO : Add option to draw h from a normal distribution too
     """
-    #wlim = [-0.5,0.5]
-    #ising_weights = torch.nn.Parameter((wlim[1]-wlim[0])*torch.rand(n_vis, n_hid) + wlim[0], requires_grad=False) 
-    ising_weights = torch.normal(0, 0.2, size=(n_hid, n_hid))
-    hlim = [-2,2]
+    if (wlim!=None and std==None and nmean==None):
+        ising_weights = torch.nn.Parameter((wlim[1]-wlim[0])*torch.rand(n_vis, n_hid) + wlim[0], requires_grad=False) 
+    elif (wlim==None and std!=None and nmean!=None):
+        ising_weights = torch.normal(nmean, std, size=(n_hid, n_hid))
+    else:
+        print("Incorrect/Insufficent inputs to initialize Ising Model")
+        return 0
     ising_vbias = torch.nn.Parameter((hlim[1]-hlim[0])*torch.rand(n_vis)+hlim[0], requires_grad=False)
     ising_hbias = torch.nn.Parameter((hlim[1]-hlim[0])*torch.rand(n_hid)+hlim[0], requires_grad=False)
     return ising_weights, ising_vbias, ising_hbias
