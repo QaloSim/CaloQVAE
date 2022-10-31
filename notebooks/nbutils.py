@@ -361,7 +361,7 @@ def initialize_ising(n_vis, n_hid, nmean = None, std=None, wlim=None, hlim=None)
     if (wlim!=None and std==None and nmean==None):
         ising_weights = torch.nn.Parameter((wlim[1]-wlim[0])*torch.rand(n_vis, n_hid) + wlim[0], requires_grad=False) 
     elif (wlim==None and std!=None and nmean!=None):
-        ising_weights = torch.normal(nmean, std, size=(n_hid, n_hid))
+        ising_weights = torch.normal(nmean, std, size=(n_vis, n_hid))
     else:
         print("Incorrect/Insufficent inputs to initialize Ising Model")
         return 0
