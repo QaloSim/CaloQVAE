@@ -167,6 +167,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         generate_samples()
         
         Overrides generate samples in gumboltCaloV5.py
+        UPDATED: Depreciated and replaced with generate_samples_dwave
         """
         # Extract the RBM parameters
         crbm_weights = self.prior.weights
@@ -220,3 +221,166 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)      
         return true_e, samples
+    
+    def generate_samples_dwave(self, num_samples=64, true_energy=None):
+        """
+        Purpose: Samples from DWAVE for some given RBM weights and biases
+        NOTES: Need to take care of nn.Parameters stuff to make sure gradients don't change.
+                    Need to somehow get QPU sampler run only once
+                    Maybe n_rows and n_cols of this class have to be +1.
+                    
+        """
+        # Ensure samplers are defined
+        assert qpu_sampler is not None
+        assert aux_crbm_sampler is not None
+        
+        # Define betas and initial beta
+        beta = beta_init
+        betas = [beta]
+        
+        # Extract the auxiliary chimera RBM parameters
+        crbm_weights = self.prior.weights
+        crbm_vbias = self.prior.visible_bias
+        crbm_hbias = self.prior.hidden_bias
+        crbm_edgelist = self.prior.pruned_edge_list
+        
+        # Get number of visible and hidden units
+        n_vis = len(crbm_vbias)
+        n_hid = len(crbm_hbias)
+        
+        # Get the indexes of qubits :: NEED TO MAKE SURE THIS IS THE SAME as in NOTEBOOK
+        qubit_idxs = self.prior.visible_qubit_idxs + self.prior.hidden_qubit_idxs
+        
+        # Define the qubit index maps
+        visible_idx_map = {visible_qubit_idx:i for i, visible_qubit_idx in enumerate(self.prior.visible_qubit_idxs)}
+        hidden_idx_map = {hidden_qubit_idx:i for i, hidden_qubit_idx in enumerate(self.prior.hidden_qubit_idxs)}
+        
+        """
+        Note:- The cRBM is supposed to already be a Chimera RBM (VERIFY).
+               Hence, it is not necessary to mask it again.
+        """
+        
+        # Convert the RBM parameters to Ising parameters
+        # Note: There are 2 ways to do it - using rbm_to_ising module (nbutils already imported)
+        #                                 - hardcode (done here for convenience)
+        ising_weights = crbm_weights/4.
+        ising_vbias = crbm_vbias/2. + torch.sum(crbm_weights, dim=1)/4.
+        ising_hbias = crbm_hbias/2. + torch.sum(crbm_weights, dim=0)/4.
+        
+        # Send Ising parameters to GPU if available
+        ising_weights = ising_weights.to(device)
+        ising_vbias = ising_vbias.to(device)
+        ising_hbias = ising_hbias.to(device) 
+        
+        # Get DWAVE weights (need a negative)
+        dwave_weights_np = -ising_weights.detach().cpu().numpy()
+        print("J range = ({0}, {1})".format(np.min(dwave_weights_np), np.max(dwave_weights_np)))
+        
+        # Convert Ising biases to numpy list
+        vbias_list = list(ising_vbias.detach().cpu().numpy())
+        hbias_list = list(ising_hbias.detach().cpu().numpy())
+        
+        # Encode local field (biases) in DWAVE (with the negative)
+        hVis = {v_qubit_idx:-vbias_list[visible_idx_map[v_qubit_idx]] for v_qubit_idx in self.prior.visible_qubit_idxs}
+        hHid = {h_qubit_idx:-hbias_list[hidden_idx_map[h_qubit_idx]] for h_qubit_idx in self.prior.hidden_qubit_idxs}
+        h = {**hVis,**hHid}
+        
+        # Encode couplers (weights) in DWAVE
+        J = {}
+        for edge in crbm_edgelist:
+            if edge[0] in aux_crbm.visible_qubit_idxs:
+                J[edge] = dwave_weights_np[visible_idx_map[edge[0]]][hidden_idx_map[edge[1]]]
+            else:
+                J[edge] = dwave_weights_np[visible_idx_map[edge[1]]][hidden_idx_map[edge[0]]]
+                
+        ## Important: note classical samplers must be defined before the beta_reverse function is even called
+        # (Probably don't need) ... but not sure where to change it ...
+        # aux_crbm = QimeraRBM(n_visible=model.prior._n_visible, n_hidden=model.prior._n_hidden)
+        # aux_crbm_sampler = PCD(batch_size=850, RBM=aux_crbm, n_gibbs_sampling_steps=5000)
+        ## But just writing down above for convenience ...
+        
+        # Define the aux_crbm object
+        # aux_crbm = aux_crbm_sampler.rbm
+        
+        # Define attributes of the aux_crbm object now
+        # aux_crbm.weights = crbm_weights
+        # aux_crbm._visible_bias = crbm_vbias
+        # aux_crbm._hidden_bias = crbm_hbias 
+        
+        # Set RBM sampler
+        # aux_crbm_sampler.rbm = aux_crbm
+        
+        # Sample from the RBM using Block Gibbs Sampling
+        aux_crbm_vis, aux_crbm_hid = self.sampler.block_gibbs_sampling()
+        
+        # Convert Samples
+        ## IMPORTANT: MAKE SURE TO DEFINE ZERO AND ONE AND SEND THEM TO GPU
+        aux_crbm_vis = torch.where(aux_crbm_vis == ZERO, MINUS_ONE, aux_crbm_vis)
+        aux_crbm_hid = torch.where(aux_crbm_hid == ZERO, MINUS_ONE, aux_crbm_hid)
+        
+        # Compute the Ising Energy
+        aux_crbm_energy_exp = self.ising_energies_exp(ising_weights, ising_vbias, ising_hbias, aux_crbm_vis, aux_crbm_hid)
+        
+        # Convert negative of the Ising Energies to numpy array and compute mean
+        aux_crbm_energy_exps = -aux_crbm_energy_exp.detach().cpu().numpy()
+        aux_crbm_energy_exp = -torch.mean(aux_crbm_energy_exp, axis=0)
+        print("Ising energy with RBM samples: {0}\n".format(aux_crbm_energy_exp))
+        
+        """
+        We are now done processing the classical samples.
+        Now we start working with DWAVE samples:
+        An IMPORTANT NOTE BEFORE THAT :-
+        In CaloQVAE/configs/sampler/pcdSampler.yaml, bach size and gibbs steps have been specified...
+        Probably they are being used ...  so now I need  to find a way to put DWAVE stuff also in
+        such a yaml file. 
+        """
+        dwave_energies = [0]*num_iterations
+        with torch.no_grad():
+            for i in range(num_iterations):
+                scaled_h = h.copy()
+                scaled_J = J.copy()
+                scaled_h.update((key, value/beta) for key, value in scaled_h.items())
+                scaled_J.update((key, value/beta) for key, value in scaled_J.items())
+                n_reads = 150 # hardcoded - Must remove
+                scaled_response = self._qpu_sampler.sample_ising(scaled_h, scaled_J, num_reads=n_reads, auto_scale=False) # may not need _
+                scaled_dwave_samples, scaled_dwave_energies, dict_samples = batch_dwave_samples(scaled_response, qubit_idxs)
+                dwave_vis, dwave_hid = scaled_dwave_samples[:, :n_vis], scaled_dwave_samples[:, n_vis:]
+
+                # using torch.from_numpy(...)... instead of 
+                # 'scaled_dwave_samples = torch.tensor(scaled_dwave_samples, dtype=torch.float).to(device)'
+                # to suppress UserWarning.
+                dwave_vis = torch.from_numpy(dwave_vis).float().to(device)
+                dwave_hid = torch.from_numpy(dwave_hid).float().to(device)
+
+                scaled_dwave_energies = -ising_energies_exp(ising_weights, ising_vbias, ising_hbias, dwave_vis, dwave_hid)
+                energy_exp_dwave_ising = torch.mean(scaled_dwave_energies, axis = 0)
+                scaled_dwave_energies = scaled_dwave_energies.detach().cpu().numpy()
+                #print("Ising energy with Dwave samples is {0}".format(energy_exp_dwave_ising))
+
+                dimod_ising_energies = [0]*len(dict_samples)
+
+                #for j in range(len(dict_samples)):
+                #    dimod_ising_energies[j] = dimod.ising_energy(dict_samples[j], h, J)
+
+                scaled_dwave_samples = torch.tensor(scaled_dwave_samples, dtype=torch.float)  
+                #dwave_energy_exp = np.mean(dimod_ising_energies, axis=0)
+                #dwave_energies[i] = dimod_ising_energies
+                dwave_energy_exp = energy_exp_dwave_ising
+                dwave_energies[i] = scaled_dwave_energies
+                print("aux_crbm_energy_exp : {0}, beta : {1} and {2}".format(dwave_energy_exp, beta, i))
+                beta = beta - lr*(-float(aux_crbm_energy_exp)+float(dwave_energy_exp))
+                betas.append(beta)
+                
+        if true_energy is None:
+            true_e = torch.rand((num_samples, 1), device=crbm_weights.device).detach() * 100.
+        else:
+            true_e = torch.ones((num_samples, 1), device=crbm_weights.device).detach() * true_energy
+        prior_samples = torch.cat([dwave_samples, true_e], dim=1)
+            
+        output_hits, output_activations = self.decoder(prior_samples)
+        beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+        samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)      
+        return true_e, samples
+
+
+
