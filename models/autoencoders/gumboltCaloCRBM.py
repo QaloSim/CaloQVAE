@@ -75,7 +75,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         self._level_2_qubit_idxs = level_2_qubit_idxs
         
         # Initialize the DWave QPU sampler
-        self._qpu_sampler = DWaveSampler(solver={"topology__type":"chimera", "chip_id":"DW_2000Q_6"}, token="DEV-5c2881f28027d0854e01bbc34aa569347261df0a")
+        self._qpu_sampler = DWaveSampler(solver={"topology__type":"chimera", "chip_id":"DW_2000Q_6"})
                         
     def _create_prior(self):
         """
