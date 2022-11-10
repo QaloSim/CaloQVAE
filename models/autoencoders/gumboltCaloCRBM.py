@@ -75,7 +75,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         self._level_2_qubit_idxs = level_2_qubit_idxs
         
         # Initialize the DWave QPU sampler
-        self._qpu_sampler = DWaveSampler(solver={"topology__type":"chimera", "chip_id":"DW_2000Q_6"})
+        self._qpu_sampler = DWaveSampler(solver={"topology__type":"chimera", "chip_id":"DW_2000Q_6"}, token="DEV-5c2881f28027d0854e01bbc34aa569347261df0a")
                         
     def _create_prior(self):
         """
@@ -222,7 +222,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)      
         return true_e, samples
     
-    def generate_samples_dwave(self, num_samples=64, true_energy=None):
+    def generate_samples_dwave(self, num_samples=1024, true_energy=None):
         """
         Purpose: Samples from DWAVE for some given RBM weights and biases
         NOTES: Need to take care of nn.Parameters stuff to make sure gradients don't change.
@@ -230,11 +230,19 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                     Maybe n_rows and n_cols of this class have to be +1.
                     
         """
-        # Ensure samplers are defined
-        assert qpu_sampler is not None
-        assert aux_crbm_sampler is not None
+
+        """
+        Code to use GPU. Must specify which GPU unit to use here:
+        """
+        GPU_NUM = 5
+        torch.cuda.set_device(5)
+        print("Using GPU {0}".format(torch.cuda.current_device()))
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
         
         # Define betas and initial beta
+        beta_init = 10
+        lr = 0.015
         beta = beta_init
         betas = [beta]
         
@@ -313,13 +321,16 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         # Sample from the RBM using Block Gibbs Sampling
         aux_crbm_vis, aux_crbm_hid = self.sampler.block_gibbs_sampling()
         
+        # Define ZERO and MINUS_ONE
+        ZERO = torch.tensor(0., dtype=torch.float).to(device)
+        MINUS_ONE = torch.tensor(-1., dtype=torch.float).to(device)
+        
         # Convert Samples
-        ## IMPORTANT: MAKE SURE TO DEFINE ZERO AND ONE AND SEND THEM TO GPU
         aux_crbm_vis = torch.where(aux_crbm_vis == ZERO, MINUS_ONE, aux_crbm_vis)
         aux_crbm_hid = torch.where(aux_crbm_hid == ZERO, MINUS_ONE, aux_crbm_hid)
         
         # Compute the Ising Energy
-        aux_crbm_energy_exp = self.ising_energies_exp(ising_weights, ising_vbias, ising_hbias, aux_crbm_vis, aux_crbm_hid)
+        aux_crbm_energy_exp = ising_energies_exp(ising_weights, ising_vbias, ising_hbias, aux_crbm_vis, aux_crbm_hid)
         
         # Convert negative of the Ising Energies to numpy array and compute mean
         aux_crbm_energy_exps = -aux_crbm_energy_exp.detach().cpu().numpy()
@@ -334,6 +345,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         Probably they are being used ...  so now I need  to find a way to put DWAVE stuff also in
         such a yaml file. 
         """
+        num_iterations = 6
         dwave_energies = [0]*num_iterations
         with torch.no_grad():
             for i in range(num_iterations):
@@ -341,7 +353,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 scaled_J = J.copy()
                 scaled_h.update((key, value/beta) for key, value in scaled_h.items())
                 scaled_J.update((key, value/beta) for key, value in scaled_J.items())
-                n_reads = 150 # hardcoded - Must remove
+                n_reads = 1024 # hardcoded - Must remove
                 scaled_response = self._qpu_sampler.sample_ising(scaled_h, scaled_J, num_reads=n_reads, auto_scale=False) # may not need _
                 scaled_dwave_samples, scaled_dwave_energies, dict_samples = batch_dwave_samples(scaled_response, qubit_idxs)
                 dwave_vis, dwave_hid = scaled_dwave_samples[:, :n_vis], scaled_dwave_samples[:, n_vis:]
@@ -357,7 +369,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 scaled_dwave_energies = scaled_dwave_energies.detach().cpu().numpy()
                 #print("Ising energy with Dwave samples is {0}".format(energy_exp_dwave_ising))
 
-                dimod_ising_energies = [0]*len(dict_samples)
+                #dimod_ising_energies = [0]*len(dict_samples)
 
                 #for j in range(len(dict_samples)):
                 #    dimod_ising_energies[j] = dimod.ising_energy(dict_samples[j], h, J)
@@ -375,7 +387,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             true_e = torch.rand((num_samples, 1), device=crbm_weights.device).detach() * 100.
         else:
             true_e = torch.ones((num_samples, 1), device=crbm_weights.device).detach() * true_energy
-        prior_samples = torch.cat([dwave_samples, true_e], dim=1)
+        prior_samples = torch.cat([scaled_dwave_samples.to(device), true_e], dim=1)
             
         output_hits, output_activations = self.decoder(prior_samples)
         beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
