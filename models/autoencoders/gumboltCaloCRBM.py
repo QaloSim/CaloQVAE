@@ -222,7 +222,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)      
         return true_e, samples
     
-    def generate_samples_dwave(self, num_samples=1024, true_energy=None):
+    def generate_samples(self, num_samples=1024, true_energy=None, new_qpu_samples=1):
         """
         Purpose: Samples from DWAVE for some given RBM weights and biases
         NOTES: Need to take care of nn.Parameters stuff to make sure gradients don't change.
@@ -230,20 +230,28 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                     Maybe n_rows and n_cols of this class have to be +1.
                     
         """
-
+        global scaled_response, beta
         """
         Code to use GPU. Must specify which GPU unit to use here:
         """
-        GPU_NUM = 5
-        torch.cuda.set_device(5)
+        GPU_NUM = 1
+        torch.cuda.set_device(1)
         print("Using GPU {0}".format(torch.cuda.current_device()))
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
-        
-        # Define betas and initial beta
-        beta_init = 10
-        lr = 0.015
-        beta = beta_init
+        if (new_qpu_samples==1):
+            print("New DWAVE responce requested ...")
+            num_iterations = 4 
+            # Define betas and initial beta
+            beta_init = 10
+            lr = 0.015
+        if (new_qpu_samples==0):
+            print("Old response used from dwave ...")
+            num_iterations = 1 
+            beta_init = beta
+            lr = 0   # as we do not want to update beta  
+         
+        beta = beta_init   
         betas = [beta]
         
         # Extract the auxiliary chimera RBM parameters
@@ -287,6 +295,8 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         # Convert Ising biases to numpy list
         vbias_list = list(ising_vbias.detach().cpu().numpy())
         hbias_list = list(ising_hbias.detach().cpu().numpy())
+        print("V_vis range = ({0}, {1})".format(np.min(vbias_list), np.max(vbias_list)))
+        print("H_vis range = ({0}, {1})".format(np.min(hbias_list), np.max(hbias_list)))
         
         # Encode local field (biases) in DWAVE (with the negative)
         hVis = {v_qubit_idx:-vbias_list[visible_idx_map[v_qubit_idx]] for v_qubit_idx in self.prior.visible_qubit_idxs}
@@ -296,7 +306,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         # Encode couplers (weights) in DWAVE
         J = {}
         for edge in crbm_edgelist:
-            if edge[0] in aux_crbm.visible_qubit_idxs:
+            if edge[0] in self.prior.visible_qubit_idxs:
                 J[edge] = dwave_weights_np[visible_idx_map[edge[0]]][hidden_idx_map[edge[1]]]
             else:
                 J[edge] = dwave_weights_np[visible_idx_map[edge[1]]][hidden_idx_map[edge[0]]]
@@ -318,23 +328,29 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         # Set RBM sampler
         # aux_crbm_sampler.rbm = aux_crbm
         
-        # Sample from the RBM using Block Gibbs Sampling
-        aux_crbm_vis, aux_crbm_hid = self.sampler.block_gibbs_sampling()
-        
-        # Define ZERO and MINUS_ONE
+        # Define ZERO and MINUS_ONE 
         ZERO = torch.tensor(0., dtype=torch.float).to(device)
         MINUS_ONE = torch.tensor(-1., dtype=torch.float).to(device)
         
-        # Convert Samples
-        aux_crbm_vis = torch.where(aux_crbm_vis == ZERO, MINUS_ONE, aux_crbm_vis)
-        aux_crbm_hid = torch.where(aux_crbm_hid == ZERO, MINUS_ONE, aux_crbm_hid)
+        ZERO_CPU = torch.tensor(0., dtype=torch.float)
+        MINUS_ONE_CPU = torch.tensor(-1., dtype=torch.float)
         
-        # Compute the Ising Energy
-        aux_crbm_energy_exp = ising_energies_exp(ising_weights, ising_vbias, ising_hbias, aux_crbm_vis, aux_crbm_hid)
+        if (new_qpu_samples==1):
+            # Sample from the RBM using Block Gibbs Sampling
+            aux_crbm_vis, aux_crbm_hid = self.sampler.block_gibbs_sampling()
+
+            # Convert Samples
+            aux_crbm_vis = torch.where(aux_crbm_vis == ZERO, MINUS_ONE, aux_crbm_vis)
+            aux_crbm_hid = torch.where(aux_crbm_hid == ZERO, MINUS_ONE, aux_crbm_hid)
+
+            # Compute the Ising Energy
+            aux_crbm_energy_exp = ising_energies_exp(ising_weights, ising_vbias, ising_hbias, aux_crbm_vis, aux_crbm_hid)
         
-        # Convert negative of the Ising Energies to numpy array and compute mean
-        aux_crbm_energy_exps = -aux_crbm_energy_exp.detach().cpu().numpy()
-        aux_crbm_energy_exp = -torch.mean(aux_crbm_energy_exp, axis=0)
+            # Convert negative of the Ising Energies to numpy array and compute mean
+            aux_crbm_energy_exps = -aux_crbm_energy_exp.detach().cpu().numpy()
+            aux_crbm_energy_exp = -torch.mean(aux_crbm_energy_exp, axis=0)
+        else:
+            aux_crbm_energy_exp=0
         print("Ising energy with RBM samples: {0}\n".format(aux_crbm_energy_exp))
         
         """
@@ -345,7 +361,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         Probably they are being used ...  so now I need  to find a way to put DWAVE stuff also in
         such a yaml file. 
         """
-        num_iterations = 6
+        
         dwave_energies = [0]*num_iterations
         with torch.no_grad():
             for i in range(num_iterations):
@@ -353,8 +369,13 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 scaled_J = J.copy()
                 scaled_h.update((key, value/beta) for key, value in scaled_h.items())
                 scaled_J.update((key, value/beta) for key, value in scaled_J.items())
-                n_reads = 1024 # hardcoded - Must remove
-                scaled_response = self._qpu_sampler.sample_ising(scaled_h, scaled_J, num_reads=n_reads, auto_scale=False) # may not need _
+                n_reads = num_samples # hardcoded - Must remove
+                if (new_qpu_samples==1):
+                    #print("\nNew DWAVE response generated ...\n")
+                    scaled_response = self._qpu_sampler.sample_ising(scaled_h, scaled_J, num_reads=n_reads, auto_scale=False, label="QPU 02 BGS 6000") # may not need _
+                else:
+                    print("-----------Old response used-----------")
+                    scaled_response = scaled_response
                 scaled_dwave_samples, scaled_dwave_energies, dict_samples = batch_dwave_samples(scaled_response, qubit_idxs)
                 dwave_vis, dwave_hid = scaled_dwave_samples[:, :n_vis], scaled_dwave_samples[:, n_vis:]
 
@@ -381,7 +402,9 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 dwave_energies[i] = scaled_dwave_energies
                 print("aux_crbm_energy_exp : {0}, beta : {1} and {2}".format(dwave_energy_exp, beta, i))
                 beta = beta - lr*(-float(aux_crbm_energy_exp)+float(dwave_energy_exp))
-                betas.append(beta)
+                betas.append(beta) # so beta changes once more before loop ends and that is why my betas are DISCONTINUOUS in the log-no-due to BGS
+                #### WHY ARE THERE EPOCHS IN VALIDATION AND TRAINING? --- THIS MESSED UP EVERYTHING ...(does not)
+        scaled_dwave_samples = torch.where(scaled_dwave_samples == MINUS_ONE_CPU, ZERO_CPU, scaled_dwave_samples)
                 
         if true_energy is None:
             true_e = torch.rand((num_samples, 1), device=crbm_weights.device).detach() * 100.
@@ -390,8 +413,20 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         prior_samples = torch.cat([scaled_dwave_samples.to(device), true_e], dim=1)
             
         output_hits, output_activations = self.decoder(prior_samples)
-        beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+        #beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)      
+        # Save parameters
+        
+        # define base_directory
+                    #         print("Saving ...")
+                    #         file_dir = 'QPU_outputs'
+                    #         if os.path.exists(file_dir) == False:
+                    #             os.mkdir(file_dir)
+                    #         energy_dir = file_dir+'/'+'energies.pt'
+                    #         sample_dir = file_dir+'/'+'samples.pt'
+                    #         torch.save(true_e, energy_dir)
+                    #         torch.save(samples, sample_dir)
+                    #         print("Parameters saved ...")
         return true_e, samples
 
 

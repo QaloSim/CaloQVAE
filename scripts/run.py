@@ -30,7 +30,7 @@ from torch.cuda import is_available
 
 # Add the path to the parent directory to augment search for module
 sys.path.append(os.getcwd())
-    
+
 # Weights and Biases
 import wandb
 

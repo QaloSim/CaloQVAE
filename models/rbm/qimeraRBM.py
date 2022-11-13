@@ -36,7 +36,7 @@ class QimeraRBM(RBM):
         visible_qubit_idxs = []
         hidden_qubit_idxs = []
         
-        qpu_sampler = DWaveSampler(solver={"topology__type":"chimera", "chip_id":"DW_2000Q_6"})
+        qpu_sampler = DWaveSampler(solver={"topology__type":"chimera", "chip_id":"DW_2000Q_6"}, token="DEV-5c2881f28027d0854e01bbc34aa569347261df0a")
         qpu_nodes = qpu_sampler.nodelist
         qpu_edges = qpu_sampler.edgelist
         

@@ -1,6 +1,6 @@
 _target_: engine.engineCaloV3.EngineCaloV3
 learning_rate: 0.0001
-n_epochs: 100
+n_epochs: 5
 
 kl_enabled: 1
 ae_enabled: 1
