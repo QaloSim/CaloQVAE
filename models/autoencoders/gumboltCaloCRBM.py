@@ -155,11 +155,11 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             pos_energy = self.energy_exp(post_zetas_vis, post_zetas_hid)
         
         # Compute gradient contribution of the logZ term
-        rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling()
+        rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling() ## dwave
         rbm_vis, rbm_hid = rbm_visible_samples.detach(), rbm_hidden_samples.detach()
         neg_energy = - self.energy_exp(rbm_vis, rbm_hid)
         
-        kl_loss = entropy + pos_energy + neg_energy
+        kl_loss = entropy + pos_energy + neg_energy ### beta gets multiplied ... (prob neg energy)
         return kl_loss, entropy, pos_energy, neg_energy
     
     def generate_samples_qpu(self, num_samples=64, true_energy=None):
@@ -222,7 +222,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)      
         return true_e, samples
     
-    def generate_samples(self, num_samples=1024, true_energy=None, new_qpu_samples=1):
+    def generate_samples_dwave(self, num_samples=1024, true_energy=None, new_qpu_samples=1):
         """
         Purpose: Samples from DWAVE for some given RBM weights and biases
         NOTES: Need to take care of nn.Parameters stuff to make sure gradients don't change.
@@ -230,7 +230,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                     Maybe n_rows and n_cols of this class have to be +1.
                     
         """
-        global scaled_response, beta
+        global scaled_response, beta_qpu
         """
         Code to use GPU. Must specify which GPU unit to use here:
         """
@@ -241,18 +241,18 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         
         if (new_qpu_samples==1):
             print("New DWAVE responce requested ...")
-            num_iterations = 4 
+            num_iterations = 3 
             # Define betas and initial beta
             beta_init = 10
             lr = 0.015
         if (new_qpu_samples==0):
             print("Old response used from dwave ...")
             num_iterations = 1 
-            beta_init = beta
+            beta_init = beta_qpu
             lr = 0   # as we do not want to update beta  
          
-        beta = beta_init   
-        betas = [beta]
+        beta_qpu = beta_init   
+        betas = [beta_qpu]
         
         # Extract the auxiliary chimera RBM parameters
         crbm_weights = self.prior.weights
@@ -367,12 +367,15 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             for i in range(num_iterations):
                 scaled_h = h.copy()
                 scaled_J = J.copy()
-                scaled_h.update((key, value/beta) for key, value in scaled_h.items())
-                scaled_J.update((key, value/beta) for key, value in scaled_J.items())
-                n_reads = num_samples # hardcoded - Must remove
+                scaled_h.update((key, value/beta_qpu) for key, value in scaled_h.items())
+                scaled_J.update((key, value/beta_qpu) for key, value in scaled_J.items())
+                if (i==num_iterations-1):
+                    n_reads = num_samples # hardcoded - Must remove
+                else:
+                    n_reads = 200
                 if (new_qpu_samples==1):
                     #print("\nNew DWAVE response generated ...\n")
-                    scaled_response = self._qpu_sampler.sample_ising(scaled_h, scaled_J, num_reads=n_reads, auto_scale=False, label="QPU 02 BGS 6000") # may not need _
+                    scaled_response = self._qpu_sampler.sample_ising(scaled_h, scaled_J, num_reads=n_reads, auto_scale=False, label="QPU e4 BGS 1000") # may not need _
                 else:
                     print("-----------Old response used-----------")
                     scaled_response = scaled_response
@@ -400,11 +403,13 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 #dwave_energies[i] = dimod_ising_energies
                 dwave_energy_exp = energy_exp_dwave_ising
                 dwave_energies[i] = scaled_dwave_energies
-                print("aux_crbm_energy_exp : {0}, beta : {1} and {2}".format(dwave_energy_exp, beta, i))
-                beta = beta - lr*(-float(aux_crbm_energy_exp)+float(dwave_energy_exp))
-                betas.append(beta) # so beta changes once more before loop ends and that is why my betas are DISCONTINUOUS in the log-no-due to BGS
+                print("aux_crbm_energy_exp : {0}, beta_qpu : {1} and {2}".format(dwave_energy_exp, beta_qpu, i))
+                beta_qpu = beta_qpu - lr*(-float(aux_crbm_energy_exp)+float(dwave_energy_exp))
+                betas.append(beta_qpu) # so beta changes once more before loop ends and that is why my betas are DISCONTINUOUS in the log-no-due to BGS
                 #### WHY ARE THERE EPOCHS IN VALIDATION AND TRAINING? --- THIS MESSED UP EVERYTHING ...(does not)
+                
         scaled_dwave_samples = torch.where(scaled_dwave_samples == MINUS_ONE_CPU, ZERO_CPU, scaled_dwave_samples)
+
                 
         if true_energy is None:
             true_e = torch.rand((num_samples, 1), device=crbm_weights.device).detach() * 100.
@@ -413,7 +418,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         prior_samples = torch.cat([scaled_dwave_samples.to(device), true_e], dim=1)
             
         output_hits, output_activations = self.decoder(prior_samples)
-        #beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+        beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False) # ADD BACK
         samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)      
         # Save parameters
         
