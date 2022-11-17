@@ -1,0 +1,8 @@
+num_d_wave_samples: 1024
+
+constrain_rbm: 0
+weight_range: 10
+bias_range: 20
+
+sampling_epoches:
+  - 2

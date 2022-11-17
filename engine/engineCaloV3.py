@@ -8,7 +8,7 @@ Tested with:
 import torch
 import os
 import coffea
-
+import yaml
 # Weights and Biases
 import wandb
 import numpy as np
@@ -30,7 +30,10 @@ class EngineCaloV3(Engine):
 
     def fit(self, epoch, is_training=True, mode="train"):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
-
+        path='../../../configs/d_wave_config.yaml'
+        with open(path, 'r') as file:
+            d_wave_config = yaml.safe_load(file)
+        sampling_epoches_list=list(d_wave_config['sampling_epoches'])
         # Switch model between training and evaluation mode
         # Change dataloader depending on mode
         if is_training:
@@ -116,7 +119,7 @@ class EngineCaloV3(Engine):
                         except KeyError:
                             val_loss_dict[key] = value
                             
-                    if (epoch!=3):
+                    if (epoch not in sampling_epoches_list) and (epoch!=1):
                         sample_dwave=False
                     else:
                         sample_dwave=True
@@ -147,54 +150,54 @@ class EngineCaloV3(Engine):
                                                                                           100.*batch_idx/len(data_loader),
                                                                                           batch_loss_dict["loss"]))
                     
-                    """
-                    if (batch_idx % (num_batches//2)) == 0: # probably could have just said batch_idx == 0? If you want to sample when epoch is 0?
-                        print("batch_idx is {0}, num_batches is {1} and res is {2}".format(batch_idx, num_batches, (batch_idx % (num_batches//2))))
-                        if self._config.data.scaled:
-                            in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
-                            recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
-                            print("inside batch if (down) --------------------------")
-                            sample_energies, sample_data = self._model.generate_samples(new_qpu_samples=load_dwave)
-                            print("inside batch if (above) -------------------------")
-                            sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
-                        else:
-                            # Multiply by 1000. to scale to MeV
-                            in_data = in_data*1000.
-                            recon_data = fwd_output.output_activations*1000.
-                            print("inside batch else (down) ------------------------")
-                            sample_energies, sample_data = self._model.generate_samples(new_qpu_samples=load_dwave)
-                            print("inside batch else (above) -----------------------")
-                            sample_data = sample_data*1000.
-                            
-                        input_images = []
-                        recon_images = []
-                        sample_images = []
+                    if epoch in sampling_epoches_list and epoch!=1:
+                        if (batch_idx % (num_batches//2)) == 0: # probably could have just said batch_idx == 0? If you want to sample when epoch is 0?
+                            print("batch_idx is {0}, num_batches is {1} and res is {2}".format(batch_idx, num_batches, (batch_idx % (num_batches//2))))
+                            if self._config.data.scaled:
+                                in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
+                                recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
+                                #print("inside batch if (down) --------------------------")
+                                sample_energies, sample_data = self._model.generate_samples_dwave(new_qpu_samples=0)
+                                #print("inside batch if (above) -------------------------")
+                                sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
+                            else:
+                                # Multiply by 1000. to scale to MeV
+                                in_data = in_data*1000.
+                                recon_data = fwd_output.output_activations*1000.
+                                #print("inside batch else (down) ------------------------")
+                                sample_energies, sample_data = self._model.generate_samples_dwave(new_qpu_samples=0)
+                                #print("inside batch else (above) -----------------------")
+                                sample_data = sample_data*1000.
 
-                        start_index = 0
-                        for layer, layer_data_flat in enumerate(in_data_flat):
-                            input_image = in_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                            recon_image = recon_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                            sample_image = sample_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                            
-                            start_index += layer_data_flat.size(1)
-                            
-                            input_image = input_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                            recon_image = recon_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                            sample_image = sample_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                            
-                            input_images.append(input_image)
-                            recon_images.append(recon_image)
-                            sample_images.append(sample_image)
-                        
-                        batch_loss_dict["input"] = plot_calo_images(input_images)
-                        batch_loss_dict["recon"] = plot_calo_images(recon_images)
-                        batch_loss_dict["sample"] = plot_calo_images(sample_images)
-                        
-                        if not is_training:
-                            for key in batch_loss_dict.keys():
-                                if key not in val_loss_dict.keys():
-                                    val_loss_dict[key] = batch_loss_dict[key]
-                    """
+                            input_images = []
+                            recon_images = []
+                            sample_images = []
+
+                            start_index = 0
+                            for layer, layer_data_flat in enumerate(in_data_flat):
+                                input_image = in_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                recon_image = recon_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                sample_image = sample_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+
+                                start_index += layer_data_flat.size(1)
+
+                                input_image = input_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                recon_image = recon_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                sample_image = sample_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+
+                                input_images.append(input_image)
+                                recon_images.append(recon_image)
+                                sample_images.append(sample_image)
+
+                            batch_loss_dict["input"] = plot_calo_images(input_images)
+                            batch_loss_dict["recon"] = plot_calo_images(recon_images)
+                            batch_loss_dict["sample"] = plot_calo_images(sample_images)
+
+                            if not is_training:
+                                for key in batch_loss_dict.keys():
+                                    if key not in val_loss_dict.keys():
+                                        val_loss_dict[key] = batch_loss_dict[key]
+                    
                         
                     if is_training:
                         wandb.log(batch_loss_dict)
@@ -247,6 +250,7 @@ class EngineCaloV3(Engine):
         return in_data, true_energy, in_data_flat
     
     def _update_histograms(self, in_data, output_activations, new_qpu_samples=1, sample_dwave=True):
+        
         """
         Update the coffea histograms' distributions
         """
