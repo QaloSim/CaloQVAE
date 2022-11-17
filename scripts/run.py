@@ -44,6 +44,7 @@ from engine.engine import Engine
 from models.modelCreator import ModelCreator
 
 @hydra.main(config_path="../configs", config_name="config")
+
 def main(cfg=None):
     # initialise wandb logging. Note that this function has many more options,
     # reference: https://docs.wandb.ai/ref/python/init
@@ -55,10 +56,10 @@ def main(cfg=None):
     run(config=cfg)
 
 def run(config=None):
+
     """
     Run m
     """
-
     #create model handling object
     modelCreator = ModelCreator(cfg=config)
 
@@ -94,6 +95,7 @@ def run(config=None):
         logger.info('Requesting GPUs. GPU list :' + str(config.gpu_list))
         devids = ["cuda:{0}".format(x) for x in list(config.gpu_list)]
         logger.info("Main GPU : " + devids[0])
+        
         
         if is_available():
             print(devids[0])
@@ -138,6 +140,7 @@ def run(config=None):
         config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
         modelCreator.load_state(config.run_path, dev)
 
+
     for epoch in range(1, config.engine.n_epochs+1):
         if "train" in config.task:
             engine.fit(epoch=epoch, is_training=True, mode="train")
@@ -147,6 +150,7 @@ def run(config=None):
 
     if "test" in config.task:
         engine.fit(epoch=epoch, is_training=False, mode="test")
+
 
     if config.save_state:
         config_string = "_".join(str(i) for i in [config.model.model_type, 
