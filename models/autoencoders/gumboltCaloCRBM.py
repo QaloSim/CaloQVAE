@@ -395,8 +395,9 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 beta_qpu = beta_qpu - lr*(-float(aux_crbm_energy_exp)+float(dwave_energy_exp))
                 betas.append(beta_qpu)
                 
-        # Ignoring the last update to beta_qpu 
-        beta_qpu = betas[num_iterations-2]
+        # Ignoring the last update to beta_qpu
+        if num_iterations>1:
+            beta_qpu = betas[num_iterations-2]
         
         """
         Changing scaled_dwave_samples
