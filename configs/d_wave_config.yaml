@@ -1,8 +1,9 @@
-num_d_wave_samples: 1024
-
 constrain_rbm: 0
 weight_range: 10
 bias_range: 20
+
+beta_estimation_iterations: 5
+beta_estimation_learning_rate: 0.015
 
 sampling_epoches:
   - 2
