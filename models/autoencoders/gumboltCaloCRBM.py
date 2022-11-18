@@ -167,7 +167,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         kl_loss = entropy + pos_energy + neg_energy ### beta gets multiplied ... (prob neg energy)
         return kl_loss, entropy, pos_energy, neg_energy
     
-    def generate_samples_dwave(self, num_samples=1024, true_energy=None, new_qpu_samples=1):
+    def generate_samples_dwave(self, num_samples=1024, true_energy=None, new_qpu_samples=1, save_dist=True):
         """
         Purpose: Samples from DWAVE for some given RBM weights and biases
         and produces true_e and samples
@@ -398,6 +398,14 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         # Ignoring the last update to beta_qpu
         if num_iterations>1:
             beta_qpu = betas[num_iterations-2]
+            
+        """
+        Saves the beta estimation energy histograms in ouput directory
+        """
+        if (new_qpu_samples==1 and save_dist==True):
+            base_dir = 'qpu_beta/'
+            name = str(beta_qpu)
+            save_energy_plots(name, dwave_energies, aux_crbm_energy_exps, betas, base_dir=base_dir)
         
         """
         Changing scaled_dwave_samples

@@ -316,14 +316,16 @@ def recover_saved_parameters(run_info):
     return ising_weights, ising_vbias, ising_hbias, aux_crbm_energy_exps, dwave_energies, betas
 
 
-def save_energy_plots(run_info, dwave_energies, aux_crbm_energy_exps, betas, generate_gif=True, duration=1350):
+def save_energy_plots(run_info, dwave_energies, aux_crbm_energy_exps, betas, generate_gif=True, duration=1350, base_dir=None):
     """
     This saves energy plots using the plot_energies helper function.
     A GIF is also generated for convenience. 
     A smaller duration increases frequency of the GIF
     """
-    base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
-    image_dir = base_dir+'/plots'
+    image_dir=base_dir
+    if base_dir==None:
+        base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
+        image_dir = base_dir+'/plots'
     if os.path.exists(base_dir) == False:
         print("Incorrect run info")
         return 0

@@ -9,6 +9,7 @@ import torch
 import os
 import coffea
 import yaml
+
 # Weights and Biases
 import wandb
 import numpy as np
@@ -34,15 +35,15 @@ class EngineCaloV3(Engine):
         with open(path, 'r') as file:
             d_wave_config = yaml.safe_load(file)
         sampling_epoches_list=list(d_wave_config['sampling_epoches'])
+        
         # Switch model between training and evaluation mode
         # Change dataloader depending on mode
         if is_training:
-            load_dwave = 1
+            load_dwave = 0 # means we do not get new dwave samples
             self._model.train()
-            data_loader = self.data_mgr.train_loader ### Probably this is the reason why weights are different (in training validadation)
+            data_loader = self.data_mgr.train_loader
             print("\n=======\n")
             print("Training mode ...")
-            print("data is {0}".format(data_loader))
             print("\n=======\n")
         else:
             self._model.eval()
@@ -51,14 +52,12 @@ class EngineCaloV3(Engine):
                 data_loader = self.data_mgr.val_loader
                 print("\n=======\n")
                 print("validation mode ...")
-                print("data is {0}".format(data_loader))
                 print("\n=======\n")
             elif mode == "test":
-                load_dwave = 0 # means we get new dwave samples
+                load_dwave = 0 # means we do not get new dwave samples
                 data_loader = self.data_mgr.test_loader
                 print("\n=======\n")
                 print("Testing mode ...")
-                print("data is {0}".format(data_loader))
                 print("\n=======\n")
             val_loss_dict = {'epoch': epoch}
 
@@ -119,12 +118,12 @@ class EngineCaloV3(Engine):
                         except KeyError:
                             val_loss_dict[key] = value
                             
-                    if (epoch not in sampling_epoches_list) and (epoch!=1):
+                    if (epoch not in sampling_epoches_list):
                         sample_dwave=False
                     else:
                         sample_dwave=True
-                    self._update_histograms(in_data, fwd_output.output_activations, new_qpu_samples=load_dwave, sample_dwave=sample_dwave) # only in test/valid
-                    load_dwave = 0 # means we don't get new smaples from DWAVE
+                    self._update_histograms(in_data, fwd_output.output_activations, new_qpu_samples=load_dwave, sample_dwave=sample_dwave)
+                    load_dwave = 0 # if load_dwave was 1, it is now changed to 0
                     
                 if mode == "train" and (batch_idx % valid_batch_idx) == 0:
                     valid_loss_dict = self._validate()
@@ -150,23 +149,21 @@ class EngineCaloV3(Engine):
                                                                                           100.*batch_idx/len(data_loader),
                                                                                           batch_loss_dict["loss"]))
                     
-                    if epoch in sampling_epoches_list and epoch!=1:
-                        if (batch_idx % (num_batches//2)) == 0: # probably could have just said batch_idx == 0? If you want to sample when epoch is 0?
+                    if epoch in sampling_epoches_list and mode=="validate":
+                        """
+                        For the listed epoch (in sampling_epochs_list), we 
+                        """
+                        if (batch_idx  == 0):
                             print("batch_idx is {0}, num_batches is {1} and res is {2}".format(batch_idx, num_batches, (batch_idx % (num_batches//2))))
                             if self._config.data.scaled:
                                 in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                                 recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
-                                #print("inside batch if (down) --------------------------")
-                                sample_energies, sample_data = self._model.generate_samples_dwave(new_qpu_samples=0)
-                                #print("inside batch if (above) -------------------------")
+                                sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
                                 sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                             else:
-                                # Multiply by 1000. to scale to MeV
                                 in_data = in_data*1000.
                                 recon_data = fwd_output.output_activations*1000.
-                                #print("inside batch else (down) ------------------------")
-                                sample_energies, sample_data = self._model.generate_samples_dwave(new_qpu_samples=0)
-                                #print("inside batch else (above) -----------------------")
+                                sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
                                 sample_data = sample_data*1000.
 
                             input_images = []
@@ -255,18 +252,10 @@ class EngineCaloV3(Engine):
         Update the coffea histograms' distributions
         """
         # Samples with uniformly distributed energies - [0, 100]
-        #print("In update hist (lone_call)-------(below)")
-        print("new_qpu_samples is (in hist lone): {0}".format(new_qpu_samples))
         if (sample_dwave==True):
             sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=new_qpu_samples)
         else:
             sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
-        #print("self._config.engine.n_valid_batch_size in up Hist: {0}".format(self._config.engine.n_valid_batch_size))
-        #print("In update hist (lone_call)-------(above)")
-#         sample_energies = torch.load('QPU_outputs/energies.pt')
-#         sample_data = torch.load('QPU_outputs/samples.pt')
-        #print("... Loaded energies {0} and samples {1} ...".format(sample_energies, sample_data))
-        #print("In update hist -------(above)")
         
         # Update the histogram
         if self._config.data.scaled:
@@ -290,14 +279,7 @@ class EngineCaloV3(Engine):
                 print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
                 sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, energy, new_qpu_samples=0)
             else:
-                sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
-            #print("self._config.engine.n_valid_batch_size in up cond: {0}".format(self._config.engine.n_valid_batch_size))
-            #print("In conditioning-------------------(above)")
-            #print("In conditioning-------(above)")
-            #print("... Loaded energies {0} and samples {1} in cond...".format(sample_energies, sample_data))
-            # convert to torch tensor:
-#             sample_energies = torch.from_numpy(sample_energies)
-#             sample_data = torch.from_numpy(sample_data)
+                sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, energy, new_qpu_samples=0)
             sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
             conditioned_samples.append(torch.tensor(sample_data))
                         
