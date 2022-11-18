@@ -148,22 +148,36 @@ class EngineCaloV3(Engine):
                                                                                           len(data_loader),
                                                                                           100.*batch_idx/len(data_loader),
                                                                                           batch_loss_dict["loss"]))
-                    
-                    if epoch in sampling_epoches_list and mode=="validate":
+                    """
+                    vvi :::
+                    if u don't want quantum sampling, just make sampling_epochs > num_epochs (OR MAYBE FALSE OPTION?)
+                    if max(m_ep_lis) > num_epoch:
+                        append num_epoch in list so that we can get IMAGES AT THE VERY LAST EPOCH
+                        HENCE IN SUCH A CASE SET A HANDLER TO SIMPLY SWITCH TO GENERATE_SAMPLES INSTEAD OF GEN SAMPLES DWAVE 
+                    """
+                    if (epoch == self._config.engine.generate_images_at_epoch) and mode=="validate":
                         """
                         For the listed epoch (in sampling_epochs_list), we 
                         """
                         if (batch_idx  == 0):
-                            print("batch_idx is {0}, num_batches is {1} and res is {2}".format(batch_idx, num_batches, (batch_idx % (num_batches//2))))
+                            print("Plotting Input, Recon, Sample, images... at epoch {0}".format(self._config.engine.generate_images_at_epoch))
                             if self._config.data.scaled:
                                 in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                                 recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
-                                sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
+                                if (sample_dwave==True):
+                                    print("\nGetting DWAVE samples ...and sampledwave=True\n")
+                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
+                                else:
+                                    print("\nGetting CALSSICAL samples for image gen... sampledwave=False\n")
+                                    sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)                                   
                                 sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                             else:
                                 in_data = in_data*1000.
                                 recon_data = fwd_output.output_activations*1000.
-                                sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
+                                if (sample_dwave==True):
+                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
+                                else:
+                                    sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
                                 sample_data = sample_data*1000.
 
                             input_images = []
@@ -279,7 +293,6 @@ class EngineCaloV3(Engine):
                 print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
                 sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, energy, new_qpu_samples=0)
             else:
-                print("In the else ... of cond...\n")
                 sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
             sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
             conditioned_samples.append(torch.tensor(sample_data))

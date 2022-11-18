@@ -6,4 +6,4 @@ beta_estimation_iterations: 2
 beta_estimation_learning_rate: 0.015
 
 sampling_epoches:
-  - 2
+  - 1

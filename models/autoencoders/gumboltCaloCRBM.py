@@ -396,8 +396,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 betas.append(beta_qpu)
                 
         # Ignoring the last update to beta_qpu
-        if num_iterations>1:
-            beta_qpu = betas[num_iterations-2]
+        beta_qpu = betas[num_iterations-1]
             
         """
         Saves the beta estimation energy histograms in ouput directory
