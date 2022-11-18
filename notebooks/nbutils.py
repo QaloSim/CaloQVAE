@@ -326,9 +326,9 @@ def save_energy_plots(run_info, dwave_energies, aux_crbm_energy_exps, betas, gen
     if base_dir==None:
         base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
         image_dir = base_dir+'/plots'
-    if os.path.exists(base_dir) == False:
-        print("Incorrect run info")
-        return 0
+    # if os.path.exists(base_dir) == False:
+    #    print("Incorrect run info")
+    #    return 0
     if os.path.exists(image_dir) == False:
         os.mkdir(image_dir)
     for i in range(len(dwave_energies)):

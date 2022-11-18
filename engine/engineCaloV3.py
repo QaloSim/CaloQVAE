@@ -279,7 +279,8 @@ class EngineCaloV3(Engine):
                 print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
                 sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, energy, new_qpu_samples=0)
             else:
-                sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, energy, new_qpu_samples=0)
+                print("In the else ... of cond...\n")
+                sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
             sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
             conditioned_samples.append(torch.tensor(sample_data))
                         
