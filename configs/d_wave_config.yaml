@@ -7,3 +7,4 @@ beta_estimation_learning_rate: 0.015
 
 sampling_epoches:
   - 1
+  - 3

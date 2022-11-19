@@ -155,12 +155,12 @@ class EngineCaloV3(Engine):
                         append num_epoch in list so that we can get IMAGES AT THE VERY LAST EPOCH
                         HENCE IN SUCH A CASE SET A HANDLER TO SIMPLY SWITCH TO GENERATE_SAMPLES INSTEAD OF GEN SAMPLES DWAVE 
                     """
-                    if (epoch == self._config.engine.generate_images_at_epoch) and mode=="validate":
+                    if (epoch in list(self._config.engine.generate_images_at_epoch)) and mode=="validate":
                         """
                         For the listed epoch (in sampling_epochs_list), we 
                         """
                         if (batch_idx  == 0):
-                            print("Plotting Input, Recon, Sample, images... at epoch {0}".format(self._config.engine.generate_images_at_epoch))
+                            print("Plotting Input, Recon, Sample, images... at epoch {0}".format(epoch))
                             if self._config.data.scaled:
                                 in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                                 recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
