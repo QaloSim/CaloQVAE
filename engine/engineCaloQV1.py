@@ -21,7 +21,7 @@ from utils.plotting.plotCalo import plot_calo_images
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
-class EngineCaloV3(Engine):
+class EngineCaloQV1(Engine):
 
     def __init__(self, cfg, **kwargs):
         logger.info("Setting up engine Calo.")
