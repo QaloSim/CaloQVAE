@@ -56,16 +56,19 @@ class PCD(BaseSampler):
         visible_probs = torch.sigmoid(visible_activations)
         return (visible_probs >= torch.rand(visible_probs.size(), device=visible_probs.device)).float()
     
-    def block_gibbs_sampling(self):
+    def block_gibbs_sampling(self, bgs_steps=None):
         """
         Block Gibbs sampling with initialization through a persistent Markov Chain
         
         Returns:
             visible_states : Batch of visible states at end of Gibbs sampling, Dims=(batch_size * nVisibleNodes)
             hidden_states : Batch of hidden states at end of Gibbs sampling, Dims=(batch_size * nHiddenNodes)
+        UPDATE: BGS steps defaults to self.n_gibbs_sampling_steps of config, but non default values can be set.
         """
+        if (bgs_steps==None):
+            bgs_steps = self.n_gibbs_sampling_steps
         visible_states = self._MCState.to(self._RBM.visible_bias.device)
-        for step in range(self.n_gibbs_sampling_steps):
+        for step in range(bgs_steps):
             hidden_states = self.hidden_samples(visible_states)
             visible_states = self.visible_samples(hidden_states)
         

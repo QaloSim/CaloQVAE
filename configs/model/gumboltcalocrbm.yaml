@@ -1,7 +1,7 @@
 model_type: GumBoltCaloCRBM
 activation_fct: relu
-beta_smoothing_fct: 5
-output_smoothing_fct: 9
+beta_smoothing_fct: 6
+output_smoothing_fct: 6
 decoder_hidden_nodes:
   - 800
   - 700

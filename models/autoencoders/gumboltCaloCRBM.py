@@ -328,7 +328,27 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         
         if (new_qpu_samples==1):
             # Sample from the RBM using Block Gibbs Sampling
-            aux_crbm_vis, aux_crbm_hid = self.sampler.block_gibbs_sampling()
+            """
+            We now repeatedly take samples from the classical sampler until we get
+            num_samples samples
+            """
+            aux_crbm_vis = []
+            aux_crbm_hid = []
+            num_iters = max(num_samples//self.sampler.get_batch_size(), 1) # batch size is 128
+            aux_crbm_vis, aux_crbm_hid = self.sampler.block_gibbs_sampling() # mnual # bgs_steps = 10000
+            print("before loop, aux_crbm_vis size is {0}".format(aux_crbm_vis.size()))
+            print("before loop, aux_crbm_hid size is {0}".format(aux_crbm_hid.size()))
+            for i in range(num_iters-1):                
+                aux_vis_sample, aux_hid_sample = self.sampler.block_gibbs_sampling()
+                print("In num_iter loop, aux_vis_sample size is {0}".format(aux_vis_sample.size()))
+                print("In num_iter loop, aux_hid_sample size is {0}".format(aux_hid_sample.size()))
+                aux_crbm_vis = torch.cat((aux_crbm_vis, aux_vis_sample), dim=0)
+                aux_crbm_hid = torch.cat((aux_crbm_hid, aux_hid_sample), dim=0)
+                print("INTERMEDIATE, aux_crbm_vis size is {0}".format(aux_crbm_vis.size()))
+                print("INTERMEDIATE, aux_crbm_hid size is {0}".format(aux_crbm_hid.size()))
+
+            print("final aux_crbm_vis size is {0}".format(aux_crbm_vis.size()))
+            print("final aux_crbm_hid size is {0}".format(aux_crbm_hid.size()))
 
             # Convert Samples (0 to -1)
             aux_crbm_vis = torch.where(aux_crbm_vis == ZERO, MINUS_ONE, aux_crbm_vis)

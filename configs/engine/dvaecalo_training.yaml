@@ -1,6 +1,6 @@
 _target_: engine.engineCaloV3.EngineCaloV3
-learning_rate: 0.001
-n_epochs: 4
+learning_rate: 0.0002
+n_epochs: 50
 
 kl_enabled: 1
 ae_enabled: 1
@@ -21,8 +21,7 @@ n_plot_samples: 5
 n_batches_log_train: 10
 
 generate_images_at_epoch:
-  - 2
-  - 3
+  - 50
 
 sample_energies:
   - 1
