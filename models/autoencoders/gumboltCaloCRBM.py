@@ -202,7 +202,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         """
         GPU_NUM = GPU_Main
         torch.cuda.set_device(GPU_NUM)
-        print("Using GPU {0}".format(torch.cuda.current_device()))
+        #print("Using GPU {0}".format(torch.cuda.current_device()))
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         if (new_qpu_samples==1):
@@ -228,7 +228,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             When we do not want new qpu samples, we set lr=0 as we do not update beta
             Furthermore, as no iterations are needed, num_iterations is set to 1
             """
-            print("Old response used from dwave ...")
+            #print("Old response used from dwave ...")
             num_iterations = 1       
             lr = 0  
  
@@ -299,13 +299,15 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         
         # Get DWAVE weights with a negative sign
         dwave_weights_np = -ising_weights.detach().cpu().numpy()
-        print("J range = ({0}, {1})".format(np.min(dwave_weights_np), np.max(dwave_weights_np)))
+        if (new_qpu_samples==1):
+            print("J range = ({0}, {1})".format(np.min(dwave_weights_np), np.max(dwave_weights_np)))
         
         # Convert Ising biases to numpy list
         vbias_list = list(ising_vbias.detach().cpu().numpy())
         hbias_list = list(ising_hbias.detach().cpu().numpy())
-        print("V_vis range = ({0}, {1})".format(np.min(vbias_list), np.max(vbias_list)))
-        print("H_vis range = ({0}, {1})".format(np.min(hbias_list), np.max(hbias_list)))
+        if (new_qpu_samples==1):
+            print("V_vis range = ({0}, {1})".format(np.min(vbias_list), np.max(vbias_list)))
+            print("H_vis range = ({0}, {1})".format(np.min(hbias_list), np.max(hbias_list)))
         
         # Encode local field (biases) in DWAVE (with the negative)
         hVis = {v_qubit_idx:-vbias_list[visible_idx_map[v_qubit_idx]] for v_qubit_idx in self.prior.visible_qubit_idxs}
@@ -336,17 +338,10 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             aux_crbm_hid = []
             num_iters = max(num_samples//self.sampler.get_batch_size(), 1) # batch size is 128
             aux_crbm_vis, aux_crbm_hid = self.sampler.block_gibbs_sampling() # mnual # bgs_steps = 10000
-            print("before loop, aux_crbm_vis size is {0}".format(aux_crbm_vis.size()))
-            print("before loop, aux_crbm_hid size is {0}".format(aux_crbm_hid.size()))
             for i in range(num_iters-1):                
                 aux_vis_sample, aux_hid_sample = self.sampler.block_gibbs_sampling()
-                print("In num_iter loop, aux_vis_sample size is {0}".format(aux_vis_sample.size()))
-                print("In num_iter loop, aux_hid_sample size is {0}".format(aux_hid_sample.size()))
                 aux_crbm_vis = torch.cat((aux_crbm_vis, aux_vis_sample), dim=0)
                 aux_crbm_hid = torch.cat((aux_crbm_hid, aux_hid_sample), dim=0)
-                print("INTERMEDIATE, aux_crbm_vis size is {0}".format(aux_crbm_vis.size()))
-                print("INTERMEDIATE, aux_crbm_hid size is {0}".format(aux_crbm_hid.size()))
-
             print("final aux_crbm_vis size is {0}".format(aux_crbm_vis.size()))
             print("final aux_crbm_hid size is {0}".format(aux_crbm_hid.size()))
 
@@ -360,9 +355,9 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             # Convert negative of the Ising Energies to numpy array and compute mean
             aux_crbm_energy_exps = -aux_crbm_energy_exp.detach().cpu().numpy()
             aux_crbm_energy_exp = -torch.mean(aux_crbm_energy_exp, axis=0)
+            print("Ising energy with RBM samples: {0}\n".format(aux_crbm_energy_exp))
         else:
             aux_crbm_energy_exp=0
-        print("Ising energy with RBM samples: {0}\n".format(aux_crbm_energy_exp))
         
         """
         We are now done processing the classical samples.
@@ -411,7 +406,8 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 scaled_dwave_samples = torch.tensor(scaled_dwave_samples, dtype=torch.float)  
                 dwave_energy_exp = energy_exp_dwave_ising
                 dwave_energies[i] = scaled_dwave_energies
-                print("aux_crbm_energy_exp : {0}, beta_qpu : {1} and {2}".format(dwave_energy_exp, beta_qpu, i))
+                if (new_qpu_samples==1):
+                    print("aux_crbm_energy_exp : {0}, beta_qpu : {1} and {2}".format(dwave_energy_exp, beta_qpu, i))
                 beta_qpu = beta_qpu - lr*(-float(aux_crbm_energy_exp)+float(dwave_energy_exp))
                 betas.append(beta_qpu)
                 

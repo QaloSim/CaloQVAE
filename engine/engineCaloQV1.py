@@ -165,10 +165,14 @@ class EngineCaloQV1(Engine):
                                 in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                                 recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
                                 if (sample_dwave==True):
-                                    print("\nGetting DWAVE samples ...and sampledwave=True\n")
+                                    """
+                                    Using DWAVE samples for image generation
+                                    """
                                     sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
                                 else:
-                                    print("\nGetting CALSSICAL samples for image gen... sampledwave=False\n")
+                                    """
+                                    Using Classical RBM samples for image generation
+                                    """
                                     sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)                                   
                                 sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                             else:
@@ -288,9 +292,9 @@ class EngineCaloQV1(Engine):
         conditioned_samples = []
         for energy in conditioning_energies:
             #print("In conditioning-------------------(below)")
-            print("Sampling Classically")
+            #print("Sampling Classically")
             if (sample_dwave==True):
-                print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
+                #print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
                 sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, energy, new_qpu_samples=0)
             else:
                 sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
