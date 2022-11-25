@@ -422,9 +422,10 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         Saves the beta estimation energy histograms in ouput directory
         """
         if (new_qpu_samples==1 and save_dist==True):
-            base_dir = 'qpu_beta/'
+            base_dir = 'beta_estimation_data/'
             name = str(beta_qpu)
             save_energy_plots(name, dwave_energies, aux_crbm_energy_exps, betas, base_dir=base_dir)
+            save_run_info(name, ising_weights, ising_vbias, ising_hbias, aux_crbm_energy_exps, dwave_energies, betas, base_dir=base_dir)
         
         """
         Changing scaled_dwave_samples

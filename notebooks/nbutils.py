@@ -272,19 +272,20 @@ def plot_energies(energies1, energies2, binwidth=1, beta=None, save_image=False)
     return fig
 
 
-def save_run_info(run_info, ising_weights, ising_vbias, ising_hbias, aux_crbm_energy_exps, dwave_energies, betas):
+def save_run_info(run_info, ising_weights, ising_vbias, ising_hbias, aux_crbm_energy_exps, dwave_energies, betas, base_dir=None):
     """
     Inputs are the parameters whose infromation we want to save
     run_info is a string which is customised by the user to store
     custom information regarding a particular run.
     Data is saved in notebooks/Beta_estimation_data/beta_run_info
     """
-    folder_dir = 'notebooks/Beta_estimation_data'
-    if os.path.exists(folder_dir) == False:
-        os.mkdir(folder_dir)
-    base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
-    if os.path.exists(base_dir) == False:
-        os.mkdir(base_dir)
+    if base_dir==None:
+        folder_dir = 'notebooks/Beta_estimation_data'
+        if os.path.exists(folder_dir) == False:
+            os.mkdir(folder_dir)
+        base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
+        if os.path.exists(base_dir) == False:
+            os.mkdir(base_dir)
     weight_dir = base_dir+'/'+'ising_weights.pt'
     vbias_dir = base_dir+'/'+'ising_vbias.pt'
     hbias_dir = base_dir+'/'+'ising_hbias.pt'
@@ -300,13 +301,19 @@ def save_run_info(run_info, ising_weights, ising_vbias, ising_hbias, aux_crbm_en
     torch.save(betas, betas_dir)
 
 
-def recover_saved_parameters(run_info):
+def recover_saved_parameters(run_info, nb_data=1):
     """
     This should be used after saving information using save_run_info function
     Returns: ising_weights, ising_vbias, ising_hbias, aux_crbm_energy_exps, 
     dwave_energies, betas of a given run
+    
+    nb_data=1 (default) means the data files are saved in the notebook directory and
+    nb_data = ELSE means data files are saved in run_info directory which must be hard coded.
     """
-    base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
+    if (nb_data==1):
+        base_dir = 'notebooks/Beta_estimation_data/beta_'+run_info
+    else:
+        base_dir = run_info
     ising_weights = torch.load(base_dir+'/'+'ising_weights.pt')
     ising_vbias = torch.load(base_dir+'/'+'ising_vbias.pt')
     ising_hbias = torch.load(base_dir+'/'+'ising_hbias.pt')

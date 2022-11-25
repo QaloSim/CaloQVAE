@@ -25,7 +25,7 @@ class EngineCaloQV1(Engine):
 
     def __init__(self, cfg, **kwargs):
         logger.info("Setting up engine Calo.")
-        super(EngineCaloV3, self).__init__(cfg, **kwargs)
+        super(EngineCaloQV1, self).__init__(cfg, **kwargs)
         self._hist_handler = HistHandler(cfg)
         self._best_model_loss = torch.nan_to_num(torch.tensor(float('inf')))
 
@@ -301,7 +301,7 @@ class EngineCaloQV1(Engine):
         self._hist_handler.update_samples(conditioned_samples)
             
     def _validate(self):
-        logger.debug("engineCaloV3::validate() : Running validation during a training epoch.")
+        logger.debug("engineCaloQV1::validate() : Running validation during a training epoch.")
         self._model.eval()
         data_loader = self.data_mgr.val_loader
         n_val_batches = self._config.engine.n_val_batches
