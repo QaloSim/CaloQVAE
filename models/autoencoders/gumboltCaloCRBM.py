@@ -172,14 +172,11 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         Purpose: Samples from DWAVE for some given RBM weights and biases
         and produces true_e and samples
         
-        NOTES: Need to take care of nn.Parameters stuff to make sure gradients don't change.
-                    Need to somehow get QPU sampler run only once
-                    Maybe n_rows and n_cols of this class have to be +1.
-                    
+        NOTES: Maybe n_rows and n_cols of this class have to be +1.             
         """
         
         """
-        Make scaled_response and beta_qpu global parameters
+        Made scaled_response and beta_qpu global parameters
         so that DWAVE sample information cn be saved
         """
         global scaled_response, beta_qpu
@@ -362,10 +359,6 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         """
         We are now done processing the classical samples.
         Now we start working with DWAVE samples:
-        An IMPORTANT NOTE BEFORE THAT :-
-        In CaloQVAE/configs/sampler/pcdSampler.yaml, bach size and gibbs steps have been specified...
-        Probably they are being used ...  so now I need  to find a way to put DWAVE stuff also in
-        such a yaml file. 
         """
         
         dwave_energies = [0]*num_iterations
