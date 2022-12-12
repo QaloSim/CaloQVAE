@@ -13,3 +13,15 @@ Some Plots:
 - https://docs.google.com/document/d/1x77T000YZRosWWpMcir6miOvfZsy3om2r5aJPTFRRoM/edit?usp=sharing
 
 - https://docs.google.com/document/d/16zl0-5dShbJduvdmCtXX6U0V1EVJylnv28kZW0G-oE4/edit?usp=sharing
+___
+QUANTUM BOLTZMANN MACHINE AND
+THE QUANTUM VARIAITONAL
+AUTOENCODER
+
+ - [ ] VAE, DVAE, Gumbolt
+ - [ ] RBM, QRBM
+ - [ ] QVAE,
+ - [ ] CaloQVAE, mask, conditioning
+ - [ ] freezout, Beta star
+ 
+ - [ ] Classificaiton
