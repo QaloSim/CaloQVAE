@@ -1,4 +1,6 @@
-## Beta Estimation Project Notes
+## Documentation for the beta estimation procedure
+
+## Relevamt Links:
 
 The presentation is : https://docs.google.com/presentation/d/1jJf9a8Ff4I5XWRB8YqI-3axeHopL9nm2i2D66IxIeFk/edit?usp=sharing
 

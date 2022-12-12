@@ -1,1 +1,0 @@
-## Documentation for the beta estimation procedure
