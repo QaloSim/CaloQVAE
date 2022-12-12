@@ -19,6 +19,6 @@ task:
   - test
 
 defaults:
-  - model: gumboltcaloprbm
+  - model: gumboltcaloenergy
   - data: calo
   - engine: dvaecalo_training

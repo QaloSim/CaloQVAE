@@ -14,12 +14,14 @@ class GumBoltCaloEnergy(GumBoltCaloCRBM):
         super(GumBoltCaloEnergy, self).__init__(**kwargs)
         self.model_type = "GumBoltCaloEnergy"
 
-    def total_energy_loss(self, is_training=True):
+    def total_energy_loss(self, input_data, is_training=True):
         """
         Add a term to the loss function based on the total energy
         """
 
         logger.debug("GumBoltCaloCRBM::total_energy_loss")
+        print(input_data)
+
 
     def loss(self, input_data, fwd_out):
         #Overwritting loss as we have an extra term now. Can this be avoided?
@@ -33,7 +35,7 @@ class GumBoltCaloEnergy(GumBoltCaloCRBM):
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
 
-        total_energy_loss = self.total_energy_loss()
+        total_energy_loss = self.total_energy_loss(input_data)
 
         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss, "total_energy_loss": total_energy_loss,
                     "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
