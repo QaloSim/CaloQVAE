@@ -8,7 +8,7 @@ save_hists: 1
 
 wandb_enabled: 0
 
-output_path: /fast_scratch_1/akajal/outputs
+output_path: /fast_scratch_2/CaloQVAE_scratch/tvale/outputs
 device: gpu
 gpu_list:
   - 3
