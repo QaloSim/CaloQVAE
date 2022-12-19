@@ -289,20 +289,16 @@ class EngineCaloQV1(Engine):
                         
         # Samples with specific energies
         conditioning_energies = self._config.engine.sample_energies
-        conditioned_samples = []
-        for energy in conditioning_energies:
-            #print("In conditioning-------------------(below)")
-            #print("Sampling Classically")
-            if (sample_dwave==True):
-                #print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
-                sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, energy, new_qpu_samples=0)
-            else:
-                sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
-            sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
-            conditioned_samples.append(torch.tensor(sample_data))
-                        
-        conditioned_samples = torch.cat(conditioned_samples, dim=0).numpy()
-        self._hist_handler.update_samples(conditioned_samples)
+
+
+        if (sample_dwave==True):
+            #print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
+            sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, conditioning_energies, new_qpu_samples=0)
+        else:
+            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, conditioning_energies)
+        sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
+
+        self._hist_handler.update_samples(sample_data)
             
     def _validate(self):
         logger.debug("engineCaloQV1::validate() : Running validation during a training epoch.")

@@ -424,7 +424,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         if true_energy is None:
             true_e = torch.rand((num_samples, 1), device=crbm_weights.device).detach() * 100.
         else:
-            true_e = torch.ones((num_samples, 1), device=crbm_weights.device).detach() * true_energy
+            true_e = torch.ones((num_samples, 1), device=crbm_weights.device).detach() * true_energy[0] + torch.rand((num_samples, 1), device=crbm_weights.device).detach() * (true_energy[1]-true_energy[0])
         prior_samples = torch.cat([scaled_dwave_samples.to(device), true_e], dim=1)
             
         output_hits, output_activations = self.decoder(prior_samples)

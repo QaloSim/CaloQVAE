@@ -24,8 +24,5 @@ generate_images_at_epoch:
   - 50
 
 sample_energies:
-  - 1
-  - 25
   - 50
-  - 100
-  - 150
+  - 60
