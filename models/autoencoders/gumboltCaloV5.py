@@ -96,7 +96,10 @@ class GumBoltCaloV5(GumBolt):
                                 dtype=torch.float, device=output_hits.device,
                                 requires_grad=False)
             sample = self._energy_activation_fct(output_activations) \
-                * self._hit_smoothing_dist_mod(output_hits, beta, False)
+                * self._hit_smoothing_dist_mod(output_hits, beta, False) # MAYBE DO AFTER INVRERSE TRANSF
+            # maybve need to apply masking after inverse transform. ... 
+            # maybe return 1st and 2nd
+            # do inverse transform maybe in engine ...
             
             true_energies.append(true_e) 
             samples.append(sample)
@@ -108,7 +111,7 @@ class GumBoltCaloV5(GumBolt):
         self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
                                   self._decoder_nodes[0][1])
         return BasicDecoderV3(node_sequence=self._decoder_nodes,
-                              activation_fct=self._activation_fct,
+                              activation_fct=self._activation_fct, # NN.RELU() SHOULD IMPROVE HISTOGRAMS :) :) 
                               cfg=self._config)
     
     def _create_encoder(self):

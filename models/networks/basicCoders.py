@@ -63,7 +63,7 @@ class BasicDecoderV2(NetworkV2):
 class BasicDecoderV3(NetworkV3):
     def __init__(self, output_activation_fct=nn.Identity(), **kwargs):
         super(BasicDecoderV3, self).__init__(**kwargs)
-        self._output_activation_fct=output_activation_fct
+        self._output_activation_fct=output_activation_fct # output_activation_fct -< FOR NOW # ADD SETTING TO CONFIGURATION...
         
     def forward(self, x):
         logger.debug("Decoder::decode")

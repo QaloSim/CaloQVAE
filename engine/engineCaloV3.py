@@ -131,8 +131,10 @@ class EngineCaloV3(Engine):
                         if self._config.data.scaled:
                             in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                             recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
-                            sample_energies, sample_data = self._model.generate_samples()
+                            sample_energies, sample_data = self._model.generate_samples() # this gets passed throigh relu
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
+                            # PASSED THROUGH INVERSE 
+                            # FIX IS TO APPLY RELU AFTER INVERSE TRANSFORM ...
                         else:
                             # Multiply by 1000. to scale to MeV
                             in_data = in_data*1000.

@@ -2,8 +2,8 @@ constrain_rbm: 0
 weight_range: 10
 bias_range: 20
 
-beta_estimation_iterations: 4
+beta_estimation_iterations: 1
 beta_estimation_learning_rate: 0.015
 
 sampling_epoches:
-  - 50
+  - 1

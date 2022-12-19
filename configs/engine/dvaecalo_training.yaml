@@ -1,6 +1,6 @@
 _target_: engine.engineCaloQV1.EngineCaloQV1
 learning_rate: 0.0002
-n_epochs: 50
+n_epochs: 1
 
 kl_enabled: 1
 ae_enabled: 1
@@ -21,7 +21,7 @@ n_plot_samples: 5
 n_batches_log_train: 10
 
 generate_images_at_epoch:
-  - 50
+  - 1
 
 sample_energies:
   - 1

@@ -168,6 +168,8 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         return kl_loss, entropy, pos_energy, neg_energy
     
     def generate_samples_dwave(self, num_samples=1024, true_energy=None, new_qpu_samples=1, save_dist=True):
+        # hypothesis test
+        #num_samples = 500
         """
         Purpose: Samples from DWAVE for some given RBM weights and biases
         and produces true_e and samples
@@ -371,6 +373,16 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 n_reads = num_samples
 
                 if (new_qpu_samples==1):
+                    """
+                    if (i==num_iterations-1): # at the very last iteration of the beta estimation process
+                        for dwave_iter in range(5):
+                            MAX_DWAVE_SAMPLES = 10000
+                            scaled_response = self._qpu_sampler.sample_ising(scaled_h, scaled_J, num_reads=MAX_DWAVE_SAMPLES, auto_scale=False, label="QPU Samples MAX")
+                            scaled_dwave_samples, scaled_dwave_energies, dict_samples = batch_dwave_samples(scaled_response, qubit_idxs)
+                            dwave_vis, dwave_hid = scaled_dwave_samples[:, :n_vis], scaled_dwave_samples[:, n_vis:]                            
+                    else:
+                        scaled_response = self._qpu_sampler.sample_ising(scaled_h, scaled_J, num_reads=n_reads, auto_scale=False, label="QPU Samples")
+                    """
                     scaled_response = self._qpu_sampler.sample_ising(scaled_h, scaled_J, num_reads=n_reads, auto_scale=False, label="QPU Samples")
                 else:
                     scaled_response = scaled_response
@@ -420,15 +432,23 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         Changing scaled_dwave_samples
         """             
         scaled_dwave_samples = torch.where(scaled_dwave_samples == MINUS_ONE_CPU, ZERO_CPU, scaled_dwave_samples)
-                
+        # sclaed_dw = 1024*2000        
         if true_energy is None:
             true_e = torch.rand((num_samples, 1), device=crbm_weights.device).detach() * 100.
         else:
             true_e = torch.ones((num_samples, 1), device=crbm_weights.device).detach() * true_energy
-        prior_samples = torch.cat([scaled_dwave_samples.to(device), true_e], dim=1)
-            
-        output_hits, output_activations = self.decoder(prior_samples)
+        # true_e = 1024 * 1
+        prior_samples = torch.cat([scaled_dwave_samples.to(device), true_e], dim=1) # scaled dwave samples is 1024 x 2000. true_e is 1024 * 1. gives1024*2001 after cat     # prior_samples = 1024 * 2001
+        #print("prior_samples size is {0}".format(prior_samples.size()))
+        output_hits, output_activations = self.decoder(prior_samples) # i think num of prior samples has nothing to do with number of samples we take in 
+        ### THIS IS LITERALLY LIKE 449 PROJECT WHERE i CAN SPECIFY NUM SAMPLES FROM PRIOR. tHE NUMBER OF SAMPLES i READ IN FROM PRIOR CORRESPONDS TO THE NUMBER OF SAMPLES THAT i GET AS 
+        ### OUTPUT PREDICTED FLUC. THEN I TAKE THE MEAN OF THE FLUX. BUT STILL RECALL THAT NUM OF OUTPUT = NUM OF SAMPLES I REQUEST FROM PRIOR 
+        #print("dimenson of output hits is {0} and dim of activations is {1}".format(output_hits.size(), output_activations.size()))
         beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)     
-        
+        """
+        dim samples is :  1024*504     ###   ---->504 = 3*96 + 12*12 + 12+6
+        Essesntially I now have IMAGE data for 1024 Calo image samples
+        Now if I run again with SAME DWAVE_SCALED_ENERGIES 10 TIMES, I WILL GET 10240 IMAGES 
+        """
         return true_e, samples

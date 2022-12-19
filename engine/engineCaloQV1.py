@@ -74,6 +74,9 @@ class EngineCaloQV1(Engine):
         ae_enabled = self._config.engine.ae_enabled
         
         with torch.set_grad_enabled(is_training):
+            if mode == "validate":
+                print("\nvalidate mode in the beginning\n")
+                synthetic_images = []
             for batch_idx, (input_data, label) in enumerate(data_loader):
                 self._optimiser.zero_grad()
                 
@@ -123,6 +126,17 @@ class EngineCaloQV1(Engine):
                     else:
                         sample_dwave=True
                     self._update_histograms(in_data, fwd_output.output_activations, new_qpu_samples=load_dwave, sample_dwave=sample_dwave)
+                    """
+                    This ensures that load_dwave is 1 ONLY in the very first batch ...
+                    even if load_dwave is 0, I will go to QPU as generate_samples_dwave is called only depending on
+                    sample_dwave and not on load dwave...
+                    essentially if i do not make my load_dwave to be 0, i wll be sampling at each BATCH. which seems unncessary as I do expect to get the same samples out in the end. 
+                    this again re-iterates my point that generating new ssmples using BGS or dwave does not really have ANY effect. rather the random true_energy
+                    helps to ensure that we get different variety of samples. 
+                    this is beacuse in each validation BATCH step, my J and h ARE THE SAME!!!!
+                    THERFORE i have say 1024 samples from dwave. I reuse the sampe 1024 samples in all my batch step. as I have 10 batches I expect to get 1024*10 different outputs. 
+                    q: what are thr dwave/bgs samples used for/
+                    """
                     load_dwave = 0 # if load_dwave was 1, it is now changed to 0
                     
                 if mode == "train" and (batch_idx % valid_batch_idx) == 0:
@@ -155,20 +169,26 @@ class EngineCaloQV1(Engine):
                         append num_epoch in list so that we can get IMAGES AT THE VERY LAST EPOCH
                         HENCE IN SUCH A CASE SET A HANDLER TO SIMPLY SWITCH TO GENERATE_SAMPLES INSTEAD OF GEN SAMPLES DWAVE 
                     """
+                    
                     if (epoch in list(self._config.engine.generate_images_at_epoch)) and mode=="validate":
                         """
                         For the listed epoch (in sampling_epochs_list), we 
                         """
-                        if (batch_idx  == 0):
-                            print("Plotting Input, Recon, Sample, images... at epoch {0}".format(epoch))
+                        if True:#(batch_idx  != 20):
+                            
                             if self._config.data.scaled:
                                 in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                                 recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
                                 if (sample_dwave==True):
                                     """
                                     Using DWAVE samples for image generation
+                                    Note that if new_qpu_samples=1 (if/else), then new samples will be requested
+                                    in EACH batch. That means new samples will be requested from the latent ptior distribution
+                                    in each validation step. This will help to ensure we get a good variety of samples from the latent distribution. 
+                                    But this might not be necessary after all. (still I have generatd 10240 NEW SAMPLES IN TOTAL for piplus AND THAT CAN BE USED FOR CLASSIFICATION
+                                    PURPOSES I GUESS.) now maybe semi-train a model for piplus and parallely try to buildup the classification
                                     """
-                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
+                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=1, save_dist=True)
                                 else:
                                     """
                                     Using Classical RBM samples for image generation
@@ -179,39 +199,67 @@ class EngineCaloQV1(Engine):
                                 in_data = in_data*1000.
                                 recon_data = fwd_output.output_activations*1000.
                                 if (sample_dwave==True):
-                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
+                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=1, save_dist=True)
                                 else:
                                     sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
                                 sample_data = sample_data*1000.
-
+                                
+                            """
+                            dim sample_data = 1024 * 504 (and 504 = 3*96 + 12*12 + 12+6)
+                            so I can just pass in this sample_data as this sample_data gets processed further to produce images ... which I don't need.
+                            In such a case, I can potentially keep num_plot_samples unchanged, 
+                            thrn I can legit just draw 100,000 samples from the qpu
+                            But the max num I can draw at a time is 10,000. 
+                            UPDATE: SAVE THE sample_data somewhere and we will use it for classification
+                            do whole classification and then maybe we can see if we can draw more. bUT FOR NOW, JUST USE CURRENT 1024 READS FOR CLASSIFICATION.
+                            ** Essentially what I can do is given in the notebook ...
+                            """
+                            synthetic_images.append(sample_data)                            
                             input_images = []
                             recon_images = []
                             sample_images = []
+                            print("sample_data SIZE is {0}\n".format(sample_data.size()))
+                            ###############################################################################################################################
+                            if batch_idx==0 or batch_idx==6 or batch_idx==8:
+                                print("Plotting Input, Recon, Sample, images... at epoch {0}\n".format(epoch))
+                                start_index = 0
+                                for layer, layer_data_flat in enumerate(in_data_flat):
+                                    print("start_index is {0} and layer_data_flar.size(1) is {1}\n".format(start_index, layer_data_flat.size(1)))
+                                    input_image = in_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                    recon_image = recon_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                    sample_image = sample_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)] # num_plot_samples is the num_gen_samples of (5,3,96) # other PARAMs don't matter
+                                    print("size of sample image originally is {0}\n".format(sample_image.size()))
+                                    # print("sample_image in the for loop is {0}\n".format(sample_image)) # this has the 5 images separately, while sample_image found below CONCATS THEM in another tensor ...
+                                    # num_train_samples = 50 # HARDCODED
+                                    # sample_image_gen = sample_data[:num_train_samples, start_index:start_index+layer_data_flat.size(1)] ## NOT SO SIMPLE **
+                                    # OINT TO NOTE IS THAT SAMPLE DATA COMES FROM GENERATE_SAMPLES_DWAVE ... LET'S INSPECT THAT
+                                    start_index += layer_data_flat.size(1)
+                                    print("updates start index is {0}\n".format(start_index))
+                                    print("input_data[layer].size() is {0}\n--\n".format(input_data[layer].size()))
+                                    print("input_data[layer].size()[1:] is {0}\n".format(input_data[layer].size()[1:]))
 
-                            start_index = 0
-                            for layer, layer_data_flat in enumerate(in_data_flat):
-                                input_image = in_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                                recon_image = recon_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                                sample_image = sample_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                    input_image = input_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                    recon_image = recon_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                    sample_image = sample_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
 
-                                start_index += layer_data_flat.size(1)
+                                    input_images.append(input_image)
+                                    recon_images.append(recon_image)
+                                    sample_images.append(sample_image)
 
-                                input_image = input_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                                recon_image = recon_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                                sample_image = sample_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                    #print("sample_image array is {0}\n".format(sample_image))
+                                    print("SIZE OF sample_image AFTERWARDS is {0}\n".format(np.array(sample_image).shape))
+                                    #print("size of sample image originally is {0}\n".format(sample_image.size()))
 
-                                input_images.append(input_image)
-                                recon_images.append(recon_image)
-                                sample_images.append(sample_image)
+                                batch_loss_dict["input"] = plot_calo_images(input_images)
+                                batch_loss_dict["recon"] = plot_calo_images(recon_images)
+                                batch_loss_dict["sample"] = plot_calo_images(sample_images)
 
-                            batch_loss_dict["input"] = plot_calo_images(input_images)
-                            batch_loss_dict["recon"] = plot_calo_images(recon_images)
-                            batch_loss_dict["sample"] = plot_calo_images(sample_images)
-
-                            if not is_training:
-                                for key in batch_loss_dict.keys():
-                                    if key not in val_loss_dict.keys():
-                                        val_loss_dict[key] = batch_loss_dict[key]
+                                if not is_training:
+                                    for key in batch_loss_dict.keys():
+                                        if key not in val_loss_dict.keys():
+                                            val_loss_dict[key] = batch_loss_dict[key]
+                            ###############################################################################################################################
+                    
                     
                         
                     if is_training:
@@ -219,6 +267,9 @@ class EngineCaloQV1(Engine):
                         if (batch_idx % max((num_batches//100), 1)) == 0:
                             #self._log_rbm_wandb()
                             pass
+            if mode == "validate":
+                print("\nmode is validate at end\n")
+                torch.save(synthetic_images, 'synthetic_images_piplus.pt')
                         
         if not is_training:
             val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}
