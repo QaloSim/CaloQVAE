@@ -35,6 +35,7 @@ class EngineCaloQV1(Engine):
         with open(path, 'r') as file:
             d_wave_config = yaml.safe_load(file)
         sampling_epoches_list=list(d_wave_config['sampling_epoches'])
+        qpu_samples_all = int(d_wave_config['qpu_samples_all'])
         
         # Switch model between training and evaluation mode
         # Change dataloader depending on mode
@@ -74,6 +75,8 @@ class EngineCaloQV1(Engine):
         ae_enabled = self._config.engine.ae_enabled
         
         with torch.set_grad_enabled(is_training):
+            if mode == "validate":
+                synthetic_images = []
             for batch_idx, (input_data, label) in enumerate(data_loader):
                 self._optimiser.zero_grad()
                 
@@ -159,8 +162,9 @@ class EngineCaloQV1(Engine):
                         """
                         For the listed epoch (in sampling_epochs_list), we 
                         """
-                        if (batch_idx  == 0):
-                            print("Plotting Input, Recon, Sample, images... at epoch {0}".format(epoch))
+                        if (batch_idx  == 0 or qpu_samples_all == 1):
+                            
+                            new_qpu_samples = qpu_samples_all
                             if self._config.data.scaled:
                                 in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                                 recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
@@ -168,7 +172,7 @@ class EngineCaloQV1(Engine):
                                     """
                                     Using DWAVE samples for image generation
                                     """
-                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
+                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=new_qpu_samples, save_dist=True)
                                 else:
                                     """
                                     Using Classical RBM samples for image generation
@@ -179,39 +183,41 @@ class EngineCaloQV1(Engine):
                                 in_data = in_data*1000.
                                 recon_data = fwd_output.output_activations*1000.
                                 if (sample_dwave==True):
-                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=0, save_dist=False)
+                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=new_qpu_samples, save_dist=True)
                                 else:
                                     sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
                                 sample_data = sample_data*1000.
-
+                                
+                            synthetic_images.append(sample_data)
                             input_images = []
                             recon_images = []
                             sample_images = []
+                            if (batch_idx==0): # prints images for only one batch
+                                print("Plotting Input, Recon, Sample, images... at epoch {0}".format(epoch))
+                                start_index = 0
+                                for layer, layer_data_flat in enumerate(in_data_flat):
+                                    input_image = in_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                    recon_image = recon_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                    sample_image = sample_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
 
-                            start_index = 0
-                            for layer, layer_data_flat in enumerate(in_data_flat):
-                                input_image = in_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                                recon_image = recon_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                                sample_image = sample_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                    start_index += layer_data_flat.size(1)
 
-                                start_index += layer_data_flat.size(1)
+                                    input_image = input_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                    recon_image = recon_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                    sample_image = sample_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
 
-                                input_image = input_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                                recon_image = recon_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                                sample_image = sample_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                    input_images.append(input_image)
+                                    recon_images.append(recon_image)
+                                    sample_images.append(sample_image)
 
-                                input_images.append(input_image)
-                                recon_images.append(recon_image)
-                                sample_images.append(sample_image)
+                                batch_loss_dict["input"] = plot_calo_images(input_images)
+                                batch_loss_dict["recon"] = plot_calo_images(recon_images)
+                                batch_loss_dict["sample"] = plot_calo_images(sample_images)
 
-                            batch_loss_dict["input"] = plot_calo_images(input_images)
-                            batch_loss_dict["recon"] = plot_calo_images(recon_images)
-                            batch_loss_dict["sample"] = plot_calo_images(sample_images)
-
-                            if not is_training:
-                                for key in batch_loss_dict.keys():
-                                    if key not in val_loss_dict.keys():
-                                        val_loss_dict[key] = batch_loss_dict[key]
+                                if not is_training:
+                                    for key in batch_loss_dict.keys():
+                                        if key not in val_loss_dict.keys():
+                                            val_loss_dict[key] = batch_loss_dict[key]
                     
                         
                     if is_training:
@@ -219,6 +225,8 @@ class EngineCaloQV1(Engine):
                         if (batch_idx % max((num_batches//100), 1)) == 0:
                             #self._log_rbm_wandb()
                             pass
+            if mode == "validate":
+                torch.save(synthetic_images, 'synthetic_images_piplus.pt') # save as piplus/something
                         
         if not is_training:
             val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}
