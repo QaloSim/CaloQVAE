@@ -225,7 +225,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             When we do not want new qpu samples, we set lr=0 as we do not update beta
             Furthermore, as no iterations are needed, num_iterations is set to 1
             """
-            #print("Old response used from dwave ...")
+            print("Old response used from dwave ...")
             num_iterations = 1       
             lr = 0  
  
@@ -302,9 +302,9 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         # Convert Ising biases to numpy list
         vbias_list = list(ising_vbias.detach().cpu().numpy())
         hbias_list = list(ising_hbias.detach().cpu().numpy())
-        if (new_qpu_samples==1):
-            print("V_vis range = ({0}, {1})".format(np.min(vbias_list), np.max(vbias_list)))
-            print("H_vis range = ({0}, {1})".format(np.min(hbias_list), np.max(hbias_list)))
+        #if (new_qpu_samples==1):
+        #    print("V_vis range = ({0}, {1})".format(np.min(vbias_list), np.max(vbias_list)))
+        #    print("H_vis range = ({0}, {1})".format(np.min(hbias_list), np.max(hbias_list)))
         
         # Encode local field (biases) in DWAVE (with the negative)
         hVis = {v_qubit_idx:-vbias_list[visible_idx_map[v_qubit_idx]] for v_qubit_idx in self.prior.visible_qubit_idxs}
@@ -352,7 +352,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             # Convert negative of the Ising Energies to numpy array and compute mean
             aux_crbm_energy_exps = -aux_crbm_energy_exp.detach().cpu().numpy()
             aux_crbm_energy_exp = -torch.mean(aux_crbm_energy_exp, axis=0)
-            print("Ising energy with RBM samples: {0}\n".format(aux_crbm_energy_exp))
+            print("Ising energy with RBM samples: {0}:".format(aux_crbm_energy_exp))
         else:
             aux_crbm_energy_exp=0
         
