@@ -306,7 +306,7 @@ class EngineCaloQV1(Engine):
         n_conditioning_samples=round(self._config.engine.n_valid_batch_size*conditional_energy_ratio)
         if (sample_dwave==True):
             #print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
-            sample_energies, sample_data = self._model.generate_samples_dwave(n_conditioning_samples, conditioning_energies, new_qpu_samples=0)
+            sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, conditioning_energies, new_qpu_samples=0)
         else:
             sample_energies, sample_data = self._model.generate_samples(n_conditioning_samples, conditioning_energies)
         sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
