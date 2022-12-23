@@ -23,6 +23,7 @@ n_batches_log_train: 10
 generate_images_at_epoch:
   - 50
 
+# The conditional input energy is randomly generated in range (sample_energies[0], sample_energies[1])
 sample_energies:
-  - 50
+  - 45
   - 60

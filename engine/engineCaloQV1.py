@@ -9,7 +9,7 @@ import torch
 import os
 import coffea
 import yaml
-
+import pickle
 # Weights and Biases
 import wandb
 import numpy as np
@@ -57,6 +57,11 @@ class EngineCaloQV1(Engine):
             elif mode == "test":
                 load_dwave = 0 # means we do not get new dwave samples
                 data_loader = self.data_mgr.test_loader
+                #save test dataset
+                path = os.path.join(wandb.run.dir, "test_raw_data.pkl")
+                with open(path, 'wb') as file2:
+                    pickle.dump(data_loader, file2)
+
                 print("\n=======\n")
                 print("Testing mode ...")
                 print("\n=======\n")
@@ -297,13 +302,13 @@ class EngineCaloQV1(Engine):
                         
         # Samples with specific energies
         conditioning_energies = self._config.engine.sample_energies
-
-
+        conditional_energy_ratio=(conditioning_energies[1]-conditioning_energies[0])/100
+        n_conditioning_samples=round(self._config.engine.n_valid_batch_size*conditional_energy_ratio)
         if (sample_dwave==True):
             #print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
-            sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, conditioning_energies, new_qpu_samples=0)
+            sample_energies, sample_data = self._model.generate_samples_dwave(n_conditioning_samples, conditioning_energies, new_qpu_samples=0)
         else:
-            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, conditioning_energies)
+            sample_energies, sample_data = self._model.generate_samples(n_conditioning_samples, conditioning_energies)
         sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
 
         self._hist_handler.update_samples(sample_data)
