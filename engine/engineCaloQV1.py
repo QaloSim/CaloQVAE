@@ -231,7 +231,7 @@ class EngineCaloQV1(Engine):
                             #self._log_rbm_wandb()
                             pass
             if mode == "validate":
-                torch.save(synthetic_images, 'synthetic_images_piplus.pt') # save as piplus/something
+                torch.save(synthetic_images, 'synthetic_images_'+self._config.data.particle_type+'.pt') # save particle type
                         
         if not is_training:
             val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}

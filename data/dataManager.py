@@ -171,7 +171,7 @@ class DataManager(object):
             val_dataset,
             batch_size=self._config.engine.n_valid_batch_size, 
             shuffle=False)
-
+        logger.info("Particle type is: {0}".format(self._config.data.particle_type))
         logger.info("{0}: {2} events, {1} batches".format(train_loader,len(train_loader),len(train_loader.dataset)))
         logger.info("{0}: {2} events, {1} batches".format(test_loader,len(test_loader),len(test_loader.dataset)))
         logger.info("{0}: {2} events, {1} batches".format(val_loader,len(val_loader),len(val_loader.dataset)))
