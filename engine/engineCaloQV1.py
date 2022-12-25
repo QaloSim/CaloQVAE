@@ -8,7 +8,8 @@ Tested with:
 import torch
 import os
 import coffea
-
+import yaml
+import pickle
 # Weights and Biases
 import wandb
 import numpy as np
@@ -20,28 +21,50 @@ from utils.plotting.plotCalo import plot_calo_images
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
-class EngineCaloV3(Engine):
+class EngineCaloQV1(Engine):
 
     def __init__(self, cfg, **kwargs):
         logger.info("Setting up engine Calo.")
-        super(EngineCaloV3, self).__init__(cfg, **kwargs)
+        super(EngineCaloQV1, self).__init__(cfg, **kwargs)
         self._hist_handler = HistHandler(cfg)
         self._best_model_loss = torch.nan_to_num(torch.tensor(float('inf')))
 
     def fit(self, epoch, is_training=True, mode="train"):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
-
+        path='../../../configs/d_wave_config.yaml'
+        with open(path, 'r') as file:
+            d_wave_config = yaml.safe_load(file)
+        sampling_epoches_list=list(d_wave_config['sampling_epoches'])
+        qpu_samples_all = int(d_wave_config['qpu_samples_all'])
+        
         # Switch model between training and evaluation mode
         # Change dataloader depending on mode
         if is_training:
+            load_dwave = 0 # means we do not get new dwave samples
             self._model.train()
             data_loader = self.data_mgr.train_loader
+            print("\n=======\n")
+            print("Training mode ...")
+            print("\n=======\n")
         else:
             self._model.eval()
             if mode == "validate":
+                load_dwave = 1 # means we get new dwave samples
                 data_loader = self.data_mgr.val_loader
+                print("\n=======\n")
+                print("validation mode ...")
+                print("\n=======\n")
             elif mode == "test":
+                load_dwave = 0 # means we do not get new dwave samples
                 data_loader = self.data_mgr.test_loader
+                #save test dataset
+                path = os.path.join(wandb.run.dir, "test_raw_data.pkl")
+                with open(path, 'wb') as file2:
+                    pickle.dump(data_loader, file2)
+
+                print("\n=======\n")
+                print("Testing mode ...")
+                print("\n=======\n")
             val_loss_dict = {'epoch': epoch}
 
         num_batches = len(data_loader)
@@ -57,6 +80,8 @@ class EngineCaloV3(Engine):
         ae_enabled = self._config.engine.ae_enabled
         
         with torch.set_grad_enabled(is_training):
+            if mode == "validate":
+                synthetic_images = []
             for batch_idx, (input_data, label) in enumerate(data_loader):
                 self._optimiser.zero_grad()
                 
@@ -100,8 +125,13 @@ class EngineCaloV3(Engine):
                             val_loss_dict[key] += value
                         except KeyError:
                             val_loss_dict[key] = value
-                        
-                    self._update_histograms(in_data, fwd_output.output_activations)
+                            
+                    if (epoch not in sampling_epoches_list):
+                        sample_dwave=False
+                    else:
+                        sample_dwave=True
+                    self._update_histograms(in_data, fwd_output.output_activations, new_qpu_samples=load_dwave, sample_dwave=sample_dwave)
+                    load_dwave = 0 # if load_dwave was 1, it is now changed to 0
                     
                 if mode == "train" and (batch_idx % valid_batch_idx) == 0:
                     valid_loss_dict = self._validate()
@@ -126,54 +156,82 @@ class EngineCaloV3(Engine):
                                                                                           len(data_loader),
                                                                                           100.*batch_idx/len(data_loader),
                                                                                           batch_loss_dict["loss"]))
-                    
-                    if (batch_idx % (num_batches//2)) == 0:
-                        if self._config.data.scaled:
-                            in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
-                            recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
-                            sample_energies, sample_data = self._model.generate_samples()
-                            sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
-                        else:
-                            # Multiply by 1000. to scale to MeV
-                            in_data = in_data*1000.
-                            recon_data = fwd_output.output_activations*1000.
-                            sample_energies, sample_data = self._model.generate_samples()
-                            sample_data = sample_data*1000.
+                    """
+                    vvi :::
+                    if u don't want quantum sampling, just make sampling_epochs > num_epochs (OR MAYBE FALSE OPTION?)
+                    if max(m_ep_lis) > num_epoch:
+                        append num_epoch in list so that we can get IMAGES AT THE VERY LAST EPOCH
+                        HENCE IN SUCH A CASE SET A HANDLER TO SIMPLY SWITCH TO GENERATE_SAMPLES INSTEAD OF GEN SAMPLES DWAVE 
+                    """
+                    if (epoch in list(self._config.engine.generate_images_at_epoch)) and mode=="validate":
+                        """
+                        For the listed epoch (in sampling_epochs_list), we 
+                        """
+                        if (batch_idx  == 0 or qpu_samples_all == 1):
                             
-                        input_images = []
-                        recon_images = []
-                        sample_images = []
+                            new_qpu_samples = qpu_samples_all
+                            if self._config.data.scaled:
+                                in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
+                                recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
+                                if (sample_dwave==True):
+                                    """
+                                    Using DWAVE samples for image generation
+                                    """
+                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=new_qpu_samples, save_dist=True)
+                                else:
+                                    """
+                                    Using Classical RBM samples for image generation
+                                    """
+                                    sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)                                   
+                                sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
+                            else:
+                                in_data = in_data*1000.
+                                recon_data = fwd_output.output_activations*1000.
+                                if (sample_dwave==True):
+                                    sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=new_qpu_samples, save_dist=True)
+                                else:
+                                    sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
+                                sample_data = sample_data*1000.
+                                
+                            synthetic_images.append(sample_data)
+                            input_images = []
+                            recon_images = []
+                            sample_images = []
+                            if (batch_idx==0): # prints images for only one batch
+                                print("Plotting Input, Recon, Sample, images... at epoch {0}".format(epoch))
+                                start_index = 0
+                                for layer, layer_data_flat in enumerate(in_data_flat):
+                                    input_image = in_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                    recon_image = recon_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
+                                    sample_image = sample_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
 
-                        start_index = 0
-                        for layer, layer_data_flat in enumerate(in_data_flat):
-                            input_image = in_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                            recon_image = recon_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                            sample_image = sample_data[:num_plot_samples, start_index:start_index+layer_data_flat.size(1)]
-                            
-                            start_index += layer_data_flat.size(1)
-                            
-                            input_image = input_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                            recon_image = recon_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                            sample_image = sample_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
-                            
-                            input_images.append(input_image)
-                            recon_images.append(recon_image)
-                            sample_images.append(sample_image)
-                        
-                        batch_loss_dict["input"] = plot_calo_images(input_images)
-                        batch_loss_dict["recon"] = plot_calo_images(recon_images)
-                        batch_loss_dict["sample"] = plot_calo_images(sample_images)
-                        
-                        if not is_training:
-                            for key in batch_loss_dict.keys():
-                                if key not in val_loss_dict.keys():
-                                    val_loss_dict[key] = batch_loss_dict[key]
+                                    start_index += layer_data_flat.size(1)
+
+                                    input_image = input_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                    recon_image = recon_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+                                    sample_image = sample_image.reshape((-1,) + input_data[layer].size()[1:]).detach().cpu().numpy()
+
+                                    input_images.append(input_image)
+                                    recon_images.append(recon_image)
+                                    sample_images.append(sample_image)
+
+                                batch_loss_dict["input"] = plot_calo_images(input_images)
+                                batch_loss_dict["recon"] = plot_calo_images(recon_images)
+                                batch_loss_dict["sample"] = plot_calo_images(sample_images)
+
+                                if not is_training:
+                                    for key in batch_loss_dict.keys():
+                                        if key not in val_loss_dict.keys():
+                                            val_loss_dict[key] = batch_loss_dict[key]
+                    
                         
                     if is_training:
                         wandb.log(batch_loss_dict)
                         if (batch_idx % max((num_batches//100), 1)) == 0:
                             #self._log_rbm_wandb()
                             pass
+            if mode == "validate":
+                torch.save(synthetic_images, 'synthetic_images_'+self._config.data.particle_type+'.pt') # save particle type
                         
         if not is_training:
             val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}
@@ -219,12 +277,16 @@ class EngineCaloV3(Engine):
         
         return in_data, true_energy, in_data_flat
     
-    def _update_histograms(self, in_data, output_activations):
+    def _update_histograms(self, in_data, output_activations, new_qpu_samples=1, sample_dwave=True):
+        
         """
         Update the coffea histograms' distributions
         """
         # Samples with uniformly distributed energies - [0, 100]
-        sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
+        if (sample_dwave==True):
+            sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=new_qpu_samples)
+        else:
+            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
         
         # Update the histogram
         if self._config.data.scaled:
@@ -240,17 +302,19 @@ class EngineCaloV3(Engine):
                         
         # Samples with specific energies
         conditioning_energies = self._config.engine.sample_energies
-        conditioned_samples = []
-        for energy in conditioning_energies:
-            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
-            sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
-            conditioned_samples.append(torch.tensor(sample_data))
-                        
-        conditioned_samples = torch.cat(conditioned_samples, dim=0).numpy()
-        self._hist_handler.update_samples(conditioned_samples)
+        conditional_energy_ratio=(conditioning_energies[1]-conditioning_energies[0])/100
+        n_conditioning_samples=round(self._config.engine.n_valid_batch_size*conditional_energy_ratio)
+        if (sample_dwave==True):
+            #print("new_qpu_samples is HC (in conditional energy): {0}".format(0))
+            sample_energies, sample_data = self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, conditioning_energies, new_qpu_samples=0)
+        else:
+            sample_energies, sample_data = self._model.generate_samples(n_conditioning_samples, conditioning_energies)
+        sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
+
+        self._hist_handler.update_samples(sample_data)
             
     def _validate(self):
-        logger.debug("engineCaloV3::validate() : Running validation during a training epoch.")
+        logger.debug("engineCaloQV1::validate() : Running validation during a training epoch.")
         self._model.eval()
         data_loader = self.data_mgr.val_loader
         n_val_batches = self._config.engine.n_val_batches
@@ -334,7 +398,7 @@ class EngineCaloV3(Engine):
         weights = [[weight] for weight in prior_weights]
         weights_table = wandb.Table(data=weights, columns=["weights"])
         wandb.log({"rbm_weights": wandb.plot.histogram(weights_table, "weights", title=None)})
-
+        
 if __name__=="__main__":
     logger.info("Willkommen!")
     engine=Engine()

@@ -59,7 +59,9 @@ class HistHandler(object):
     def clear(self):
         for hkey in self._hdict.keys():
             self._hdict[hkey].clear()
-            
+        #It seems the conditional sampling data is not cleared.
+        for hkey in self._samplehdict.keys():
+            self._samplehdict[hkey].clear()      
     def get_hist_dict(self):
         """
         Returns:

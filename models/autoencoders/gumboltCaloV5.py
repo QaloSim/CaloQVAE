@@ -88,7 +88,8 @@ class GumBoltCaloV5(GumBolt):
             if true_energy is None:
                 true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.
             else:
-                true_e = torch.ones((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * true_energy
+                true_e = torch.ones((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * true_energy[0] + torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * (true_energy[1]-true_energy[0])
+
             prior_samples = torch.cat([rbm_vis, rbm_hid, true_e], dim=1)
             
             output_hits, output_activations = self.decoder(prior_samples)

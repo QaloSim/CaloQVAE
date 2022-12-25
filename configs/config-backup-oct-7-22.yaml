@@ -17,7 +17,7 @@ create_plots: 0
 output_path: /fast_scratch_1/akajal/outputs
 device: gpu
 gpu_list:
-  - 4
+  - 5
 
 task:
   - test

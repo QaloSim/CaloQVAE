@@ -6,12 +6,12 @@ save_state: 1
 load_state: 0
 save_hists: 1
 
-wandb_enabled: 0
+wandb_enabled: 1
 
-output_path: /fast_scratch_1/akajal/outputs
+output_path: /fast_scratch_1/s4hoque/outputs
 device: gpu
 gpu_list:
-  - 3
+  - 1
 
 task:
   - train
@@ -19,6 +19,6 @@ task:
   - test
 
 defaults:
-  - model: gumboltcaloprbm
+  - model: gumboltcalocrbm
   - data: calo
   - engine: dvaecalo_training
