@@ -79,10 +79,12 @@ class EngineCaloV3(Engine):
                         
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
+                    batch_loss_dict["total_energy"] = self._model.total_energy_loss(in_data, in_data_flat, fwd_output)
+                    total_energy_hp = 0.1
                     if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] + total_energy_hp*batch_loss_dict["total_energy"]
                     else:
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"]
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + total_energy_hp*batch_loss_dict["total_energy"]
                     batch_loss_dict["loss"].backward()
                     self._optimiser.step()
                     # Trying this to free up memory on the GPU and run validation during a training epoch
