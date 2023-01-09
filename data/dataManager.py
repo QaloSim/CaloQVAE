@@ -211,3 +211,22 @@ class DataManager(object):
         nparr = np.where(np.isinf(nparr), 0., nparr)
         
         return nparr
+
+    def torch_inv_transform(self, data):
+        """
+        Rewrite of the regular inverse transformation
+        """
+
+        torch_arr = torch.where(data > 0., data, np.inf)
+
+        for i in range(torch_arr.shape[1]):
+            amin = self._amin_array[i]
+            if amin < 0. and not torch.isnan(amin) and not torch.isinf(amin):
+                #EPSILON is a global variable. Should it be?
+                torch_arr[: , i] -= _EPSILON
+                torch_arr[: , i] += amin
+
+        torch_arr = self._transformer.inverse_transform(torch_arr)
+        torch_arr = torch.where(torch.isinf(torch_arr), 0., torch_arr)
+
+        return torch_arr
