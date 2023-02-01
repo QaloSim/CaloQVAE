@@ -20,7 +20,7 @@ logging.addLevelName( 9 ,              "\033[1;92m%{0}\033[1;0m".format('NOTIMPL
 
 BOLD = "\033[1m"
 RESET = "\033[0m"
-logging.basicConfig( level=logging.INFO, format='{0}[%(asctime)s.%(msecs)03d]{1} %(levelname)8s  {0}%(name)-50s{1}%(message)s'.format(BOLD,RESET),datefmt="%H:%M:%S")
+logging.basicConfig( level=logging.DEBUG, format='{0}[%(asctime)s.%(msecs)03d]{1} %(levelname)8s  {0}%(name)-50s{1}%(message)s'.format(BOLD,RESET),datefmt="%H:%M:%S")
 
 logger = logging.getLogger(__name__)
 logger.info("Willkommen!")

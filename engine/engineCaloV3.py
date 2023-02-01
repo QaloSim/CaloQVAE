@@ -80,14 +80,26 @@ class EngineCaloV3(Engine):
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
 
+                    #Undo scaling to data for energy loss terms
                     unscaled_data = self.data_mgr.torch_inv_transform(in_data).to(self._device)
                     unscaled_inputs = self.data_mgr.torch_inv_transform(fwd_output.output_activations).to(self.device)
+
+                    total_energy_hp = self._config.engine.total_energy_hp
                     batch_loss_dict["total_energy"] = self._model.total_energy_loss(unscaled_data, unscaled_inputs)
-                    total_energy_hp = 0.1
+
+                    layer_energy_hp = [self._config.engine.layer0_energy_hp, self._config.engine.layer1_energy_hp, self._config.engine.layer2_energy_hp]
+                    #Returns a list of loss functions per calo layer
+                    layer_energy_loss_list = self._model.layer_energy_loss(unscaled_data, unscaled_inputs)
+
                     if "hit_loss" in batch_loss_dict.keys():
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] + total_energy_hp*batch_loss_dict["total_energy"]
+                        for layer_n in range(len(layer_energy_loss_list)):
+                            batch_loss_dict["loss"] += layer_energy_hp[layer_n]*layer_energy_loss_list[layer_n]
                     else:
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + total_energy_hp*batch_loss_dict["total_energy"]
+                        for layer_n in range(len(layer_energy_loss_list)):
+                            batch_loss_dict["loss"] += layer_energy_hp[layer_n]*layer_energy_loss_list[layer_n]
+
                     batch_loss_dict["loss"].backward()
                     self._optimiser.step()
                     # Trying this to free up memory on the GPU and run validation during a training epoch

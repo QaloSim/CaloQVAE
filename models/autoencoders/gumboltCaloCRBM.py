@@ -129,7 +129,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                        * self._latent_dimensions)//2
         
         # Compute positive energy contribution to the KL divergence
-        if "mapping" in self._config.model and self._config.model.mapping.lower()=="chains":
+        if "mapping" in self._config.model and self._config.model.mapping.lower() == "chains":
             post_zetas_1, post_zetas_2 = post_zetas[:, :num_var_rbm], post_zetas[:, num_var_rbm:]
             post_zetas_vis, post_zetas_hid = torch.zeros(post_zetas_1.size(), device=post_zetas.device), torch.zeros(post_zetas_1.size(), device=post_zetas.device)
             
