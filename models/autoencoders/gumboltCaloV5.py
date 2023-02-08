@@ -69,14 +69,21 @@ class GumBoltCaloV5(GumBolt):
         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
+
+        total_energy_loss = self.total_energy_loss(input_data, fwd_out.output_activations)
+        layer_energy_loss = self.layer_energy_loss(input_data, fwd_out.output_activations)
         
         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy,
+                "total_energy" : total_energy_loss, "layer_energy0" : layer_energy_loss[0],
+                "layer_energy1" : layer_energy_loss[1], "layer_energy2" : layer_energy_loss[2]
+                }
     
     def generate_samples(self, num_samples=64, true_energy=None):
         """
         generate_samples()
         """
+        logger.info("True energy: " + str(true_energy))
         true_energies = []
         num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
         samples = []
