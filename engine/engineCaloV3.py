@@ -88,14 +88,13 @@ class EngineCaloV3(Engine):
                     total_energy_hp = self._config.engine.total_energy_hp
                     batch_loss_dict["total_energy"] = self._model.total_energy_loss(unscaled_data, unscaled_inputs)
 
-                    layer_energy_hp = [self._config.engine.layer0_energy_hp, self._config.engine.layer1_energy_hp, self._config.engine.layer2_energy_hp]
+                    layer_energy_hp = self._config.engine.layer_energy_hp
                     #Returns a list of loss functions per calo layer
                     layer_energy_loss_list = self._model.layer_energy_loss(unscaled_data, unscaled_inputs)
 
                     for i, layer_loss in enumerate(layer_energy_loss_list):
                         batch_loss_dict["layer_energy" + str(i)] = layer_loss
 
-                    logger.debug("Adding loss terms")
                     if "hit_loss" in batch_loss_dict.keys():
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] + total_energy_hp*batch_loss_dict["total_energy"]
                         for layer_n in range(len(layer_energy_loss_list)):
@@ -128,7 +127,6 @@ class EngineCaloV3(Engine):
                 if mode == "train" and (batch_idx % valid_batch_idx) == 0:
                     valid_loss_dict = self._validate()
 
-                    logger.debug("Before validation loss")
                     if "hit_loss" in valid_loss_dict.keys():
                         valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"] + valid_loss_dict["total_energy"]
                         for layer_n in range(len(layer_energy_loss_list)):
@@ -138,8 +136,7 @@ class EngineCaloV3(Engine):
                         for layer_n in range(len(layer_energy_loss_list)):
                             valid_loss_dict["loss"] += layer_energy_hp[layer_n]*layer_energy_loss_list[layer_n]
 
-                    logger.debug("After validation loss")
-                    # Check the loss over the validation set is 
+                    # Check the loss over the validation set is
                     if valid_loss_dict["loss"] < self._best_model_loss:
                         self._best_model_loss = valid_loss_dict["loss"]
                         # Save the best model here
@@ -156,21 +153,18 @@ class EngineCaloV3(Engine):
                                                                                           batch_loss_dict["loss"]))
                     
                     if (batch_idx % (num_batches//2)) == 0:
-                        logger.debug("Making data objects")
                         if self._config.data.scaled:
                             in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                             recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
                             sample_energies, sample_data = self._model.generate_samples()
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
-                            logger.debug("Made scaled data")
                         else:
                             # Multiply by 1000. to scale to MeV
                             in_data = in_data*1000.
                             recon_data = fwd_output.output_activations*1000.
                             sample_energies, sample_data = self._model.generate_samples()
                             sample_data = sample_data*1000.
-                            logger.debug("Made unscaled data")
-                            
+
                         input_images = []
                         recon_images = []
                         sample_images = []
@@ -191,11 +185,9 @@ class EngineCaloV3(Engine):
                             recon_images.append(recon_image)
                             sample_images.append(sample_image)
 
-                        logger.debug("Before plot_calo_images")
                         batch_loss_dict["input"] = plot_calo_images(input_images)
                         batch_loss_dict["recon"] = plot_calo_images(recon_images)
                         batch_loss_dict["sample"] = plot_calo_images(sample_images)
-                        logger.debug("After plot_calo_images")
 
                         if not is_training:
                             for key in batch_loss_dict.keys():
@@ -203,7 +195,6 @@ class EngineCaloV3(Engine):
                                     val_loss_dict[key] = batch_loss_dict[key]
                         
                     if is_training:
-                        logger.debug("Before wandb log")
                         wandb.log(batch_loss_dict)
                         if (batch_idx % max((num_batches//100), 1)) == 0:
                             #self._log_rbm_wandb()
@@ -212,14 +203,12 @@ class EngineCaloV3(Engine):
         if not is_training:
             val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}
 
-            logger.debug("Before save_hists")
             if self._config.save_hists:
                 hist_dict = self._hist_handler.get_hist_dict()
                 for key in hist_dict.keys():
                     path = os.path.join(wandb.run.dir, "{0}.coffea".format(self._config.data.particle_type + "_" + str(key)))
                     coffea.util.save(hist_dict[key], path)
 
-            logger.debug("Before hist_handler.clear()")
             self._hist_handler.clear()
                 
             # Average the validation loss values over the validation set
@@ -294,7 +283,6 @@ class EngineCaloV3(Engine):
         # Accumulate metrics over several batches
         epoch_loss_dict = {}
 
-        logger.debug("Before validation loop")
         # Validation loop
         with torch.set_grad_enabled(False):
             for idx in range(n_val_batches):
@@ -318,11 +306,9 @@ class EngineCaloV3(Engine):
         for key in list(epoch_loss_dict.keys()):
             ret_loss_dict[key] = epoch_loss_dict[key]/n_val_batches
 
-        logger.debug("Before model.train()")
         # Reset the model state back to training
         self._model.train()
 
-        logger.debug("After model.train()")
         # Return the loss dictionary
         return ret_loss_dict
         

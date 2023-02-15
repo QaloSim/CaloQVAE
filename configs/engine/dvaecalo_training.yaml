@@ -22,9 +22,10 @@ n_batches_log_train: 10
 
 total_energy_hp: 0.01
 
-layer0_energy_hp: 0.01
-layer1_energy_hp: 0.01
-layer2_energy_hp: 0.01
+layer_energy_hp:
+  - 0.01
+  - 0.01
+  - 0.01
 
 sample_energies:
   - 1
