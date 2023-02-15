@@ -23,8 +23,8 @@ class GumBoltCaloEnergy(GumBoltCaloCRBM):
         """
         Add a term to the loss function based on the total energy
         """
-
         logger.debug("GumBoltCaloEnergy::total_energy_loss")
+        assert(input_data.shape == fwd_output.shape)
 
         total_energy = torch.sum(fwd_output, dim = 1)
         in_data = torch.sum(input_data, dim = 1)
@@ -40,6 +40,7 @@ class GumBoltCaloEnergy(GumBoltCaloCRBM):
         """
 
         logger.debug("GumBoltCaloEnergy::layer_energy_loss")
+        assert(input_data.shape == fwd_output.shape)
 
         layer_split = [288, 144, 72] #Cell count per layer
 

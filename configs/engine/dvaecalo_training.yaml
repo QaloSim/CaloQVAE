@@ -20,12 +20,12 @@ n_valid_per_epoch: 5
 n_plot_samples: 5
 n_batches_log_train: 10
 
-total_energy_hp: 0.01
+total_energy_hp: 0.05
 
 layer_energy_hp:
-  - 0.01
-  - 0.01
-  - 0.01
+  - 0.1 #layer0
+  - 0.05 #layer1
+  - 0.05 #layer2
 
 sample_energies:
   - 1

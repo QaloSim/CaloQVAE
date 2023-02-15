@@ -83,7 +83,6 @@ class GumBoltCaloV5(GumBolt):
         """
         generate_samples()
         """
-        logger.info("True energy: " + str(true_energy))
         true_energies = []
         num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
         samples = []
