@@ -185,7 +185,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         with open(path1, 'r') as file1:
             GPU_Main = yaml.safe_load(file1)['gpu_list'][0]
             
-        path2='../../../configs/d_wave_config.yaml'
+        path2='../../../configs/engine/sample_Calo.yaml'
         with open(path2, 'r') as file2:
             d_wave_config = yaml.safe_load(file2)
             
@@ -399,13 +399,13 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
                 scaled_dwave_samples = torch.tensor(scaled_dwave_samples, dtype=torch.float)  
                 dwave_energy_exp = energy_exp_dwave_ising
                 dwave_energies[i] = scaled_dwave_energies
+                beta_qpu = beta_qpu - lr*(-float(aux_crbm_energy_exp)+float(dwave_energy_exp))
                 if (new_qpu_samples==1):
                     print("aux_crbm_energy_exp : {0}, beta_qpu : {1} and {2}".format(dwave_energy_exp, beta_qpu, i))
-                beta_qpu = beta_qpu - lr*(-float(aux_crbm_energy_exp)+float(dwave_energy_exp))
                 betas.append(beta_qpu)
                 
-        # Ignoring the last update to beta_qpu
-        beta_qpu = betas[num_iterations-1]
+        # # Ignoring the last update to beta_qpu
+        # beta_qpu = betas[num_iterations-1]
             
         """
         Saves the beta estimation energy histograms in ouput directory

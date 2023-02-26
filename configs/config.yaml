@@ -1,24 +1,37 @@
 tag: default
 debug: False
 load_data_from_pkl: 0
-
 save_state: 1
-load_state: 0
 save_hists: 1
-
 wandb_enabled: 1
 
-output_path: /fast_scratch_1/s4hoque/outputs
+output_path: /fast_scratch_1/blazerjia/outputs
 device: gpu
 gpu_list:
   - 1
 
-task:
-  - train
-  - validate
-  - test
 
+
+# Comment out either one of the following to do training or sampling task
+
+############### Train the model ################
+load_state: 0
+task:
+# - train
+# - validate
+ - test
 defaults:
   - model: gumboltcalocrbm
   - data: calo
   - engine: dvaecalo_training
+  
+  
+########## Sample with a given model ###########
+# load_state: 1
+# run_path: /home/blazerjia/saved_output/rbm_gamma/wandb/run-20230213_022323-ljh9mvfn/files/GumBoltCaloCRBM_calo_default_latest.pth
+# task:
+#   - sample
+# defaults:
+#   - model: gumboltcalocrbm
+#   - data: calo
+#   - engine: sample_Calo

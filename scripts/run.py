@@ -139,14 +139,19 @@ def run(config=None):
         assert config.run_path != 0
         config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
         modelCreator.load_state(config.run_path, dev)
-
-
-    for epoch in range(1, config.engine.n_epochs+1):
+    try:
+        n_iter = config.engine.n_epochs
+    except:
+        n_iter = config.engine.n_batches
+    for epoch in range(1, n_iter+1):
         if "train" in config.task:
             engine.fit(epoch=epoch, is_training=True, mode="train")
 
         if "validate" in config.task:
             engine.fit(epoch=epoch, is_training=False, mode="validate")
+
+        if "sample" in config.task:
+            engine.fit(epoch=epoch, is_training=False)
 
     if "test" in config.task:
         engine.fit(epoch=epoch, is_training=False, mode="test")

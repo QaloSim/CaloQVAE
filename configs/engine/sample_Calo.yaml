@@ -1,6 +1,6 @@
-_target_: engine.engineCaloV4.EngineCaloV4
-learning_rate: 0.0001
-n_epochs: 120
+_target_: engine.sample_Calo.Sampling
+learning_rate: 0 # In sampling mode, keep the 0 learning rate.
+n_batches: 1   # Total sampling number = n_batches * n_valid_batch_size * 10
 
 kl_enabled: 1
 ae_enabled: 1
@@ -20,10 +20,21 @@ n_valid_per_epoch: 5
 n_plot_samples: 5
 n_batches_log_train: 10
 
-generate_images_at_epoch:
-  - 3
 
 # The conditional input energy is randomly generated in range (sample_energies[0], sample_energies[1])
 sample_energies:
   - 45
-  - 60
+  - 46
+  
+
+# D-WAVE configurations:
+
+enable_qpu_sampling: 0
+
+constrain_rbm: 0
+weight_range: 10
+bias_range: 20
+
+init_beta_estimation_iterations: 3
+beta_estimation_iterations: 1
+beta_estimation_learning_rate: 0.015
