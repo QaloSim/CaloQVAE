@@ -50,7 +50,7 @@ def main(cfg=None):
     # this is the setting for individual, ungrouped runs
     # Use mode='disabled' to prevent logging
     mode = 'online' if cfg.wandb_enabled else 'disabled'
-    wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
+    wandb.init(project="caloqvae", entity="tvale", config=cfg, mode=mode)
     # run the ting
     run(config=cfg)
 

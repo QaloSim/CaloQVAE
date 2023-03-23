@@ -6,12 +6,12 @@ save_state: 1
 load_state: 0
 save_hists: 1
 
-wandb_enabled: 0
+wandb_enabled: 1
 
 output_path: /fast_scratch_2/CaloQVAE_scratch/tvale/outputs
 device: gpu
 gpu_list:
-  - 3
+  - 2
 
 task:
   - train
