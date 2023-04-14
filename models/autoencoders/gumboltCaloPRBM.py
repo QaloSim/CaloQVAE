@@ -27,10 +27,10 @@ class GumBoltCaloPRBM(gcv6.GumBoltCaloV6):
                 self._config.model.n_latent_nodes) % 4 == 0, \
             'total no. of latent nodes should be divisible by 4'
 
-        nodes_per_layer = int((self._config.model.n_latent_hierarchy_lvls *
-                               self._config.model.n_latent_nodes)/4)
+        nodes_per_partition = int((self._config.model.n_latent_hierarchy_lvls *
+                                   self._config.model.n_latent_nodes)/4)
 
-        return pegasusRBM.PegasusRBM(nodes_per_layer)
+        return pegasusRBM.PegasusRBM(nodes_per_partition)
 
     def _create_sampler(self, rbm=None):
         """Override _create_sampler in GumBoltCaloV6.py

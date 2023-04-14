@@ -18,4 +18,5 @@ n_latent_hierarchy_lvls: 2
 n_latent_nodes: 1000
 
 mapping: bipartite
-bernoulli : 1
+# Careful with this - setting this to 1 goes from RBM to Bernoulli prior
+bernoulli : 0

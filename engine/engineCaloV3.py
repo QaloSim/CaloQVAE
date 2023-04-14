@@ -180,7 +180,7 @@ class EngineCaloV3(Engine):
                         if (batch_idx % max((num_batches//100), 1)) == 0:
                             #self._log_rbm_wandb()
                             pass
-                        
+
         if not is_training:
             val_loss_dict = {**val_loss_dict, 
                              **self._hist_handler.get_hist_images(),
@@ -320,7 +320,8 @@ class EngineCaloV3(Engine):
         prior_weights_hist_vals = np.where(np.isinf(prior_weights_hist_vals), 0., prior_weights_hist_vals)
         prior_weights_hist = (prior_weights_hist_vals, prior_weights_hist[1])
         
-        wandb.log({"prior._weights":wandb.Histogram(np_histogram=prior_weights_hist),
+        wandb.log({"prior._weights":wandb.Histogram(
+            np_histogram=prior_weights_hist),
                    "prior._visible_bias":wandb.Histogram(prior_visible_bias),
                    "prior._hidden_bias":wandb.Histogram(prior_hidden_bias)})
                         

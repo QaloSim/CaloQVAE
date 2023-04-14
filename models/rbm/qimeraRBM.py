@@ -17,7 +17,8 @@ _MAX_ROW_COLS = 16
 
 class QimeraRBM(RBM):
     """
-    PyTorch implementation of a restricted Boltzmann machine with a Chimera-QPU topology
+    PyTorch implementation of a restricted Boltzmann machine with a
+    Chimera-QPU topology
     """
     def __init__(self, n_visible, n_hidden, bernoulli=False, **kwargs):
         super(QimeraRBM, self).__init__(n_visible, n_hidden, **kwargs)
@@ -98,7 +99,8 @@ class QimeraRBM(RBM):
         #arbitrarily scaled by 0.01 
         self._weights = nn.Parameter(torch.randn(n_visible, n_hidden),
                                      requires_grad=require_grad)
-        #self._weights = nn.Parameter(3.*torch.rand(n_visible, n_hidden) + 1., requires_grad=require_grad)
+        # self._weights = nn.Parameter(3.*torch.rand(n_visible, n_hidden) + 1.,
+        # requires_grad=require_grad)
         
         self._weights_mask = nn.Parameter(weights_mask, requires_grad=False)
 
@@ -147,9 +149,9 @@ class QimeraRBM(RBM):
     def pruned_edge_list(self):
         return self._pruned_edge_list
 
+
 if __name__=="__main__":
     logger.debug("Testing chimeraRBM")
     cRBM = QimeraRBM(8, 8)
     print(cRBM.weights)
     logger.debug("Success")
-
