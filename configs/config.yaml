@@ -12,7 +12,7 @@ output_path: /fast_scratch_2/CaloQVAE_scratch/tvale/outputs
 device: gpu
 gpu_list:
   - 0
-
+  
 task:
   - train
   - validate
