@@ -72,6 +72,9 @@ as the default PyPI version does not work on Cedar. A first script is added in t
 python scripts/runSlurm.py --multirun config.myopt=1,2 
 ```
 
+## Technical note
+When running on the TRIUMF ml machine, `DISPLAY` variable must be unset (it can be set by forwarding X11 when creating the ssh session), as it creates an unwanted dependency with a QT library. 
+
 ### References
 [1] Jason Rolfe, Discrete Variational Autoencoders,
 http://arxiv.org/abs/1609.02200
