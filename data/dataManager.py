@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 from data.mnist import get_mnist_datasets
 from data.calo import get_calo_datasets
+from data.atlas import get_atlas_datasets
 
 # Constants
 _EPSILON = 1e-2
@@ -150,6 +151,22 @@ class DataManager(object):
                 inFiles=inFiles,
                 particle_type=[self._config.data.particle_type],
                 layer_subset=self._config.data.calo_layers,
+                frac_train_dataset=self._config.data.frac_train_dataset,
+                frac_test_dataset=self._config.data.frac_test_dataset, 
+                )
+            
+        elif self._config.data.data_type.lower()=="atlas":
+            inFiles={ # ToDo-JQTM : move data to right path. Set the right config
+            'photon1':    '/home/jtoledo/ATLAS-dataset/HDF5-files/photon_samples.hdf5',
+            'photon2':    '/home/jtoledo/ATLAS-dataset/HDF5-files/photons_samples_highStat.hdf5', 
+            'pion1':   '/home/jtoledo/ATLAS-dataset/HDF5-files/pion_samples.hdf5',
+            'pion1':   '/home/jtoledo/ATLAS-dataset/HDF5-files/pions_samples_highStat.hdf5'
+        }
+
+            train_dataset,test_dataset,val_dataset=get_atlas_datasets(
+                inFiles=inFiles,
+                particle_type=['photon1'],
+                layer_subset=['voxels'],
                 frac_train_dataset=self._config.data.frac_train_dataset,
                 frac_test_dataset=self._config.data.frac_test_dataset, 
                 )
