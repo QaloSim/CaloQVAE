@@ -8,30 +8,32 @@ wandb_enabled: 1
 output_path: /fast_scratch_1/blazerjia/outputs
 device: gpu
 gpu_list:
-  - 1
+  - 5
 
 
 
 # Comment out either one of the following to do training or sampling task
 
-############### Train the model ################
-load_state: 0
-task:
-# - train
-# - validate
- - test
-defaults:
-  - model: gumboltcalocrbm
-  - data: calo
-  - engine: dvaecalo_training
-  
-  
-########## Sample with a given model ###########
-# load_state: 1
-# run_path: /home/blazerjia/saved_output/rbm_gamma/wandb/run-20230213_022323-ljh9mvfn/files/GumBoltCaloCRBM_calo_default_latest.pth
+# ############## Train the model ################
+# load_state: 0
 # task:
-#   - sample
+#  - train
+#  - validate
+#  - test
 # defaults:
 #   - model: gumboltcalocrbm
 #   - data: calo
-#   - engine: sample_Calo
+#   - engine: dvaecalo_training
+  
+  
+######### Sample with a given model ###########
+load_state: 1
+run_path: /home/blazerjia/Trained_Models/piplus_0.00006_200/wandb/run-20230309_031303-t59nvivg/files/GumBoltCaloCRBM_calo_default_latest.pth
+
+#run_path: /home/blazerjia/Trained_Models/gamma_0.00006_200/wandb/run-20230309_185145-arwp8pfv/files/GumBoltCaloCRBM_calo_default_latest.pth
+task:
+  - sample
+defaults:
+  - model: gumboltcalocrbm
+  - data: calo
+  - engine: sample_Calo
