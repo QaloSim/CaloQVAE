@@ -10,7 +10,7 @@ import numpy as np
 _LABELS = ["true", "samples"]
 
 class SampleEnergyHist(object):
-    def __init__(self, min_bin=0, max_bin=100, n_bins=100):
+    def __init__(self, min_bin=0, max_bin=100, n_bins=50):
         self._hist = hist.Hist(label="Events",
                                axes=(hist.Cat("dataset", "dataset type"),
                                      hist.Bin("E", "Observed Energy (GeV)",

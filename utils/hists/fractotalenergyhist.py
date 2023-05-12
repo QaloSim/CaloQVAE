@@ -7,16 +7,15 @@ from coffea import hist
 import numpy as np
 
 class FracTotalEnergyHist(object):
-    def __init__(self, start_idx, end_idx, min_bin=1e-4, max_bin=1, n_bins=40):
-        min_bin = 1e-4 if min_bin < 1e-4 else min_bin
-        max_bin = 1 if max_bin > 1 else max_bin
+    def __init__(self, start_idx, end_idx, min_bin=0, max_bin=1, n_bins=25):
+#         min_bin = 1e-4 if min_bin < 1e-4 else min_bin
+#         max_bin = 1 if max_bin > 1 else max_bin
         self._hist = hist.Hist(label="Events",
                                axes=(hist.Cat("dataset", "dataset type"),
-                                     hist.Bin("f", "f",
-                                              np.logspace(np.log10(min_bin), np.log10(max_bin), n_bins))))
+                                     hist.Bin("f", "f", n_bins, min_bin, max_bin)))
         self._start_idx = start_idx
         self._end_idx = end_idx
-        self._scale = "log"
+        self._scale = "linear"
     
     def update(self, in_data, recon_data, sample_data):
         """Update the histograms

@@ -159,6 +159,13 @@ def get_calo_datasets(inFiles={}, particle_type=["gamma"], layer_subset=[],
     train_idx_list = idx_list[:num_evts_train]
     test_idx_list = idx_list[num_evts_train:(num_evts_train+num_evts_test)]
     val_idx_list = idx_list[(num_evts_train+num_evts_test):]
+    
+    #save the index
+    data = {'train_idx_list': train_idx_list,
+        'test_idx_list': test_idx_list,
+        'val_idx_list': val_idx_list}
+
+    torch.save(data, 'data_index.pth')
 
     train_dataset = dataStore[ptype].create_subset(idx_list=train_idx_list, label="train")
     test_dataset = dataStore[ptype].create_subset(idx_list=test_idx_list, label="test")

@@ -31,9 +31,6 @@ class Sampling(Engine):
 
     def fit(self, epoch, is_training=False):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
-        path='../../../configs/d_wave_config.yaml'
-        with open(path, 'r') as file:
-            d_wave_config = yaml.safe_load(file)
         
         # Switch model between training and evaluation mode
         # Change dataloader depending on mode
@@ -94,7 +91,7 @@ class Sampling(Engine):
                 if batch_idx == 0 and epoch == 1 and sample_dwave==True:
                     print('Initialing Beta pre-training process')
                     for item in range(self._config.engine.init_beta_estimation_iterations):
-                        self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=1, save_dist=True)
+                        self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=1, save_dist=True, pre_training = True)
 
                 #if (batch_idx % log_batch_idx) == 0:
                 logger.info('Batch: {} [{}/{} ({:.0f}%)]\t Batch Loss: {:.4f}'.format(epoch,
@@ -107,14 +104,15 @@ class Sampling(Engine):
 
                 if self._config.data.scaled:
                     in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
-                    recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))                                   
+                    recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
+                    #synthetic_images.append(sample_data)                                   
                     sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                 else:
                     in_data = in_data*1000.
                     recon_data = fwd_output.output_activations*1000.
                     sample_data = sample_data*1000.
 
-                    #synthetic_images=torch.cat((synthetic_images, sample_data), 0)
+                    synthetic_images=torch.cat((synthetic_images, sample_data), 0)
                 synthetic_images.append(sample_data)
                 input_images = []
                 recon_images = []
@@ -144,8 +142,16 @@ class Sampling(Engine):
                     for key in batch_loss_dict.keys():
                         if key not in val_loss_dict.keys():
                             val_loss_dict[key] = batch_loss_dict[key]
+            # if epoch == num_epochs:
+            #     synthetic_images = torch.tensor(self._data_mgr.inv_transform(synthetic_images.detach().cpu().numpy()))
 
             torch.save(synthetic_images, f'synthetic_images_{self._config.data.particle_type}.pt') # save particle type
+            
+            if epoch == num_epochs and sample_dwave==True:
+                print('Finalizing Beta post-training process')
+                beta_qpu= 10
+                for item in range(self._config.engine.init_beta_estimation_iterations):
+                    self._model.generate_samples_dwave(self._config.engine.n_valid_batch_size, new_qpu_samples=1, save_dist=True, pre_training = True)
 
         val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}
         

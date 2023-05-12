@@ -167,7 +167,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         kl_loss = entropy + pos_energy + neg_energy ### beta gets multiplied ... (prob neg energy)
         return kl_loss, entropy, pos_energy, neg_energy
     
-    def generate_samples_dwave(self, num_samples=1024, true_energy=None, new_qpu_samples=1, save_dist=True):
+    def generate_samples_dwave(self, num_samples=1024, true_energy=None, new_qpu_samples=1, save_dist=True, pre_training = False):
         """
         Purpose: Samples from DWAVE for some given RBM weights and biases
         and produces true_e and samples
@@ -219,6 +219,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
 
             if (beta_qpu_exists==False):
                 beta_qpu=10
+                
                             
         if (new_qpu_samples==0):
             """
@@ -227,8 +228,15 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             """
             print("Old response used from dwave ...")
             num_iterations = 1       
-            lr = 0  
- 
+            lr = 0
+        
+        # When there is no beta training in the sampling process, we run iteration 1 time with 0 lr.    
+        if num_iterations == 0 and pre_training == False:
+            num_iterations = 1
+            lr = 0
+        if pre_training == True:
+            num_iterations = 1
+            
         betas = [beta_qpu]
         
         # Extract the auxiliary chimera RBM parameters
