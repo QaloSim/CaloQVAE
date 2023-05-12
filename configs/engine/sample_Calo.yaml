@@ -24,7 +24,7 @@ n_batches_log_train: 10
 # The conditional input energy is randomly generated in range (sample_energies[0], sample_energies[1])
 sample_energies:
   - 45
-  - 46
+  - 60
   
 
 # D-WAVE configurations:
@@ -35,6 +35,6 @@ constrain_rbm: 0
 weight_range: 10
 bias_range: 20
 
-init_beta_estimation_iterations: 3
-beta_estimation_iterations: 1
+init_beta_estimation_iterations: 5
+beta_estimation_iterations: 0
 beta_estimation_learning_rate: 0.015
