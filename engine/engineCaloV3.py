@@ -159,7 +159,9 @@ class EngineCaloV3(Engine):
                             input_images.append(input_image)
                             recon_images.append(recon_image)
                             sample_images.append(sample_image)
-                        
+
+#                         logger.info(input_images[0].shape)
+
                         batch_loss_dict["input"] = plot_calo_images(input_images)
                         batch_loss_dict["recon"] = plot_calo_images(recon_images)
                         batch_loss_dict["sample"] = plot_calo_images(sample_images)

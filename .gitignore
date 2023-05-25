@@ -17,6 +17,7 @@ MNIST/
 *.code-workspace
 sandbox/
 nohup.out
+runJT.sh
 
 ##############################################
 #### Automatically created

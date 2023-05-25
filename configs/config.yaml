@@ -8,7 +8,7 @@ save_hists: 1
 
 wandb_enabled: 1
 
-output_path: /fast_scratch_1/blazerjia/outputs
+output_path: /fast_scratch_1/jtoledo/outputs
 device: gpu
 gpu_list:
   - 3
@@ -20,5 +20,5 @@ task:
 
 defaults:
   - model: gumboltcalocrbm
-  - data: calo
+  - data: atlas
   - engine: dvaecalo_training

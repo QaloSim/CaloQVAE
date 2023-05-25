@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 from data.mnist import get_mnist_datasets
 from data.calo import get_calo_datasets
+from data.atlas import get_atlas_datasets
 
 # Constants
 _EPSILON = 1e-2
@@ -153,6 +154,22 @@ class DataManager(object):
                 frac_train_dataset=self._config.data.frac_train_dataset,
                 frac_test_dataset=self._config.data.frac_test_dataset, 
                 )
+            
+        elif self._config.data.data_type.lower()=="atlas":
+            inFiles={ # ToDo-JQTM : move data to right path. Set the right config
+            'photon1':    self._config.data.atlas_input_photon1,
+#             'photon2':    self._config.data.atlas_input_photon2, 
+            'pion1':   self._config.data.atlas_input_pion1,
+#             'pion2':   self._config.data.atlas_input_pion2
+        }
+
+            train_dataset,test_dataset,val_dataset=get_atlas_datasets(
+                inFiles=inFiles,
+                particle_type=['photon1'],
+                layer_subset=['voxels'],
+                frac_train_dataset=self._config.data.frac_train_dataset,
+                frac_test_dataset=self._config.data.frac_test_dataset, 
+                )
                 
         #create the DataLoader for the training dataset
         train_loader=DataLoader(   
@@ -200,6 +217,7 @@ class DataManager(object):
             nparr - Inverse transformed np array (num_examples * num_features)
         """
         nparr = np.where(data > 0., data, np.inf)
+#         logger.info(nparr.shape)
         
         for j in range(nparr.shape[1]):
             amin = self._amin_array[j]
