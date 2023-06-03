@@ -103,7 +103,7 @@ class HighLevelFeatures:
         ax.grid(False)
         if vmax is None:
             vmax = data.max()
-        pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=1e-2, vmax=vmax))
+        pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=1e-4, vmax=vmax))
         ax.axes.get_xaxis().set_visible(False)
         ax.axes.get_yaxis().set_visible(False)
         if self.particle == 'electron':
@@ -150,7 +150,7 @@ class HighLevelFeatures:
         for radii in self.r_edges:
             if radii[-1] > max_r:
                 max_r = radii[-1]
-        vmax = 10000 # data.max() <-------------------
+        vmax = data.max() # <-------------------
         for idx, layer in enumerate(self.relevantLayers):
             radii = np.array(self.r_edges[idx])
             if self.particle != 'electron':
@@ -165,7 +165,7 @@ class HighLevelFeatures:
             else:
                 ax = plt.subplot(1, len(self.r_edges), idx+1, polar=True)
             ax.grid(False)
-            pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=1e-2, vmax=vmax))
+            pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=1e-4, vmax=vmax))
             ax.axes.get_xaxis().set_visible(False)
             ax.axes.get_yaxis().set_visible(False)
             if self.particle == 'electron':
