@@ -34,6 +34,7 @@ from models.autoencoders.gumboltCaloV7 import GumBoltCaloV7
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 from models.autoencoders.gumboltCaloPRBM import GumBoltCaloPRBM
 from models.autoencoders.atlasVAE import ATLASVAE
+from models.autoencoders.gumboltAtlasCRBMCNN import GumBoltAtlasCRBMCNN
 
 _MODEL_DICT={
     "AE": AutoEncoder, 
@@ -55,7 +56,8 @@ _MODEL_DICT={
     "GumBoltCaloV7": GumBoltCaloV7,
     "GumBoltCaloCRBM": GumBoltCaloCRBM,
     "GumBoltCaloPRBM": GumBoltCaloPRBM,
-    "ATLASVAE": ATLASVAE
+    "ATLASVAE": ATLASVAE,
+    "GumBoltAtlasCRBMCNN": GumBoltAtlasCRBMCNN,
 }
 
 class ModelCreator(object):
