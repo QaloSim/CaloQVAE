@@ -83,6 +83,51 @@ class BasicDecoderV3(NetworkV3):
                 x2 = self._activation_fct(layer3(x2))
         return x1, x2
     
+class DecoderCNN(BasicDecoderV3):
+    def __init__(self, output_activation_fct=nn.Identity(), **kwargs):
+        super(DecoderCNN, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        
+        self._layers = nn.Sequential(
+                   nn.Unflatten(1, (1001, 1,1)),
+    
+                   nn.ConvTranspose2d(1001, 512, 4, 1, 0),
+                   nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+
+                   nn.ConvTranspose2d(512, 256, 4, 2, 0),
+                   nn.PReLU(256, 0.02),
+
+                   nn.ConvTranspose2d(256, 64, 4, 2, 0),
+                   nn.PReLU(64, 0.02),
+
+                   nn.ConvTranspose2d(64, 1, 3, 1, 0),
+                   nn.BatchNorm2d(1),
+                   nn.PReLU(1, 0.02),
+    
+                   nn.Flatten(),
+                   nn.Linear(576,550),
+                                   )
+        
+    def forward(self, x):
+        logger.debug("Decoder::decode")
+        
+#         for layer in self._layers:
+#             x=self._activation_fct(layer(x))
+        x = self._layers(x)
+            
+        nr_layers=len(self._layers2)
+        x1, x2 = x, x
+        
+        for idx, (layer2, layer3) in enumerate(zip(self._layers2, self._layers3)):
+            if idx==nr_layers-1 and self._output_activation_fct:
+                x1 = self._output_activation_fct(layer2(x1))
+                x2 = self._output_activation_fct(layer3(x2))
+            else:
+                x1 = self._activation_fct(layer2(x1))
+                x2 = self._activation_fct(layer3(x2))
+        return x1, x2
+    
 if __name__=="__main__":
     logger.debug("Testing Networks")
 
