@@ -150,7 +150,7 @@ class HighLevelFeatures:
         for radii in self.r_edges:
             if radii[-1] > max_r:
                 max_r = radii[-1]
-        vmax = data.max() # <-------------------
+        vmax = 1e4 #data.max() # <-------------------
         for idx, layer in enumerate(self.relevantLayers):
             radii = np.array(self.r_edges[idx])
             if self.particle != 'electron':
