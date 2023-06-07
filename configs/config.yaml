@@ -20,5 +20,5 @@ task:
 
 defaults:
   - model: gumboltatlascrbmcnn
-  - data: atlas
+  - data: atlasPions
   - engine: dvaecalo_training
