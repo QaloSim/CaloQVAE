@@ -120,7 +120,7 @@ class DecoderCNN(BasicDecoderV3):
                    nn.PReLU(256),
 
                    nn.ConvTranspose2d(256, 128, 3, 2, 0),
-                   nn.BatchNorm2d(128),
+#                    nn.BatchNorm2d(128),
                    nn.PReLU(128),
                                    )
         self._layers2 = nn.Sequential(
@@ -131,7 +131,7 @@ class DecoderCNN(BasicDecoderV3):
                    nn.PReLU(16),
 
                    nn.ConvTranspose2d(16, 1, 2, 1, 0),
-                   nn.Dropout(0.4),                  
+                   nn.Dropout(0.5),                  
     
                    nn.Flatten(),
                    nn.Linear(576,368),
@@ -144,7 +144,7 @@ class DecoderCNN(BasicDecoderV3):
                    nn.PReLU(16),
 
                    nn.ConvTranspose2d(16, 1, 2, 1, 0),
-                   nn.Dropout(0.4),                  
+                   nn.Dropout(0.5),                  
     
                    nn.Flatten(),
                    nn.Linear(576,368),
