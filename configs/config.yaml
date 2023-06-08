@@ -11,7 +11,7 @@ wandb_enabled: 1
 output_path: /fast_scratch_1/jtoledo/outputs
 device: gpu
 gpu_list:
-  - 1
+  - 0
 
 task:
   - train
@@ -20,5 +20,5 @@ task:
 
 defaults:
   - model: gumboltatlascrbmcnn
-  - data: atlasPions
+  - data: atlas
   - engine: dvaecalo_training

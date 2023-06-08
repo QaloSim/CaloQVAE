@@ -84,9 +84,10 @@ class BasicDecoderV3(NetworkV3):
         return x1, x2
     
 class DecoderCNN(BasicDecoderV3):
-    def __init__(self, output_activation_fct=nn.Identity(), **kwargs):
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
         super(DecoderCNN, self).__init__(**kwargs)
         self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
         
 #         self._layers = nn.Sequential(
 #                    nn.Unflatten(1, (1001, 1,1)),
@@ -134,7 +135,7 @@ class DecoderCNN(BasicDecoderV3):
                    nn.Dropout(0.5),                  
     
                    nn.Flatten(),
-                   nn.Linear(576,368),
+                   nn.Linear(576,self.num_output_nodes),
                                    )
         self._layers3 = nn.Sequential(
                    nn.ConvTranspose2d(128, 32, 2, 1, 0),
@@ -147,7 +148,7 @@ class DecoderCNN(BasicDecoderV3):
                    nn.Dropout(0.5),                  
     
                    nn.Flatten(),
-                   nn.Linear(576,368),
+                   nn.Linear(576,self.num_output_nodes),
                                    )
         
     def forward(self, x):

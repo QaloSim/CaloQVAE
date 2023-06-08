@@ -128,7 +128,7 @@ class CaloImageContainer(Dataset):
         self._true_energies=input_data["energy"][:]
 #         self._overflow_energies=input_data["overflow"][:]
 
-def get_atlas_datasets(inFiles={}, particle_type=["photon1"], layer_subset=[],
+def get_atlas_datasets(inFiles={}, particle_type=["pions1"], layer_subset=[],
                       frac_train_dataset=0.6, frac_test_dataset=0.2):
 
     #read in all input files for all jet types and layers

@@ -48,4 +48,5 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                                   self._decoder_nodes[0][1])
         return DecoderCNN(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct, #<--- try identity
+                              num_output_nodes = self._flat_input_size,
                               cfg=self._config)
