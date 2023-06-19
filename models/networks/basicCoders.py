@@ -111,9 +111,9 @@ class DecoderCNN(BasicDecoderV3):
 #                                    )
 
         self._layers = nn.Sequential(
-                   nn.Unflatten(1, (1001, 1,1)),
+                   nn.Unflatten(1, (1000, 1,1)),
     
-                   nn.ConvTranspose2d(1001, 512, 4, 1, 0),
+                   nn.ConvTranspose2d(1000, 512, 4, 1, 0),
                    nn.BatchNorm2d(512),
                    nn.PReLU(512),
 
@@ -121,11 +121,11 @@ class DecoderCNN(BasicDecoderV3):
                    nn.PReLU(256),
 
                    nn.ConvTranspose2d(256, 128, 3, 2, 0),
-#                    nn.BatchNorm2d(128),
+                   nn.BatchNorm2d(128),
                    nn.PReLU(128),
                                    )
         self._layers2 = nn.Sequential(
-                   nn.ConvTranspose2d(128, 32, 2, 1, 0),
+                   nn.ConvTranspose2d(129, 32, 2, 1, 0),
                    nn.PReLU(32),
 
                    nn.ConvTranspose2d(32, 16, 2, 1, 0),
@@ -138,24 +138,25 @@ class DecoderCNN(BasicDecoderV3):
                    nn.Linear(576,self.num_output_nodes),
                                    )
         self._layers3 = nn.Sequential(
-                   nn.ConvTranspose2d(128, 32, 2, 1, 0),
+                   nn.ConvTranspose2d(129, 32, 2, 1, 0),
                    nn.PReLU(32),
 
                    nn.ConvTranspose2d(32, 16, 2, 1, 0),
                    nn.PReLU(16),
 
                    nn.ConvTranspose2d(16, 1, 2, 1, 0),
-                   nn.Dropout(0.5),                  
+                   nn.Dropout(0.2),                  
     
                    nn.Flatten(),
                    nn.Linear(576,self.num_output_nodes),
                                    )
         
-    def forward(self, x):
+    def forward(self, x, x0):
         logger.debug("Decoder::decode")
         
 #         for layer in self._layers:
 #             x=self._activation_fct(layer(x))
+#         x = self._layers(x)
             
 #         nr_layers=len(self._layers2)
 #         x1, x2 = x, x
@@ -169,6 +170,7 @@ class DecoderCNN(BasicDecoderV3):
 #                 x2 = self._activation_fct(layer3(x2))
                 
         x = self._layers(x)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21)), 1)
         x1 = self._layers2(x)
         x2 = self._layers3(x)
         return x1, x2

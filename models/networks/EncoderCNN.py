@@ -36,23 +36,23 @@ class EncoderCNN(HierarchicalEncoder):
                    nn.PReLU(64, 0.02),
 
                    nn.Conv2d(64, 128, 3, 1, 0),
-                   nn.PReLU(128, 0.02),
                    nn.MaxPool2d(2,stride=2),
+                   nn.PReLU(128, 0.02),
 
                    nn.Conv2d(128, 256, 3, 1, 0),
                    nn.PReLU(256, 0.02),
-                   nn.LeakyReLU(negative_slope=0.02),
 
                    nn.Conv2d(256, 512, 2, 1, 0),
                    nn.PReLU(512, 0.02),
     
                    nn.Conv2d(512, 1024, 2, 1, 0),
-                   nn.PReLU(1024, 0.02),
                    nn.MaxPool2d(2,stride=2),
+                   nn.PReLU(1024, 0.02),
     
                    nn.Conv2d(1024, self.n_latent_nodes, 2, 1, 0),
-                   nn.PReLU(self.n_latent_nodes, 0.02),
                    nn.MaxPool2d(2,stride=2),
+                   nn.PReLU(self.n_latent_nodes, 0.02),
+#                    nn.Sigmoid(),
     
                    nn.Flatten(),
                                    )
