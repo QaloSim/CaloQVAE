@@ -115,40 +115,49 @@ class DecoderCNN(BasicDecoderV3):
     
                    nn.ConvTranspose2d(1000, 512, 4, 1, 0),
                    nn.BatchNorm2d(512),
-                   nn.PReLU(512),
+                   nn.PReLU(512, 0.02),
+                   
 
                    nn.ConvTranspose2d(512, 256, 4, 2, 0),
-                   nn.PReLU(256),
+                   nn.BatchNorm2d(256),
+                   nn.PReLU(256, 0.02),
 
                    nn.ConvTranspose2d(256, 128, 3, 2, 0),
                    nn.BatchNorm2d(128),
-                   nn.PReLU(128),
+                   nn.PReLU(128, 0.02),
+                   
                                    )
         self._layers2 = nn.Sequential(
-                   nn.ConvTranspose2d(129, 32, 2, 1, 0),
-                   nn.PReLU(32),
+                   nn.ConvTranspose2d(128, 32, 2, 1, 0),
+                   nn.BatchNorm2d(32),
+                   nn.PReLU(32, 0.02),
 
                    nn.ConvTranspose2d(32, 16, 2, 1, 0),
-                   nn.PReLU(16),
-
-                   nn.ConvTranspose2d(16, 1, 2, 1, 0),
-                   nn.Dropout(0.5),                  
-    
-                   nn.Flatten(),
-                   nn.Linear(576,self.num_output_nodes),
-                                   )
-        self._layers3 = nn.Sequential(
-                   nn.ConvTranspose2d(129, 32, 2, 1, 0),
-                   nn.PReLU(32),
-
-                   nn.ConvTranspose2d(32, 16, 2, 1, 0),
-                   nn.PReLU(16),
+                   nn.BatchNorm2d(16),
+                   nn.PReLU(16, 0.02),
 
                    nn.ConvTranspose2d(16, 1, 2, 1, 0),
                    nn.Dropout(0.2),                  
     
                    nn.Flatten(),
                    nn.Linear(576,self.num_output_nodes),
+                   nn.LeakyReLU(0.02),
+                                   )
+        self._layers3 = nn.Sequential(
+                   nn.ConvTranspose2d(128, 32, 2, 1, 0),
+                   nn.BatchNorm2d(32),
+                   nn.PReLU(32, 0.02),
+
+                   nn.ConvTranspose2d(32, 16, 2, 1, 0),
+                   nn.BatchNorm2d(16),
+                   nn.PReLU(16, 0.02),
+
+                   nn.ConvTranspose2d(16, 1, 2, 1, 0),
+                   nn.Dropout(0.2),                  
+    
+                   nn.Flatten(),
+                   nn.Linear(576,self.num_output_nodes),
+                   nn.LeakyReLU(0.02),
                                    )
         
     def forward(self, x, x0):
@@ -170,7 +179,7 @@ class DecoderCNN(BasicDecoderV3):
 #                 x2 = self._activation_fct(layer3(x2))
                 
         x = self._layers(x)
-        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21)), 1)
+        # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21)), 1)
         x1 = self._layers2(x)
         x2 = self._layers3(x)
         return x1, x2

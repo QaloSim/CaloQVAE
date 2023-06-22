@@ -31,7 +31,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         """
         logger.debug("GumBoltAtlasCRBMCNN::_create_encoder")
         return EncoderCNN(
-            input_dimension=self._flat_input_size+1,
+            input_dimension=self._flat_input_size,
             n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
             n_latent_nodes=self.n_latent_nodes,
             skip_latent_layer=False,
@@ -53,7 +53,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
     
-    def forward(self, x, is_training):
+    def forward(self, xx, is_training):
         """
         - Overrides forward in GumBoltCaloV5.py
         
@@ -64,14 +64,18 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         
         #see definition for explanation
         out=self._output_container.clear()
+        x, x0 = xx
         
 	    #Step 1: Feed data through encoder
-        in_data = torch.cat([x[0], x[1]], dim=1)
-        out.beta, out.post_logits, out.post_samples = self.encoder(in_data, is_training)
+        # in_data = torch.cat([x[0], x[1]], dim=1)
+        
+        out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training)
+        # out.post_samples = self.encoder(x, x0, is_training)
+        post_samples = out.post_samples
         post_samples = torch.cat(out.post_samples, 1)
 #         post_samples = torch.cat([post_samples, x[1]], dim=1)
         
-        output_hits, output_activations = self.decoder(post_samples, x[1])
+        output_hits, output_activations = self.decoder(post_samples, x0)
         
         out.output_hits = output_hits
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
