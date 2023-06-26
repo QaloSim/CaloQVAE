@@ -156,11 +156,14 @@ class DataManager(object):
                 )
             
         elif self._config.data.data_type.lower()=="atlas":
-            inFiles={ # ToDo-JQTM : move data to right path. Set the right config
+            inFiles={
             'photon1':    self._config.data.atlas_input_photon1,
-#             'photon2':    self._config.data.atlas_input_photon2, 
+            'photon2':    self._config.data.atlas_input_photon2, 
+            'photon3':    self._config.data.atlas_input_photon3, 
             'pion1':   self._config.data.atlas_input_pion1,
-#             'pion2':   self._config.data.atlas_input_pion2
+            'pion2':   self._config.data.atlas_input_pion2,
+            'pion3':   self._config.data.atlas_input_pion3,
+            'pion4':   self._config.data.atlas_input_pion4
         }
 
             train_dataset,test_dataset,val_dataset=get_atlas_datasets(
