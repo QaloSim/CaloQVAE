@@ -15,6 +15,9 @@ class Scheduler:
        self.trigger_value: float = trigger_value #trigger value current value
        self.trigger_var_curr_value: float = trigger_var_curr_value #trigger value to start annealing
 
+    def __repr__(self) -> str:
+        f"Current value: {self.anneal_var}, method: {self.method}, value to trigger: {self.trigger_value}"
+
     def get_linear_direction(self) -> int:
         direction: int = 1 if self.start_point < self.end_point else -1
         return direction
@@ -39,6 +42,9 @@ class Scheduler:
         if direction * self.trigger_var_curr_value < direction * self.trigger_value:
             logger.warning("Still below trigger threshold")
             return -1
+        
+        logger.debug("Updating annealing variable.")
+        logger.debug(__repr__)
 
         return 0
 
