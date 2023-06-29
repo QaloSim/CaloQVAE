@@ -62,7 +62,7 @@ class GumBoltCaloV5(GumBolt):
         logger.debug("loss")
         
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-        ae_loss = self._output_loss(input_data, fwd_out.output_activations)
+        ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(input_data)  #<------JQTM: Weighed MSE
         ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0)
         
         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
