@@ -6,9 +6,10 @@ from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class Scheduler:
-    def __init__(start_point: float, end_point: float, method: str = "linear", trigger_value, trigger_var_curr_value: float = None):
+    def __init__(start_point: float, end_point: float, anneal_step: float, method: str = "linear", trigger_value, trigger_var_curr_value: float = None):
        logger.info("Setting up the scheduler")
        self.anneal_var: float = start_point
+       self.anneal_step: float = anneal_step
        self.start_point: float = start_point #start point of annealing 
        self.end_point: float = end_point #end point of annealing
        self.method: str = method
@@ -45,6 +46,8 @@ class Scheduler:
         
         logger.debug("Updating annealing variable.")
         logger.debug(__repr__)
+
+        self.anneal_var += self.anneal_step * direction
 
         return 0
 
