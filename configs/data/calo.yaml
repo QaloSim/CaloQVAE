@@ -7,10 +7,10 @@ particle_type: piplus
 frac_test_dataset: 0.1
 frac_train_dataset: 0.8
 
-scaled: True
+scaled: False
 scaler_path: /fast_scratch_1/QVAE/data/calo_scaled/piplus_scaler.gz
 scaler_amin: /fast_scratch_1/QVAE/data/calo_scaled/piplus_amin.npy
 
-calo_input_eplus: /fast_scratch_1/QVAE/data/calo_scaled/eplus.hdf5
-calo_input_gamma: /fast_scratch_1/QVAE/data/calo_scaled/gamma.hdf5
-calo_input_piplus: /fast_scratch_1/QVAE/data/calo_scaled/piplus.hdf5
+calo_input_eplus: /fast_scratch_1/QVAE/data/calo/eplus.hdf5
+calo_input_gamma: /fast_scratch_1/QVAE/data/calo/gamma.hdf5
+calo_input_piplus: /fast_scratch_1/QVAE/data/calo/piplus.hdf5

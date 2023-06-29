@@ -66,7 +66,7 @@ class EncoderCNN(HierarchicalEncoder):
                    nn.PReLU(64, 0.02),
                 )
         self.sequential2 = nn.Sequential(
-                   nn.Conv2d(65, 128, 3, 1, 0),
+                   nn.Conv2d(64, 128, 3, 1, 0),
                    nn.MaxPool2d(2,stride=2),
                    
                    nn.PReLU(128, 0.02),
@@ -98,46 +98,46 @@ class EncoderCNN(HierarchicalEncoder):
                    nn.Flatten(),
                                    )
 
-        self.sequential3 = nn.Sequential(
-                   nn.Conv2d(65, 128, 3, 1, 0),
-                   nn.MaxPool2d(2,stride=2),
+#         self.sequential3 = nn.Sequential(
+#                    nn.Conv2d(65, 128, 3, 1, 0),
+#                    nn.MaxPool2d(2,stride=2),
                    
-                   nn.PReLU(128, 0.02),
-                   nn.BatchNorm2d(128),
-                   
-
-                   nn.Conv2d(128, 256, 3, 1, 0),
-                   nn.BatchNorm2d(256),
-                   nn.PReLU(256, 0.02),
+#                    nn.PReLU(128, 0.02),
+#                    nn.BatchNorm2d(128),
                    
 
-                   nn.Conv2d(256, 512, 2, 1, 0),
-                   nn.BatchNorm2d(512),
-                   nn.PReLU(512, 0.02),
+#                    nn.Conv2d(128, 256, 3, 1, 0),
+#                    nn.BatchNorm2d(256),
+#                    nn.PReLU(256, 0.02),
+                   
+
+#                    nn.Conv2d(256, 512, 2, 1, 0),
+#                    nn.BatchNorm2d(512),
+#                    nn.PReLU(512, 0.02),
                    
     
-                   nn.Conv2d(512, 1024, 2, 1, 0),
-                   nn.MaxPool2d(2,stride=2),
-                   nn.BatchNorm2d(1024),
-                   nn.PReLU(1024, 0.02),
+#                    nn.Conv2d(512, 1024, 2, 1, 0),
+#                    nn.MaxPool2d(2,stride=2),
+#                    nn.BatchNorm2d(1024),
+#                    nn.PReLU(1024, 0.02),
                    
     
-                   nn.Conv2d(1024, self.n_latent_nodes, 2, 1, 0),
-                   nn.MaxPool2d(2,stride=2),
-                   # nn.PReLU(self.n_latent_nodes, 0.02),
-                   nn.Sigmoid(),
-                   # nn.BatchNorm2d(self.n_latent_nodes),
+#                    nn.Conv2d(1024, self.n_latent_nodes, 2, 1, 0),
+#                    nn.MaxPool2d(2,stride=2),
+#                    # nn.PReLU(self.n_latent_nodes, 0.02),
+#                    nn.Sigmoid(),
+#                    # nn.BatchNorm2d(self.n_latent_nodes),
     
-                   nn.Flatten(),
-                                   )
-        return nn.Sequential(self.sequential, self.sequential3)
+#                    nn.Flatten(),
+#                                    )
+        return nn.Sequential(self.sequential, self.sequential2)
 
     def forward2(self, x, x0, is_training=True):
         """Overrides forward in HierarchicalEncoder
         :param level
         """
         x = self.sequential(x)
-        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,22,22)), 1)
+#         x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,22,22)), 1)
         x = self.sequential2(x)
         return x
 
