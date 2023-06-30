@@ -26,3 +26,10 @@ sample_energies:
   - 50
   - 100
   - 150
+
+scheduler_dict:
+  start_point: 0.2
+  end_point: 0
+  anneal_step: 0.02
+  method: "linear"
+  trigger_value: 1
