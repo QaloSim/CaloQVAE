@@ -85,11 +85,13 @@ class EngineCaloV3(Engine):
                     status = self._scheduler.anneal() #Annealing step
                     if status == 0:
                         beta = self._scheduler.get_annealing_var()
+                        logger.info(self._scheduler)
                     else:
+                        #TODO This should take into account the end of the schedule and set to end point when appropriate
                         beta = self._config.engine.scheduler_dict["start_point"]
                         
-                    logger.info(self._scheduler)
                     batch_loss_dict["gamma"] = kl_gamma
+                    batch_loss_dict["beta"] = beta
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
