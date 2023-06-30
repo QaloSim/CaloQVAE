@@ -16,6 +16,7 @@ import numpy as np
 from engine.engine import Engine
 from utils.histHandler import HistHandler
 from utils.plotting.plotCalo import plot_calo_images
+from utils.anneal_sched.annealingScheduler import Scheduler
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ class EngineCaloV3(Engine):
         super(EngineCaloV3, self).__init__(cfg, **kwargs)
         self._hist_handler = HistHandler(cfg)
         self._best_model_loss = torch.nan_to_num(torch.tensor(float('inf')))
+        self._scheduler = Scheduler(**self._config.engine.scheduler_dict)
 
     def fit(self, epoch, is_training=True, mode="train"):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
@@ -61,8 +63,9 @@ class EngineCaloV3(Engine):
                 self._optimiser.zero_grad()
                 
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
+                beta = self._config.model.output_smoothing_fct
                 
-                fwd_output = self._model((in_data, true_energy), is_training)
+                fwd_output = self._model((in_data, true_energy), is_training, beta)
                 batch_loss_dict = self._model.loss(in_data, fwd_output)
                     
                 if is_training:
@@ -76,7 +79,16 @@ class EngineCaloV3(Engine):
                         kl_gamma = 0.
                         
                     ae_gamma = 1. if ae_enabled else 0.
+
+                    #Scheduling beta annealing
+                    self._scheduler.update_trigger_value(gamma) #Update gamma value
+                    status = self._scheduler.anneal() #Annealing step
+                    if status == 0:
+                        beta = self._scheduler.get_annealing_var()
+                    else:
+                        beta = self._config.engine.scheduler_dict["start_point"]
                         
+                    logger.info(self._scheduler)
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
@@ -264,7 +276,7 @@ class EngineCaloV3(Engine):
                 input_data, label = next(iter(data_loader))
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
                 
-                fwd_output = self._model((in_data, true_energy), False)
+                fwd_output = self._model((in_data, true_energy), False, self._scheduler.get_annealing_var())
                 batch_loss_dict = self._model.loss(in_data, fwd_output)
             
                 # Initialize the accumulating dictionary keys and values
