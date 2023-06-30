@@ -6,26 +6,37 @@ from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 class Scheduler:
-    def __init__(start_point: float, end_point: float, anneal_step: float, method: str = "linear", trigger_value, trigger_var_curr_value: float = None):
-       logger.info("Setting up the scheduler")
-       self.anneal_var: float = start_point
-       self.anneal_step: float = anneal_step
-       self.start_point: float = start_point #start point of annealing 
-       self.end_point: float = end_point #end point of annealing
-       self.method: str = method
-       self.trigger_value: float = trigger_value #trigger value current value
-       self.trigger_var_curr_value: float = trigger_var_curr_value #trigger value to start annealing
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        self.anneal_var = self.start_point
 
     def __repr__(self) -> str:
-        f"Current value: {self.anneal_var}, method: {self.method}, value to trigger: {self.trigger_value}"
+        return f"Current value: {self.anneal_var}, method: {self.method}, value to trigger: {self.trigger_value}"
 
     def get_linear_direction(self) -> int:
         direction: int = 1 if self.start_point < self.end_point else -1
         return direction
 
     def update_trigger_value(self, trigger_var_value: float):
-        logger.debug("Updating trigger variable variable")
+        logger.debug(f"Updating trigger variable variable to {trigger_var_value}")
         self.trigger_var_curr_value = trigger_var_value
+
+    def get_annealing_var(self) -> float:
+        return self.anneal_var
+
+    def anneal(self) -> int:
+        """
+        General annealing function to steer into the chosen method
+        """
+        logger.debug("Generatl annealing function")
+        #For the future maybe a map makes more sense
+        if self.method == "linear":
+            status: int = self.linear_annealing
+            return status
+        
+        else:
+            logger.error("Annealing method not supported")
     
     def linear_annealing(self) -> int:
         """
@@ -45,7 +56,7 @@ class Scheduler:
             return -1
         
         logger.debug("Updating annealing variable.")
-        logger.debug(__repr__)
+        logger.debug(self.__repr__)
 
         self.anneal_var += self.anneal_step * direction
 
