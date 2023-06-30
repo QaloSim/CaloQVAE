@@ -2,6 +2,7 @@
 Scheduler module to perform annealing a given parameter
 """
 
+import math
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
@@ -38,28 +39,43 @@ class Scheduler:
         else:
             logger.error("Annealing method not supported")
     
+    def check_ready_annealing(self) -> bool:
+        #Checking if the value is still within the annealing values
+        direction: int = self.get_linear_direction()
+
+        if direction * self.anneal_var < direction * self.start_point or direction * self.anneal_var > direction * self.end_point:
+            logger.warning("Value is outside of the annealing bound")
+            return False
+        
+        if direction * self.trigger_var_curr_value < direction * self.trigger_value:
+            logger.warning("Still below trigger threshold")
+            return False
+ 
+        return True
+    
     def linear_annealing(self) -> int:
         """
         Linear annealing with a given step
         Returns an error code int
         """
         logger.debug("Doing linear annealing")
+        logger.debug(self.__repr__)
         direction: int = self.get_linear_direction()
 
-        #Checking if the value is still within the annealing values
-        if direction * self.anneal_var < direction * self.start_point or direction * self.anneal_var > direction * self.end_point:
-            logger.warning("Value is outside of the annealing bound")
-            return -1
-        
-        if direction * self.trigger_var_curr_value < direction * self.trigger_value:
-            logger.warning("Still below trigger threshold")
-            return -1
-        
-        logger.debug("Updating annealing variable.")
-        logger.debug(self.__repr__)
-
-        self.anneal_var += self.anneal_step * direction
+        if self.check_ready_annealing(): self.anneal_var += self.anneal_step * direction
+        else: return -1
 
         return 0
 
-        
+    def exponential_annealing(self):
+        """
+        Method for exponential annealing
+        Returns an error int code
+        """
+        #TODO Add smoothed decay rate
+        logger.debug("Doing exponential annealing")
+        logger.debug(self.__repr__)
+        if self.check_ready_annealing(): self.anneal_var *= math.exp(-self.anneal_step)
+        else: return -1
+
+        return 0
