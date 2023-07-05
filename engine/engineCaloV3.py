@@ -80,7 +80,7 @@ class EngineCaloV3(Engine):
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 0.005 * batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
                     else:
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"]
                     batch_loss_dict["loss"].backward()
@@ -220,7 +220,7 @@ class EngineCaloV3(Engine):
         true_energy = true_energy.to(self._device).float()
         
 #         return in_data, true_energy, in_data_flat
-        return torch.log1p((in_data/true_energy)/0.05), true_energy, in_data_flat #<------JQTM: log(1+reduced_energy/R) w/ R=0.05
+        return torch.log1p((in_data/true_energy)/0.04), true_energy, in_data_flat #<------JQTM: log(1+reduced_energy/R) w/ R=0.05 for photons
     
     def _update_histograms(self, in_data, output_activations):
         """
