@@ -11,6 +11,7 @@ from models.networks.hierarchicalEncoder import HierarchicalEncoder
 class EncoderCNN(HierarchicalEncoder):
     def __init__(self, **kwargs):
         super(EncoderCNN, self).__init__(**kwargs)
+        self.minEnergy = 256.0
         
     def _create_hierarchy_network(self, level: int = 0):
         """Overrides _create_hierarchy_network in HierarchicalEncoder
@@ -66,7 +67,7 @@ class EncoderCNN(HierarchicalEncoder):
                    nn.PReLU(64, 0.02),
                 )
         self.sequential2 = nn.Sequential(
-                   nn.Conv2d(64, 128, 3, 1, 0),
+                   nn.Conv2d(65, 128, 3, 1, 0),
                    nn.MaxPool2d(2,stride=2),
                    
                    nn.PReLU(128, 0.02),
@@ -137,7 +138,7 @@ class EncoderCNN(HierarchicalEncoder):
         :param level
         """
         x = self.sequential(x)
-#         x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,22,22)), 1)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,22,22).divide(self.minEnergy).log2()), 1)
         x = self.sequential2(x)
         return x
 
