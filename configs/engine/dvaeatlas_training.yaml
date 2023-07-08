@@ -1,0 +1,28 @@
+_target_: engine.engineAtlas.EngineAtlas
+learning_rate: 0.0001
+n_epochs: 1000
+
+kl_enabled: 1
+ae_enabled: 1
+kl_annealing: 1
+kl_annealing_ratio: 0.3
+
+n_train_batch_size: 128
+n_test_batch_size: 1024
+n_valid_batch_size: 1024
+rbm_batch_size: 128
+
+n_gibbs_sampling_steps: 1000
+
+n_val_batches: 3
+n_valid_per_epoch: 5
+
+n_plot_samples: 5
+n_batches_log_train: 10
+
+sample_energies:
+  - 1
+  - 25
+  - 50
+  - 100
+  - 150

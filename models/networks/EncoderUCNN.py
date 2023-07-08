@@ -8,65 +8,87 @@ import torch
 import torch.nn as nn  
 from models.networks.hierarchicalEncoder import HierarchicalEncoder
 
-class EncoderCNN(HierarchicalEncoder):
+class EncoderUCNN(HierarchicalEncoder):
     def __init__(self, **kwargs):
-        super(EncoderCNN, self).__init__(**kwargs)
+        super(EncoderUCNN, self).__init__(**kwargs)
         self.minEnergy = 256.0
         
     def _create_hierarchy_network(self, level: int = 0):
         """Overrides _create_hierarchy_network in HierarchicalEncoder
         :param level
         """
-        self.sequential = nn.Sequential(
+        self.seq1 = nn.Sequential(
                    nn.Linear(self.num_input_nodes, 24*24),
                    nn.Unflatten(1, (1,24, 24)),
     
-                   nn.Conv2d(1, 16, 3, 1, 0),             #<--- used to be 16 to 64
+                   nn.Conv2d(1, 16, 3, 1, 0),
                    nn.BatchNorm2d(16),
                    nn.PReLU(16, 0.02),
                 )
-        self.sequential2 = nn.Sequential(
-                   nn.Conv2d(17, 128, 3, 1, 0),
-                   nn.MaxPool2d(2,stride=2),
-                   
-                   nn.PReLU(128, 0.02),
-                   nn.BatchNorm2d(128),
-                   
-
-                   nn.Conv2d(128, 256, 3, 1, 0),
-                   nn.BatchNorm2d(256),
-                   nn.PReLU(256, 0.02),
-                   
-
-                   nn.Conv2d(256, 512, 2, 1, 0),
-                   nn.BatchNorm2d(512),
-                   nn.PReLU(512, 0.02),
-                   
-    
-                   nn.Conv2d(512, 1024, 2, 1, 0),
-                   nn.MaxPool2d(2,stride=2),
-                   nn.BatchNorm2d(1024),
-                   nn.PReLU(1024, 0.02),
-                   
-    
-                   nn.Conv2d(1024, self.n_latent_nodes, 2, 1, 0),
-                   nn.MaxPool2d(2,stride=2),
-                   # nn.PReLU(self.n_latent_nodes, 0.02),
-                   nn.Sigmoid(),
-                   # nn.BatchNorm2d(self.n_latent_nodes),
-    
-                   nn.Flatten(),
-                                   )
+        self.seq2 = nn.Sequential(
+                           nn.Conv2d(17, 32, 3, 1, 0),
+                           # nn.MaxPool2d(2,stride=2),
+                           
+                           nn.PReLU(32, 0.02),
+                           nn.BatchNorm2d(32),
+                        )
         
-        return nn.Sequential(self.sequential, self.sequential2)
+        self.seq3 = nn.Sequential(
+                           nn.Conv2d(33, 64, 3, 1, 0),
+                           nn.BatchNorm2d(64),
+                           nn.PReLU(64, 0.02),
+                        )
+        
+        self.seq4 = nn.Sequential(
+                           nn.Conv2d(65, 128, 3, 1, 0),
+                           nn.MaxPool2d(2,stride=2),
+                           
+                           nn.PReLU(128, 0.02),
+                           nn.BatchNorm2d(128),
+                           
+        
+                           nn.Conv2d(128, 256, 3, 1, 0),
+                           nn.BatchNorm2d(256),
+                           nn.PReLU(256, 0.02),
+                           
+        
+                           nn.Conv2d(256, 512, 2, 1, 0),
+                           nn.BatchNorm2d(512),
+                           nn.PReLU(512, 0.02),
+                           
+            
+                           nn.Conv2d(512, 1024, 2, 1, 0),
+                           nn.MaxPool2d(2,stride=2),
+                           nn.BatchNorm2d(1024),
+                           nn.PReLU(1024, 0.02),
+        
+                            nn.Conv2d(1024, 1000, 2, 1, 0),
+                           # nn.MaxPool2d(2,stride=2),
+                           # nn.PReLU(self.n_latent_nodes, 0.02),
+                           nn.Sigmoid(),
+                           # nn.BatchNorm2d(self.n_latent_nodes),
+            
+                           nn.Flatten(),
+                        )
+        
+        
+        return nn.Sequential(self.seq1, self.seq2)   #<--- this goes to an unused place
 
     def forward2(self, x, x0, is_training=True):
         """Overrides forward in HierarchicalEncoder
         :param level
         """
-        x = self.sequential(x)
-        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,22,22).divide(self.minEnergy).log2()), 1)
-        x = self.sequential2(x)
+        x = self.seq1(x)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(self.minEnergy).log2()), 1)
+        x = self.seq2(x)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(self.minEnergy).log2()), 1)
+        x = self.seq3(x)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(self.minEnergy).log2()), 1)
+        x = self.seq4(x)
+        
+        # x = self.sequential(x)
+        # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,22,22).divide(self.minEnergy).log2()), 1)
+        # x = self.sequential2(x)
         return x
 
     def forward(self, x, x0, is_training=True):
