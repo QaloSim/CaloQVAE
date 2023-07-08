@@ -8,6 +8,7 @@ import torch
 # DiVAE.models imports
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 from models.networks.EncoderCNN import EncoderCNN
+from models.networks.EncoderUCNN import EncoderUCNN
 from models.networks.basicCoders import DecoderCNN
 
 from CaloQVAE import logging
@@ -30,7 +31,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             EncoderCNN instance
         """
         logger.debug("GumBoltAtlasCRBMCNN::_create_encoder")
-        return EncoderCNN(
+        return EncoderUCNN(
             input_dimension=self._flat_input_size,
             n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
             n_latent_nodes=self.n_latent_nodes,

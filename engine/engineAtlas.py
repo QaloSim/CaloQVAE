@@ -13,20 +13,18 @@ import coffea
 import wandb
 import numpy as np
 
-from engine.engine import Engine
+from engine.engineCaloV3 import EngineCaloV3
 from utils.histHandler import HistHandler
 from utils.plotting.plotCalo import plot_calo_images
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
-class EngineCaloV3(Engine):
+class EngineAtlas(EngineCaloV3):
 
     def __init__(self, cfg, **kwargs):
-        logger.info("Setting up engine Calo.")
-        super(EngineCaloV3, self).__init__(cfg, **kwargs)
-        self._hist_handler = HistHandler(cfg)
-        self._best_model_loss = torch.nan_to_num(torch.tensor(float('inf')))
+        logger.info("Setting up engine Atlas.")
+        super(EngineAtlas, self).__init__(cfg, **kwargs)
 
     def fit(self, epoch, is_training=True, mode="train"):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
@@ -80,7 +78,7 @@ class EngineCaloV3(Engine):
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
                     else:
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"]
                     batch_loss_dict["loss"].backward()
