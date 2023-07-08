@@ -182,7 +182,7 @@ class DecoderCNN(BasicDecoderV3):
                 
         x = self._layers(x)
         # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21)), 1)
-#         x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21).divide(self.minEnergy).log2()), 1)
+        # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21).divide(self.minEnergy).log2()), 1)
         x1 = self._layers2(x)
         x2 = self._layers3(x)
         return x1, x2

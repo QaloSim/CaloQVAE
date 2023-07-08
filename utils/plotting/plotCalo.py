@@ -10,8 +10,10 @@ from PIL import Image
 import wandb
 
 from utils.plotting.HighLevelFeatures import HighLevelFeatures as HLF
-HLF_1_photons = HLF('photon', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_photons.xml')
-HLF_1_pions = HLF('pion', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_pions.xml')
+HLF_1_photons = HLF('photon', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_photons.xml')
+HLF_1_pions = HLF('pion', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_pions.xml')
+# HLF_1_photons = HLF('photon', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_photons.xml')
+# HLF_1_pions = HLF('pion', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_pions.xml')
 
 _NORM_LIST = [LogNorm(vmax=10000, vmin=0.1), LogNorm(vmax=10000 , vmin=0.1), LogNorm(vmax=10, vmin=0.1)]
 
