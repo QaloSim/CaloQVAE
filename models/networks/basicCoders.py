@@ -164,21 +164,6 @@ class DecoderCNN(BasicDecoderV3):
         
     def forward(self, x, x0):
         logger.debug("Decoder::decode")
-        
-#         for layer in self._layers:
-#             x=self._activation_fct(layer(x))
-#         x = self._layers(x)
-            
-#         nr_layers=len(self._layers2)
-#         x1, x2 = x, x
-        
-#         for idx, (layer2, layer3) in enumerate(zip(self._layers2, self._layers3)):
-#             if idx==nr_layers-1 and self._output_activation_fct:
-#                 x1 = self._output_activation_fct(layer2(x1))
-#                 x2 = self._output_activation_fct(layer3(x2))
-#             else:
-#                 x1 = self._activation_fct(layer2(x1))
-#                 x2 = self._activation_fct(layer3(x2))
                 
         x = self._layers(x)
         # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21)), 1)
@@ -186,6 +171,30 @@ class DecoderCNN(BasicDecoderV3):
         x1 = self._layers2(x)
         x2 = self._layers3(x)
         return x1, x2
+
+
+class Classifier(BasicDecoderV3):
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
+        super(Classifier, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+        self.minEnergy = 256.0
+
+        self._layers = nn.Sequential(
+                   ## nn.BatchNorm1d(self.num_output_nodes),
+                   nn.LeakyReLU(0.02),
+                   nn.Linear(self.num_output_nodes, 15),
+                   ## nn.BatchNorm1d(100),
+                   # nn.LeakyReLU(0.02),
+                   # nn.Linear(100, 15),
+                   ## nn.BatchNorm1d(15),
+                                   )
+        
+    def forward(self, x):
+        logger.debug("Classifier::classify")
+                
+        x = self._layers(x)
+        return x
     
 if __name__=="__main__":
     logger.debug("Testing Networks")

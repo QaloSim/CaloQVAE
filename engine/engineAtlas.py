@@ -61,7 +61,7 @@ class EngineAtlas(EngineCaloV3):
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
                 
                 fwd_output = self._model((in_data, true_energy), is_training)
-                batch_loss_dict = self._model.loss(in_data, fwd_output)
+                batch_loss_dict = self._model.loss(in_data, fwd_output, true_energy)
                     
                 if is_training:
                     gamma = min((((epoch-1)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), 1.0)
@@ -78,9 +78,9 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 10000 * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
                     else:
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"]
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 10000 * batch_loss_dict["label_loss"]
                     batch_loss_dict["loss"].backward()
                     self._optimiser.step()
                     # Trying this to free up memory on the GPU and run validation during a training epoch
@@ -266,7 +266,7 @@ class EngineAtlas(EngineCaloV3):
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
                 
                 fwd_output = self._model((in_data, true_energy), False)
-                batch_loss_dict = self._model.loss(in_data, fwd_output)
+                batch_loss_dict = self._model.loss(in_data, fwd_output, true_energy)
             
                 # Initialize the accumulating dictionary keys and values
                 if idx == 0:
