@@ -42,7 +42,7 @@ class ShowerDepthHist(object):
             dataset[dataset == 0.] = 1.
             
         datasets = [dataset.sum(axis=1) for dataset in datasets]
-        lfracs = [np.divide(curr_dataset, dataset) for curr_dataset, dataset in zip(curr_datasets, datasets)]
+        lfracs = [np.divide(curr_dataset, dataset + 1e-10) for curr_dataset, dataset in zip(curr_datasets, datasets)]
             
         for label, lfrac in zip(labels, lfracs):
             self._hist.fill(dataset=label, sd=lfrac)

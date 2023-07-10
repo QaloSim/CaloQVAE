@@ -183,10 +183,10 @@ class Classifier(BasicDecoderV3):
         self._layers = nn.Sequential(
                    ## nn.BatchNorm1d(self.num_output_nodes),
                    nn.LeakyReLU(0.02),
-                   nn.Linear(self.num_output_nodes, 15),
+                   nn.Linear(self.num_output_nodes, 100),
                    ## nn.BatchNorm1d(100),
-                   # nn.LeakyReLU(0.02),
-                   # nn.Linear(100, 15),
+                   nn.LeakyReLU(0.2),
+                   nn.Linear(100, 15),
                    ## nn.BatchNorm1d(15),
                                    )
         

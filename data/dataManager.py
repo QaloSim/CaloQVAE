@@ -158,7 +158,23 @@ class DataManager(object):
         elif self._config.data.data_type.lower()=="atlas":
             inFiles={
             'photon1':    self._config.data.atlas_input_photon1,
+                'photonEn0':    self._config.data.atlas_input_photonEn0,
+                'photonEn1':    self._config.data.atlas_input_photonEn1,
+                'photonEn2':    self._config.data.atlas_input_photonEn2,
+                'photonEn3':    self._config.data.atlas_input_photonEn3,
+                'photonEn4':    self._config.data.atlas_input_photonEn4,
+                'photonEn5':    self._config.data.atlas_input_photonEn5,
+                'photonEn6':    self._config.data.atlas_input_photonEn6,
+                'photonEn7':    self._config.data.atlas_input_photonEn7,
             'pion1':   self._config.data.atlas_input_pion1,
+                'pionEn0':   self._config.data.atlas_input_pionEn0,
+                'pionEn1':   self._config.data.atlas_input_pionEn1,
+                'pionEn2':   self._config.data.atlas_input_pionEn2,
+                'pionEn3':   self._config.data.atlas_input_pionEn3,
+                'pionEn4':   self._config.data.atlas_input_pionEn4,
+                'pionEn5':   self._config.data.atlas_input_pionEn5,
+                'pionEn6':   self._config.data.atlas_input_pionEn6,
+                'pionEn7':   self._config.data.atlas_input_pionEn7,
         }
 
             train_dataset,test_dataset,val_dataset=get_atlas_datasets(
