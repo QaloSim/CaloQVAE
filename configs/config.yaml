@@ -12,7 +12,7 @@ wandb_enabled: 1
 output_path: /fast_scratch_2/CaloQVAE_scratch/tvale/outputs
 device: gpu
 gpu_list:
-  - 1
+  - 2
   
 task:
   - train

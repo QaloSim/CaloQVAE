@@ -57,15 +57,23 @@ class EngineCaloV3(Engine):
         kl_annealing_ratio = self._config.engine.kl_annealing_ratio
         ae_enabled = self._config.engine.ae_enabled
         
+        #Total energy loss term hyperparameter
+        total_energy_hp = self._config.engine.total_energy_hp
+        layer_energy_hp = self._config.engine.layer_energy_hp
+        logger.info(f"total_energy_hp: {total_energy_hp}. layer_energy_hp: {layer_energy_hp}.")
+
         with torch.set_grad_enabled(is_training):
             for batch_idx, (input_data, label) in enumerate(data_loader):
                 self._optimiser.zero_grad()
                 
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
-                
+                unscaled_data = self.data_mgr.torch_inv_transform(in_data).to(self._device)
+
                 fwd_output = self._model((in_data, true_energy), is_training)
-                batch_loss_dict = self._model.loss(in_data, fwd_output)
-                    
+                unscaled_inputs = self.data_mgr.torch_inv_transform(fwd_output.output_activations).to(self.device)
+                
+                batch_loss_dict = self._model.loss(in_data, fwd_output, unscaled_data, unscaled_inputs)
+
                 if is_training:
                     gamma = min((((epoch-1)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), 1.0)
                     if kl_enabled:
@@ -81,30 +89,9 @@ class EngineCaloV3(Engine):
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
 
-                    #Undo scaling to data for energy loss terms
-                    unscaled_data = self.data_mgr.torch_inv_transform(in_data).to(self._device)
-                    unscaled_inputs = self.data_mgr.torch_inv_transform(fwd_output.output_activations).to(self.device)
-
-                    #Total energy loss term hyperparameter
-                    total_energy_hp = self._config.engine.total_energy_hp
-                    batch_loss_dict["total_energy"] = self._model.total_energy_loss(unscaled_data, unscaled_inputs)
-
-                    layer_energy_hp = self._config.engine.layer_energy_hp
-                    #Returns a list of loss functions per calo layer
-                    layer_energy_loss_list = self._model.layer_energy_loss(unscaled_data, unscaled_inputs)
-                    logger.info(f"total_energy_hp: {total_energy_hp}. layer_energy_hp: {layer_energy_hp}.")
-
-                    for i, layer_loss in enumerate(layer_energy_loss_list):
-                        batch_loss_dict["layer_energy" + str(i)] = layer_loss
-
-                    if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] + total_energy_hp*batch_loss_dict["total_energy"]
-                        for layer_n in range(len(layer_energy_loss_list)):
-                            batch_loss_dict["loss"] += layer_energy_hp[layer_n]*batch_loss_dict["layer_energy" + str(layer_n)]
-                    else:
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + total_energy_hp*batch_loss_dict["total_energy"]
-                        for layer_n in range(len(layer_energy_loss_list)):
-                            batch_loss_dict["loss"] += layer_energy_hp[layer_n]*batch_loss_dict["layer_energy" + str(layer_n)]
+                    batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict.get("hit_loss", 0) + total_energy_hp*batch_loss_dict["total_energy"]
+                    for layer_n in range(len(layer_energy_hp)):
+                        batch_loss_dict["loss"] += layer_energy_hp[layer_n]*batch_loss_dict["layer_energy" + str(layer_n)]
 
                     batch_loss_dict["loss"].backward()
                     self._optimiser.step()
@@ -114,17 +101,11 @@ class EngineCaloV3(Engine):
                 else:
                     batch_loss_dict["gamma"] = 1.0
                     batch_loss_dict["epoch"] = epoch
-                    total_energy_hp = self._config.engine.total_energy_hp
-                    layer_energy_hp = self._config.engine.layer_energy_hp
 
-                    if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] + total_energy_hp*batch_loss_dict["total_energy"]
-                        for layer_n in range(len(layer_energy_hp)):
-                            batch_loss_dict["loss"] += layer_energy_hp[layer_n]*batch_loss_dict["layer_energy" + str(layer_n)]
-                    else:
-                        batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + total_energy_hp*batch_loss_dict["total_energy"]
-                        for layer_n in range(len(layer_energy_hp)):
-                            batch_loss_dict["loss"] += layer_energy_hp[layer_n]*batch_loss_dict["layer_energy" + str(layer_n)]
+                    batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict.get("hit_loss", 0) + total_energy_hp*batch_loss_dict["total_energy"]
+                    for layer_n in range(len(layer_energy_hp)):
+                        batch_loss_dict["loss"] += layer_energy_hp[layer_n]*batch_loss_dict["layer_energy" + str(layer_n)]
+
                     for key, value in batch_loss_dict.items():
                         try:
                             val_loss_dict[key] += value
@@ -136,14 +117,9 @@ class EngineCaloV3(Engine):
                 if mode == "train" and (batch_idx % valid_batch_idx) == 0:
                     valid_loss_dict = self._validate()
 
-                    if "hit_loss" in valid_loss_dict.keys():
-                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"] + total_energy_hp*valid_loss_dict["total_energy"]
-                        for layer_n in range(len(layer_energy_loss_list)):
-                            valid_loss_dict["loss"] += layer_energy_hp[layer_n]*valid_loss_dict["layer_energy" + str(layer_n)]
-                    else:
-                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + total_energy_hp*valid_loss_dict["total_energy"]
-                        for layer_n in range(len(layer_energy_loss_list)):
-                            valid_loss_dict["loss"] += layer_energy_hp[layer_n]*valid_loss_dict["layer_energy" + str(layer_n)]
+                    valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict.get("hit_loss", 0) + total_energy_hp*valid_loss_dict["total_energy"]
+                    for layer_n in range(len(layer_energy_hp)):
+                        valid_loss_dict["loss"] += layer_energy_hp[layer_n]*valid_loss_dict["layer_energy" + str(layer_n)]
 
                     # Check the loss over the validation set is
                     if valid_loss_dict["loss"] < self._best_model_loss:
@@ -169,10 +145,10 @@ class EngineCaloV3(Engine):
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                         else:
                             # Multiply by 1000. to scale to MeV
-                            in_data = in_data*1000.
-                            recon_data = fwd_output.output_activations*1000.
+                            in_data = in_data * 1000.
+                            recon_data = fwd_output.output_activations * 1000.
                             sample_energies, sample_data = self._model.generate_samples()
-                            sample_data = sample_data*1000.
+                            sample_data = sample_data * 1000.
 
                         input_images = []
                         recon_images = []
@@ -297,9 +273,12 @@ class EngineCaloV3(Engine):
             for idx in range(n_val_batches):
                 input_data, label = next(iter(data_loader))
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
-                
                 fwd_output = self._model((in_data, true_energy), False)
-                batch_loss_dict = self._model.loss(in_data, fwd_output)
+                
+                unscaled_data = self.data_mgr.torch_inv_transform(in_data).to(self._device)
+                unscaled_inputs = self.data_mgr.torch_inv_transform(fwd_output.output_activations).to(self.device)
+
+                batch_loss_dict = self._model.loss(in_data, fwd_output, unscaled_data, unscaled_inputs)
             
                 # Initialize the accumulating dictionary keys and values
                 if idx == 0:

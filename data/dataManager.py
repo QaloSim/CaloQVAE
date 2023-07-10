@@ -214,10 +214,10 @@ class DataManager(object):
 
     def torch_inv_transform(self, data):
         """
-        Rewrite of the regular inverse transformation
+        Rewrite of the regular inverse transformation to use torch tensors
         """
 
-        torch_arr = torch.where(data > 0., data, torch.tensor(float('inf')).to(torch.device('cuda:3')))
+        torch_arr = torch.where(data > 0., data, torch.tensor(float('inf')).to(torch.device('cuda:5')))
 
         for i in range(torch_arr.shape[1]):
             amin = torch.tensor(self._amin_array[i])

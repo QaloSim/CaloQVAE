@@ -19,7 +19,7 @@ class GumBoltCaloEnergy(GumBoltCaloCRBM):
         super(GumBoltCaloEnergy, self).__init__(**kwargs)
         self.model_type = "GumBoltCaloEnergy"
 
-    def total_energy_loss(self, input_data, fwd_output, is_training=True):
+    def total_energy_loss(self, input_data, fwd_output):
         """
         Add a term to the loss function based on the total energy
         """
@@ -34,7 +34,7 @@ class GumBoltCaloEnergy(GumBoltCaloCRBM):
 
         return total_energy_loss
 
-    def layer_energy_loss(self, input_data, fwd_output, is_training=True):
+    def layer_energy_loss(self, input_data, fwd_output):
         """
         Add a term to the loss funtion based on the energy per calo layer
         """
@@ -46,16 +46,24 @@ class GumBoltCaloEnergy(GumBoltCaloCRBM):
 
         data_layers = torch.split(input_data, layer_split, dim = 1)
         reco_layers = torch.split(fwd_output, layer_split, dim = 1)
-        data_summed_layers = [torch.sum(layer, dim = 1) for layer in data_layers]
-        reco_summed_layers = [torch.sum(layer, dim = 1) for layer in reco_layers]
         data_summed_total = torch.sum(input_data, dim = 1)
         reco_summed_total = torch.sum(fwd_output, dim = 1)
+        # data_summed_layers = [torch.div(torch.sum(layer, dim = 1), data_summed_total) for layer in data_layers]
+        # reco_summed_layers = [torch.div(torch.sum(layer, dim = 1), reco_summed_total) for layer in reco_layers]
+        reco_summed_total[reco_summed_total == 0] = 0.0000001
+        data_summed_total[data_summed_total == 0] = 0.0000001
+        data_summed_layers = [torch.div(torch.sum(layer, dim = 1), data_summed_total) for layer in data_layers]
+        reco_summed_layers = [torch.div(torch.sum(layer, dim = 1), reco_summed_total) for layer in reco_layers]        
 
+        #Total energy calculation
+        total_loss = torch.nn.L1Loss()
+        total_energy_loss = total_loss(reco_summed_total, data_summed_total)
+
+        #Per layer calculation
         loss_list = []
-
         for i in range(len(layer_split)):
             loss = torch.nn.L1Loss()
-            energy_loss = loss(torch.div(reco_summed_layers[i], reco_summed_total), torch.div(data_summed_layers[i], data_summed_total))
+            energy_loss = loss(reco_summed_layers[i], data_summed_layers[i])
             loss_list.append(energy_loss)
 
-        return loss_list
+        return (total_energy_loss, loss_list)

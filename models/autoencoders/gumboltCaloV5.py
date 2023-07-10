@@ -58,7 +58,7 @@ class GumBoltCaloV5(GumBolt):
         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         return out
     
-    def loss(self, input_data, fwd_out):
+    def loss(self, input_data, fwd_out, unscaled_data=None, unscaled_fwd_out=None):
         logger.debug("loss")
         
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
@@ -70,14 +70,12 @@ class GumBoltCaloV5(GumBolt):
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
 
-        total_energy_loss = self.total_energy_loss(input_data, fwd_out.output_activations)
-        layer_energy_loss = self.layer_energy_loss(input_data, fwd_out.output_activations)
+        total_energy_loss, layer_energy_loss = self.layer_energy_loss(unscaled_data, unscaled_fwd_out)
         
-        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy,
+        return {"ae_loss" : ae_loss, "kl_loss" : kl_loss, "hit_loss" : hit_loss,
+                "entropy" : entropy, "pos_energy" : pos_energy, "neg_energy" : neg_energy,
                 "total_energy" : total_energy_loss, "layer_energy0" : layer_energy_loss[0],
-                "layer_energy1" : layer_energy_loss[1], "layer_energy2" : layer_energy_loss[2]
-                }
+                "layer_energy1" : layer_energy_loss[1], "layer_energy2" : layer_energy_loss[2]}
     
     def generate_samples(self, num_samples=64, true_energy=None):
         """
@@ -91,6 +89,7 @@ class GumBoltCaloV5(GumBolt):
             rbm_vis = rbm_visible_samples.detach()
             rbm_hid = rbm_hidden_samples.detach()
             
+            #More magic numbers
             if true_energy is None:
                 true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.
             else:
@@ -101,8 +100,7 @@ class GumBoltCaloV5(GumBolt):
             beta = torch.tensor(self._config.model.beta_smoothing_fct,
                                 dtype=torch.float, device=output_hits.device,
                                 requires_grad=False)
-            sample = self._energy_activation_fct(output_activations) \
-                * self._hit_smoothing_dist_mod(output_hits, beta, False)
+            sample = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
             
             true_energies.append(true_e) 
             samples.append(sample)

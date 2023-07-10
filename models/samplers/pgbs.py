@@ -79,7 +79,7 @@ class PGBS:
                                      prbm.weight_dict['02'].T,
                                      prbm.weight_dict['03'].T,
                                      p1_state, p2_state, p3_state,
-                                     p0_bias)
+                                     p0_bias) #Why not from prbm.bias_dict like the others?
             p1_state = self._p_state(prbm.weight_dict['01'],
                                      prbm.weight_dict['02'].T,
                                      prbm.weight_dict['03'].T,
