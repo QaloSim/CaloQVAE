@@ -213,14 +213,14 @@ class EngineCaloV3(Engine):
         true_energy = label[0]
                 
         # Scaled the raw data to GeV units
-#         if not self._config.data.scaled:
-#             in_data = in_data/1000.
+        if not self._config.data.scaled:
+            in_data = in_data/1000.
                     
         in_data = in_data.to(self._device)
         true_energy = true_energy.to(self._device).float()
         
-#         return in_data, true_energy, in_data_flat
-        return torch.log1p((in_data/true_energy)/0.04), true_energy, in_data_flat #<------JQTM: log(1+reduced_energy/R) w/ R=0.05 for photons
+        return in_data, true_energy, in_data_flat
+#         return torch.log1p((in_data/true_energy)/0.04), true_energy, in_data_flat #<------JQTM: log(1+reduced_energy/R) w/ R=0.05 for photons
     
     def _update_histograms(self, in_data, output_activations):
         """

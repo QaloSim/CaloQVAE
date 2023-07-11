@@ -3,7 +3,7 @@ calo_layers:
   - layer_0
   - layer_1
   - layer_2
-particle_type: piplus
+particle_type: gamma
 frac_test_dataset: 0.1
 frac_train_dataset: 0.8
 
