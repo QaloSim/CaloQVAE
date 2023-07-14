@@ -1,7 +1,7 @@
 data_type: atlas
 calo_layers: 
   - voxels
-particle_type: pion1
+particle_type: pionEn5
 frac_test_dataset: 0.1
 frac_train_dataset: 0.8
 

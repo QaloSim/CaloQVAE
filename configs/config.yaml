@@ -19,6 +19,6 @@ task:
   - test
 
 defaults:
-  - model: gumboltatlascrbmcnn
+  - model: gumboltcalocrbm
   - data: atlasDGX
-  - engine: dvaeatlas_training
+  - engine: dvaecalo_training
