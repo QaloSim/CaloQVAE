@@ -10,25 +10,25 @@ from PIL import Image
 import wandb
 
 from utils.plotting.HighLevelFeatures import HighLevelFeatures as HLF
-# HLF_1_photons = HLF('photon', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_photons.xml')
-# HLF_1_pions = HLF('pion', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_pions.xml')
-HLF_1_photons = HLF('photon', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_photons.xml')
-HLF_1_pions = HLF('pion', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_pions.xml')
+HLF_1_photons = HLF('photon', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_photons.xml')
+HLF_1_pions = HLF('pion', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_pions.xml')
+# HLF_1_photons = HLF('photon', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_photons.xml')
+# HLF_1_pions = HLF('pion', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_pions.xml')
 
 _NORM_LIST = [LogNorm(vmax=10000, vmin=0.1), LogNorm(vmax=10000 , vmin=0.1), LogNorm(vmax=10, vmin=0.1)]
-
-def plot_calo_images(layer_images):
-    image_list = []
-    for idx in range(layer_images[0].shape[0]):
-        image_list.append(plot_calo_image([layer_image[idx] for layer_image in layer_images]))
-    return image_list
 
 # def plot_calo_images(layer_images):
 #     image_list = []
 #     for idx in range(layer_images[0].shape[0]):
-#         image_list.append(plot_atlas_image2(layer_images[0][idx,:]))      
-# #         image_list.append(plot_atlas_image([layer_image[idx] for layer_image in layer_images]))
+#         image_list.append(plot_calo_image([layer_image[idx] for layer_image in layer_images]))
 #     return image_list
+
+def plot_calo_images(layer_images):
+    image_list = []
+    for idx in range(layer_images[0].shape[0]):
+        image_list.append(plot_atlas_image2(layer_images[0][idx,:]))      
+#         image_list.append(plot_atlas_image([layer_image[idx] for layer_image in layer_images]))
+    return image_list
         
 def plot_calo_image(image):
     fig, ax = plt.subplots(nrows=1, ncols=len(image), figsize=(12, 4))

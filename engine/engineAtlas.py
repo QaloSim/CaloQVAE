@@ -78,11 +78,11 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
-                        # batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 100 * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 500 * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
+                        # batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
                     else:
-                        # batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 100 * batch_loss_dict["label_loss"]
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"]
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 500 * batch_loss_dict["label_loss"]
+                        # batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"]
                     batch_loss_dict["loss"].backward()
                     self._optimiser.step()
                     # Trying this to free up memory on the GPU and run validation during a training epoch
@@ -102,6 +102,7 @@ class EngineAtlas(EngineCaloV3):
                             val_loss_dict[key] = value
                         
                     self._update_histograms(in_data, fwd_output.output_activations)
+                    # self._update_histograms(input_data[0]/1000, fwd_output.output_activations)
                     
                 if mode == "train" and (batch_idx % valid_batch_idx) == 0:
                     valid_loss_dict = self._validate()

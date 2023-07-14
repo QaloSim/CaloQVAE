@@ -8,8 +8,8 @@ kl_annealing: 1
 kl_annealing_ratio: 0.3
 
 n_train_batch_size: 128
-n_test_batch_size: 64
-n_valid_batch_size: 64
+n_test_batch_size: 1024
+n_valid_batch_size: 1024
 rbm_batch_size: 128
 
 n_gibbs_sampling_steps: 1000
