@@ -23,7 +23,7 @@ class EncoderCNN(HierarchicalEncoder):
     
                 )
         self.sequential2 = nn.Sequential(
-                   nn.Conv2d(2, 64, 3, 1, 0),             
+                   nn.Conv2d(1, 64, 3, 1, 0),             
                    nn.BatchNorm2d(64),
                    nn.PReLU(64, 0.02),
             
@@ -66,7 +66,7 @@ class EncoderCNN(HierarchicalEncoder):
         :param level
         """
         x = self.sequential(x)
-        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,24,24).divide(self.minEnergy).log2()), 1)
+        # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,24,24).divide(self.minEnergy).log2()), 1)
         x = self.sequential2(x)
         return x
 
