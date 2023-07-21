@@ -19,12 +19,13 @@ from utils.plotting.XMLHandler import XMLHandler
 class HighLevelFeatures:
     """ Computes all high-level features based on the specific geometry stored in the binning file
     """
-    def __init__(self, particle, filename='binning.xml'):
+    def __init__(self, particle, filename='binning.xml', wandb = True):
         """ particle (str): particle to be considered
             filename (str): path/to/binning.xml of the specific detector geometry.
             particle is redundant, as it is also part of the binning file, however, it serves as a
             crosscheck to ensure the correct binning is used.
         """
+        self.wandb = wandb
         xml = XMLHandler(particle, filename=filename)
         self.bin_edges = xml.GetBinEdges()
         self.eta_all_layers, self.phi_all_layers = xml.GetEtaPhiAllLayers()
@@ -186,20 +187,23 @@ class HighLevelFeatures:
                                borderpad=0)
         cbar = plt.colorbar(pcm, cax=axins, fraction=0.2, orientation="horizontal")
         cbar.set_label(r'Energy (MeV)', y=0.83, fontsize=12)
-        buf = BytesIO()
-        plt.savefig(buf, format='png', dpi=500)
-        buf.seek(0)
-        image = wandb.Image(Image.open(buf))
-        buf.close()
-        plt.close(fig)
-#         if title is not None:
-#             plt.gcf().suptitle(title)
-#         if filename is not None:
-#             plt.savefig(filename, facecolor='white')
-#         else:
-#             plt.show()
-#         plt.close()
-        return image
+        if self.wandb:
+            buf = BytesIO()
+            plt.savefig(buf, format='png', dpi=500)
+            buf.seek(0)
+            image = wandb.Image(Image.open(buf))
+            buf.close()
+            plt.close(fig)
+            return image
+        else:
+            if title is not None:
+                plt.gcf().suptitle(title)
+            if filename is not None:
+                plt.savefig(filename, facecolor='white')
+            else:
+                plt.show()
+            plt.close()
+        
 
     def GetEtot(self):
         """ returns total energy of the showers """

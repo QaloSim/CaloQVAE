@@ -22,7 +22,7 @@ from utils.hists.eratiohist import ERatioHist
 # _LAYER_SIZES={"layer_0" : [0, 288],
 #               "layer_1" : [288, 432],
 #               "layer_2" : [432, 504]}
-_LAYER_SIZES={"voxels" : [0, 368]}
+_LAYER_SIZES={"voxels" : [0, 533]}
 _SCATTER_KEYS = ["totalEnergyHist", "_EnergyHist", "_sparsityHist"]
 
 class HistHandler(object):

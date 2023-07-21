@@ -195,6 +195,93 @@ class Classifier(BasicDecoderV3):
                 
         x = self._layers(x)
         return x
+
+
+class DecoderCNNv2(BasicDecoderV3):
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=7, **kwargs):
+        super(DecoderCNNv2, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+        self.minEnergy = 256.0
+        
+        self._layers = nn.Sequential(
+                   nn.Unflatten(1, (1000, 1,1)),
+    
+                   nn.ConvTranspose2d(1000, 512, (2,3), 1, 0),
+                   # nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+                   
+
+                   nn.ConvTranspose2d(512, 256, (2,3), 1, 0),
+                   # nn.BatchNorm2d(256),
+                   nn.PReLU(256, 0.02),
+
+                   nn.ConvTranspose2d(256, 128, (2,3), 1, 0),
+                   # nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+                   
+                                   )
+        self._layers2 = nn.Sequential(
+                   nn.ConvTranspose2d(128, 64, (2,3), 1, 0),
+                   # nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+
+                   nn.ConvTranspose2d(64, 32, (2,3), 1, 0),
+                   # nn.BatchNorm2d(32),
+                   nn.PReLU(32, 0.02),
+
+                   nn.ConvTranspose2d(32, 16, (2,3), 1, 0),
+                   # nn.BatchNorm2d(16),
+                   nn.PReLU(16, 0.02), 
+
+                   nn.ConvTranspose2d(16, 8, (2,3), 1, 0),
+                   # nn.BatchNorm2d(8),
+                   nn.PReLU(8, 0.02), 
+
+                   nn.ConvTranspose2d(8, self.num_output_nodes, (2,3), 1, 0),
+                   # nn.BatchNorm2d(self.num_output_nodes),
+                   nn.PReLU(self.num_output_nodes, 0.02),
+
+                   nn.ConvTranspose2d(self.num_output_nodes, self.num_output_nodes, (2,4), 1, 0),
+                   # nn.BatchNorm2d(self.num_output_nodes),
+                   nn.PReLU(self.num_output_nodes, 0.02),
+                                   )
+        
+        self._layers3 = nn.Sequential(
+                   nn.ConvTranspose2d(128, 64, (2,3), 1, 0),
+                   # nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+
+                   nn.ConvTranspose2d(64, 32, (2,3), 1, 0),
+                   # nn.BatchNorm2d(32),
+                   nn.PReLU(32, 0.02),
+
+                   nn.ConvTranspose2d(32, 16, (2,3), 1, 0),
+                   # nn.BatchNorm2d(16),
+                   nn.PReLU(16, 0.02), 
+
+                   nn.ConvTranspose2d(16, 8, (2,3), 1, 0),
+                   # nn.BatchNorm2d(8),
+                   nn.PReLU(8, 0.02), 
+
+                   nn.ConvTranspose2d(8, self.num_output_nodes, (2,3), 1, 0),
+                   # nn.BatchNorm2d(self.num_output_nodes),
+                   nn.PReLU(self.num_output_nodes, 0.02),
+
+                   nn.ConvTranspose2d(self.num_output_nodes, self.num_output_nodes, (2,4), 1, 0),
+                   # nn.BatchNorm2d(self.num_output_nodes),
+                   nn.PReLU(self.num_output_nodes, 0.02),
+                                   )
+        
+    def forward(self, x, x0):
+        logger.debug("Decoder::decode")
+                
+        x = self._layers(x)
+        # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21)), 1)
+        # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21).divide(self.minEnergy).log2()), 1)
+        x1 = self._layers2(x)
+        x2 = self._layers3(x)
+        return x1, x2
     
 if __name__=="__main__":
     logger.debug("Testing Networks")

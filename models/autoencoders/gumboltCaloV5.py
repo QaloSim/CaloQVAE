@@ -72,7 +72,7 @@ class GumBoltCaloV5(GumBolt):
         
         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-    
+        
     def generate_samples(self, num_samples=64, true_energy=None):
         """
         generate_samples()

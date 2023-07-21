@@ -1,13 +1,15 @@
 data_type: atlas
 calo_layers: 
   - voxels
-particle_type: photonEn5
+particle_type: pionEn5
+particle: pion
+numvoxels: 533
 frac_test_dataset: 0.1
 frac_train_dataset: 0.8
 
 scaled: False
-scaler_path: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/photons_samples_highStat_En_5_scaler.gz
-scaler_amin: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/photons_samples_highStat_En_5_amin.npy
+scaler_path: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions_samples_highStat_En_5_scaler.gz
+scaler_amin: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions_samples_highStat_En_5_amin.npy
 
 atlas_input_photon1: /raid/javier/Datasets/CaloVAE/data/atlas/photons1.hdf5
 atlas_input_photonEn0: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_0.hdf5

@@ -19,6 +19,9 @@ task:
   - test
 
 defaults:
-  - model: gumboltcalocrbm
+  - model: gumboltatlascrbmcnn
   - data: atlasDGX
-  - engine: dvaecalo_training
+  - engine: dvaeatlas_training
+
+usinglayers: False
+reducedata: True
