@@ -57,14 +57,16 @@ class EngineCaloV3(Engine):
         kl_annealing = self._config.engine.kl_annealing
         kl_annealing_ratio = self._config.engine.kl_annealing_ratio
         ae_enabled = self._config.engine.ae_enabled
+
         
+        beta = self._config.engine.scheduler_dict["start_point"]
         with torch.set_grad_enabled(is_training):
             for batch_idx, (input_data, label) in enumerate(data_loader):
                 self._optimiser.zero_grad()
                 
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
-                beta = self._config.model.output_smoothing_fct
-                
+
+                logger.info(f"Beta: {beta}")
                 fwd_output = self._model((in_data, true_energy), is_training, beta)
                 batch_loss_dict = self._model.loss(in_data, fwd_output)
                     
@@ -82,12 +84,14 @@ class EngineCaloV3(Engine):
 
                     #Scheduling beta annealing
                     self._scheduler.update_trigger_value(gamma) #Update gamma value
-                    status = self._scheduler.anneal() #Annealing step
-                    if status == 0:
+                    status = self._scheduler.check_ready_annealing()
+                    if status:
+                        anneal_status = self._scheduler.anneal() #Annealing step
                         beta = self._scheduler.get_annealing_var()
                         logger.info(self._scheduler)
                     else:
                         #TODO This should take into account the end of the schedule and set to end point when appropriate
+                        logger.warning("Annealing did not work properly!")
                         beta = self._config.engine.scheduler_dict["start_point"]
                         
                     batch_loss_dict["gamma"] = kl_gamma
