@@ -1,6 +1,6 @@
 _target_: engine.engineCaloV3.EngineCaloV3
 learning_rate: 0.0001
-n_epochs: 100
+n_epochs: 120
 
 kl_enabled: 1
 ae_enabled: 1
@@ -28,8 +28,8 @@ sample_energies:
   - 150
 
 scheduler_dict:
-  start_point: 0.2
-  end_point: 0
+  start_point: 6.0
+  end_point: 0.0
   anneal_step: 0.02
-  method: "linear"
   trigger_value: 1
+  method: "linear"
