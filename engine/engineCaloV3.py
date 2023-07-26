@@ -121,7 +121,6 @@ class EngineCaloV3(Engine):
                     for layer_n in range(len(layer_energy_hp)):
                         valid_loss_dict["loss"] += layer_energy_hp[layer_n]*valid_loss_dict["layer_energy" + str(layer_n)]
 
-                    # Check the loss over the validation set is
                     if valid_loss_dict["loss"] < self._best_model_loss:
                         self._best_model_loss = valid_loss_dict["loss"]
                         # Save the best model here
