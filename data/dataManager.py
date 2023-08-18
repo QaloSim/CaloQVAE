@@ -22,7 +22,7 @@ class DataManager(object):
     def __init__(self,train_loader=None,test_loader=None,val_loader=None, cfg=None):
         self._config=cfg
         
-        self._train_loader=train_loader
+        self._train_loader=train_loader   
         self._test_loader=test_loader
         self._val_loader=val_loader
 
@@ -157,8 +157,8 @@ class DataManager(object):
             
         elif self._config.data.data_type.lower()=="atlas":
             inFiles={
-            'photon1':    self._config.data.atlas_input_photon1,
-            'pion1':   self._config.data.atlas_input_pion1,
+           # 'photon1':    self._config.data.atlas_input_photon1,
+            'pion1':   self._config.data.atlas_input_pion1
         }
 
             train_dataset,test_dataset,val_dataset=get_atlas_datasets(
@@ -217,6 +217,7 @@ class DataManager(object):
         nparr = np.where(data > 0., data, np.inf)
 #         logger.info(nparr.shape)
         
+        #Abhishek scaling
         for j in range(nparr.shape[1]):
             amin = self._amin_array[j]
             if amin < 0. and not np.isnan(amin) and not np.isinf(amin):

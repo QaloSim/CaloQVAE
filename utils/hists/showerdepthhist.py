@@ -42,6 +42,11 @@ class ShowerDepthHist(object):
             dataset[dataset == 0.] = 1.
             
         datasets = [dataset.sum(axis=1) for dataset in datasets]
+        
+        for dataset in curr_datasets:
+            dataset[dataset == 0.] = 1.   #<---- SA, added to prevent division by zero
+            dataset[dataset == 0] = 1.
+            
         lfracs = [np.divide(curr_dataset, dataset) for curr_dataset, dataset in zip(curr_datasets, datasets)]
             
         for label, lfrac in zip(labels, lfracs):

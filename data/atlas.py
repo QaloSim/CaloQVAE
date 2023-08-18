@@ -44,10 +44,11 @@ class CaloImage(object):
 #contains images for all layers and the energy
 class CaloImageContainer(Dataset):
     
-    def __init__(self, particle_type=None, input_data=None, layer_subset=[]):
+    def __init__(self, particle_type=None, input_data=None, layer_subset=[], cfg=None):
         self._particle_type=particle_type
+        self._config=cfg
 
-        self._dataset_size=len(input_data["voxels"])
+        self._dataset_size=len(input_data['showers'])
 #         self._dataset_size=len(input_data["layer_0"])
         #dictionary of all calo images - keys are layer names
         self._images=None
@@ -119,21 +120,21 @@ class CaloImageContainer(Dataset):
         calo_images={}
         for key, item in input_data.items():
             #do not process energies here
-            if key.lower() in ["energy","overflow"]: continue
+            if key.lower() in ["energy", "overflow", "incident_energies"]: continue
             ds=input_data[key][:]
             #convert df to CaloImage
             calo_images[key]=CaloImage(image=torch.Tensor(ds),layer=key)
 
         self._images=calo_images
-        self._true_energies=input_data["energy"][:]
+        self._true_energies=input_data["incident_energies"][:]                                      #'energy' if dataset 1
 #         self._overflow_energies=input_data["overflow"][:]
 
-def get_atlas_datasets(inFiles={}, particle_type=["pions1"], layer_subset=[],
+def get_atlas_datasets(inFiles={}, particle_type=["pion1"], layer_subset=[],
                       frac_train_dataset=0.6, frac_test_dataset=0.2):
 
     #read in all input files for all jet types and layers
     dataStore={}
-    for key,fpath in inFiles.items():     
+    for key,fpath in inFiles.items():
         in_data=h5py.File(fpath,'r')
         #for each particle_type, create a Container instance for our needs   
         dataStore[key]=CaloImageContainer(  particle_type=key,
@@ -141,7 +142,20 @@ def get_atlas_datasets(inFiles={}, particle_type=["pions1"], layer_subset=[],
                                             layer_subset=layer_subset)
         #convert image dataframes to tensors and get energies
         dataStore[key].process_data(input_data=in_data)
-
+        
+    '''for key,fpath in inFiles.items():                                    #SA: try/except added to avoid bug
+        try:
+            with h5py.File(fpath, "r") as in_data:
+                dataStore[key]=CaloImageContainer(  particle_type=key,
+                                            input_data=in_data,
+                                            layer_subset=layer_subset)
+        #convert image dataframes to tensors and get energies
+                dataStore[key].process_data(input_data=in_data)
+        except BlockingIOError as e:
+        # Handle the error as required, for example:
+            print(f"{key} data not being accessed. If using this particle type, go to data/atlas.py line 144-154 to make changes.")'''
+        
+        
     assert len(particle_type)==1, f"Currently one particle type at a time\
          can be retrieved. Requested {particle_type}"
     ptype=particle_type[0]

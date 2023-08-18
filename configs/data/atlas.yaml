@@ -1,13 +1,15 @@
 data_type: atlas
 calo_layers: 
-  - voxels
-particle_type: photon1
+  - showers
+particle_type: pion1
 frac_test_dataset: 0.1
 frac_train_dataset: 0.8
 
-scaled: False
-scaler_path: /fast_scratch_1/QVAE/data/atlas_scaled/pion_samples_scaler.gz
-scaler_amin: /fast_scratch_1/QVAE/data/atlas_scaled/pion_samples_amin.npy
+scaled: True
+reduced: False
+Rvalue: 0.005
+scaler_path: /fast_scratch/QVAE/data/atlas_dataset2and3/dataset_2_1_scaler.gz #/fast_scratch/QVAE/data/atlas_scaled/pions_samples_highStat_En_5_scaler.gz
+scaler_amin: /fast_scratch/QVAE/data/atlas_dataset2and3/dataset_2_1_amin.npy  #/fast_scratch/QVAE/data/atlas_scaled/pions_samples_highStat_En_5_amin.npy
 
-atlas_input_photon1: /fast_scratch_1/QVAE/data/atlas/photons1.hdf5
-atlas_input_pion1: /fast_scratch_1/QVAE/data/atlas/pions1.hdf5
+atlas_input_photon1: /fast_scratch/QVAE/data/atlas_scaled/photons1_samples_highStat_En_5.hdf5
+atlas_input_pion1: /fast_scratch/QVAE/data/atlas_dataset2and3/dataset_2_1_scaled.hdf5 #/fast_scratch/QVAE/data/atlas_scaled/pions_samples_highStat_En_5.hdf5

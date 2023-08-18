@@ -50,8 +50,8 @@ def main(cfg=None):
     # this is the setting for individual, ungrouped runs
     # Use mode='disabled' to prevent logging
     mode = 'online' if cfg.wandb_enabled else 'disabled'
-    # wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
-    wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
+    wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
+    #wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
     # run the ting
     run(config=cfg)
 
@@ -114,6 +114,8 @@ def run(config=None):
     model.to(dev)
     # Log metrics with wandb
     wandb.watch(model)
+    #add model instance to model namespace <--- SA for sparsity weight function
+    model.device=dev
 
     # For some reason, need to use postional parameter cfg instead of named parameter
     # with updated Hydra - used to work with named param but now is cfg=None 

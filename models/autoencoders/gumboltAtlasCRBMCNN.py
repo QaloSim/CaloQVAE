@@ -24,6 +24,14 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
     def __init__(self, **kwargs):
         super(GumBoltAtlasCRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasCRBMCNN"
+        
+    @property      #SA: added property and setter to move tensors to device when calculting sparsities in loss function below
+    def device(self):
+        return self._device
+    
+    @device.setter
+    def device(self, device):
+        self._device=device
 
     def create_networks(self):
         """
@@ -103,7 +111,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         post_samples = torch.cat(out.post_samples, 1)
 #         post_samples = torch.cat([post_samples, x[1]], dim=1)
         
-        output_hits, output_activations = self.decoder(post_samples, x0)
+        output_hits, output_activations = self.decoder(post_samples, x0)   #UCNN
+        #output_hits, output_activations = self.decoder(post_samples)  #CNN_D2
         labels = self.classifier(output_hits)
         
         out.output_hits = output_hits
@@ -112,7 +121,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         return out
     
-    def generate_samples(self, num_samples=64, true_energy=None):
+    def generate_samples(self, num_samples=128, true_energy=None):
         """
         generate_samples()
         """
@@ -144,20 +153,31 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
 
     def loss(self, input_data, fwd_out, true_energy):
+        
         """
         - Overrides loss in gumboltCaloV5.py
         """
         logger.debug("loss")
         
+        def get_sparsity(data):
+            w = torch.full((data.shape[0],), data.shape[1]).to(self._device)
+            nonzero_count = torch.count_nonzero(data, dim=1).to(self._device)
+            sparsities = (w-nonzero_count)/w   #(w-nonzero_count)/w
+            alpha = 10
+            gamma = 8
+            return alpha*torch.exp(-gamma*sparsities)+1 #SA, this generates heavier weights for low sparsity events
+        
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-        ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(input_data)  #<------JQTM: Weighed MSE
+        ae_loss = self._output_loss(input_data, fwd_out.output_activations) # * (torch.exp(5*input_data/100))  #<------JQTM: Weighed MSE
         ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0)
         
         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
+        
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
-
+        #hit_loss = torch.mean(torch.sum(hit_loss, dim=1)*get_sparsity(input_data), dim=0)  #<---SA adding sparsity weight
+        
         labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
         hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
         

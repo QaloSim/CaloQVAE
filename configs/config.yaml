@@ -8,7 +8,7 @@ save_hists: 1
 
 wandb_enabled: 1
 
-output_path: /fast_scratch_1/jtoledo/outputs
+output_path: /fast_scratch/sandersen/outputs
 device: gpu
 gpu_list:
   - 2
@@ -20,5 +20,5 @@ task:
 
 defaults:
   - model: gumboltatlascrbmcnn
-  - data: atlasDGX
+  - data: atlas
   - engine: dvaeatlas_training

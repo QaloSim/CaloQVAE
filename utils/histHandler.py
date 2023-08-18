@@ -19,16 +19,31 @@ from utils.hists.showerdepthhist import ShowerDepthHist
 from utils.hists.sampleenergyhist import SampleEnergyHist
 from utils.hists.eratiohist import ERatioHist
 
-# _LAYER_SIZES={"layer_0" : [0, 288],
-#               "layer_1" : [288, 432],
-#               "layer_2" : [432, 504]}
-_LAYER_SIZES={"voxels" : [0, 368]}
+#_LAYER_SIZES={"layer_1" : [0,8],
+#               "layer_2" : [8, 108],
+#               "layer_3" : [108, 208],
+#               "layer_4" : [208, 213],
+#               "layer_5" : [213, 363],
+#               "layer_6" : [363, 523],
+#               "layer_7" : [523, 533]}
+
+#_LAYER_SIZES={"voxels" : [0, 533]}     #dataset1
+_LAYER_SIZES={"showers" : [0, 6480]}       #dataset2
+#_LAYER_SIZES={"showers" : [0, 40500]}     #dataset3
 _SCATTER_KEYS = ["totalEnergyHist", "_EnergyHist", "_sparsityHist"]
 
 class HistHandler(object):
     
     def __init__(self, cfg):
         self._cfg = cfg
+        
+       # if cfg.data.particle_type == 'pion1':
+        #    _LAYER_SIZES={"voxels" : [0, 533]}
+        #elif cfg.data.particle_type == 'photon1':
+         #   _LAYER_SIZES={"voxels" : [0, 368]}
+        #else:
+         #   print("Specify voxel number in utils/histHandler")
+        
         self._hdict = {"totalEnergyHist":TotalEnergyHist(),
                        "diffEnergyHist":DiffEnergyHist()}
         

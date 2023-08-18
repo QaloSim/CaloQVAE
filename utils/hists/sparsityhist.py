@@ -23,8 +23,8 @@ class SparsityHist(object):
         labels = ["input", "recon", "samples"]
         datasets = [in_data, recon_data, sample_data]
         layer_datasets = [dataset[:, self._start_idx:self._end_idx] for dataset in datasets]
-        layer_sparsities = [np.count_nonzero(layer_dataset, axis=1)/layer_dataset.shape[1] for layer_dataset in layer_datasets]
-        
+        layer_sparsities = [abs(np.count_nonzero(layer_dataset, axis=1)/layer_dataset.shape[1]-1) for layer_dataset in layer_datasets]
+
         for label, layer_sparsity in zip(labels, layer_sparsities):
             self._hist.fill(dataset=label, sparsity=layer_sparsity)
             self._data_dict[label].extend(layer_sparsity)

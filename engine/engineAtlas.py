@@ -54,6 +54,8 @@ class EngineAtlas(EngineCaloV3):
         kl_annealing_ratio = self._config.engine.kl_annealing_ratio
         ae_enabled = self._config.engine.ae_enabled
         
+        self._Rvalue = self._config.data.Rvalue
+        
         with torch.set_grad_enabled(is_training):
             for batch_idx, (input_data, label) in enumerate(data_loader):
                 self._optimiser.zero_grad()
@@ -78,9 +80,13 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 10000 * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
+                       # batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 5000 * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] - kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
+                        #batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"] #removing kl-loss to improve reconstructive ability of model first
                     else:
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 10000 * batch_loss_dict["label_loss"]
+                        #batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 5000 * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"]
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] - kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]  #SA sparsity weight testing
+                        #batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
                     batch_loss_dict["loss"].backward()
                     self._optimiser.step()
                     # Trying this to free up memory on the GPU and run validation during a training epoch
@@ -90,24 +96,24 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["gamma"] = 1.0
                     batch_loss_dict["epoch"] = epoch
                     if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
+                        batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] - batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
                     else:
-                        batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"]
+                        batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] - batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
                     for key, value in batch_loss_dict.items():
                         try:
                             val_loss_dict[key] += value
                         except KeyError:
                             val_loss_dict[key] = value
                         
-                    self._update_histograms(in_data, fwd_output.output_activations)
+                    self._update_histograms(in_data, fwd_output.output_activations, true_energy)
                     
                 if mode == "train" and (batch_idx % valid_batch_idx) == 0:
                     valid_loss_dict = self._validate()
                     
                     if "hit_loss" in valid_loss_dict.keys():
-                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"]
+                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] - valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"]
                     else:
-                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"]
+                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] - valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"]
                         
                     # Check the loss over the validation set is 
                     if valid_loss_dict["loss"] < self._best_model_loss:
@@ -131,6 +137,11 @@ class EngineAtlas(EngineCaloV3):
                             recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
                             sample_energies, sample_data = self._model.generate_samples()
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
+                        elif self._config.data.reduced:
+                            in_data = torch.expm1(in_data)*torch.sum(in_data, dim=1, keepdim=True)*self._Rvalue
+                            recon_data = torch.expm1(fwd_output.output_activations)*torch.sum(fwd_output.output_activations, dim=1, keepdim=True)*self._Rvalue
+                            sample_energies, sample_data = self._model.generate_samples()
+                            sample_data = torch.expm1(sample_data)*true_energy*self._Rvalue
                         else:
                             # Multiply by 1000. to scale to MeV
                             in_data = in_data*1000.
@@ -210,17 +221,22 @@ class EngineAtlas(EngineCaloV3):
                 
         true_energy = label[0]
                 
-        # Scaled the raw data to GeV units
-#         if not self._config.data.scaled:
-#             in_data = in_data/1000.
+        #Scaled the raw data to GeV units
+        if not self._config.data.scaled:
+            in_data = in_data/1000.
                     
         in_data = in_data.to(self._device)
         true_energy = true_energy.to(self._device).float()
         
-#         return in_data, true_energy, in_data_flat
-        return torch.log1p((in_data/true_energy)/0.04), true_energy, in_data_flat #<------JQTM: log(1+reduced_energy/R) w/ R=0.05 for photons
+        #return in_data/(torch.mean(in_data, dim=1, keepdim=True)+1e-10), true_energy, in_data_flat  #Grayscaling
+        return in_data, true_energy, in_data_flat
+        #return torch.log1p(in_data/(torch.sum(in_data, dim=1, keepdim=True))/self._Rvalue), true_energy, in_data_flat   #<------JQTM: log(1+reduced_energy/R) w/ R=0.05 for photons
+
+    def post_reduce(self, in_data):
+        in_data = torch.expm1(in_data)*(torch.sum(in_data, dim=1, keepdim=True)*self._Rvalue)
+        return in_data
     
-    def _update_histograms(self, in_data, output_activations):
+    def _update_histograms(self, in_data, output_activations, true_energy):
         """
         Update the coffea histograms' distributions
         """
@@ -233,18 +249,31 @@ class EngineAtlas(EngineCaloV3):
             in_data_t = self._data_mgr.inv_transform(in_data.detach().cpu().numpy())/1000.
             recon_data_t = self._data_mgr.inv_transform(output_activations.detach().cpu().numpy())/1000.
             sample_data_t = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000.
-            self._hist_handler.update(in_data_t, recon_data_t, sample_data_t)                  
+            self._hist_handler.update(in_data_t, recon_data_t, sample_data_t)
+        elif self._config.data.reduced:
+            in_data_t = self.post_reduce(in_data.detach().cpu())
+            recon_data_t = self.post_reduce(output_activations.detach().cpu())
+            sample_data_t = self.post_reduce(sample_data.detach().cpu())
+            self._hist_handler.update(in_data_t, recon_data_t, sample_data_t)
         else:
-            self._hist_handler.update(in_data.detach().cpu().numpy(),
-                                      output_activations.detach().cpu().numpy(),
-                                      sample_data.detach().cpu().numpy())
+            self._hist_handler.update(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()),
+                                      self._data_mgr.inv_transform(output_activations.detach().cpu().numpy()),
+                                      self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                         
         # Samples with specific energies
         conditioning_energies = self._config.engine.sample_energies
         conditioned_samples = []
         for energy in conditioning_energies:
-            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
+            '''sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
             sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. if self._config.data.scaled else sample_data.detach().cpu().numpy()
+            conditioned_samples.append(torch.tensor(sample_data))'''
+            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
+            if self._config.data.scaled:
+                sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000.
+            elif self._config.data.reduced:
+                sample_data = self.post_reduce(sample_data.detach().cpu().numpy())                        
+            else:
+                sample_data = sample_data.detach().cpu().numpy()
             conditioned_samples.append(torch.tensor(sample_data))
                         
         conditioned_samples = torch.cat(conditioned_samples, dim=0).numpy()
