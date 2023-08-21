@@ -28,8 +28,8 @@ sample_energies:
   - 150
 
 scheduler_dict:
-  start_point: 6.0
+  start_point: 6.0 #This value is also set in the main config so this is not ideal
   end_point: 0.0
-  anneal_step: 0.02
-  trigger_value: 1
+  anneal_step: 0.00012
+  trigger_value: 1.0
   method: "linear"

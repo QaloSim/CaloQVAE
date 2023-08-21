@@ -11,11 +11,18 @@ class Scheduler:
         for key, value in kwargs.items():
             setattr(self, key, value)
         self.anneal_var = self.start_point
+        self.did_anneal = False
 
     def __repr__(self) -> str:
         return f"Current value: {self.anneal_var}, method: {self.method}, step: {self.anneal_step}"
+    
+    def did_anneal_yet(self):
+        return self.did_anneal
 
     def get_linear_direction(self) -> int:
+        """
+        Determine if annealing is increasing or decrasing 
+        """
         direction: int = 1 if self.start_point < self.end_point else -1
         return direction
 
@@ -24,6 +31,9 @@ class Scheduler:
         self.trigger_var_curr_value = trigger_var_value
 
     def get_annealing_var(self) -> float:
+        """
+        Getter for main annealing var
+        """
         return self.anneal_var
 
     def anneal(self) -> int:
@@ -34,6 +44,7 @@ class Scheduler:
         #For the future maybe a map makes more sense
         if self.method == "linear":
             status: int = self.linear_annealing()
+            self.did_anneal = True
             return status
         
         else:
@@ -41,6 +52,9 @@ class Scheduler:
             return -1
     
     def check_ready_annealing(self) -> bool:
+        """
+        Check if the annealing trigger is passed
+        """
         #Checking if the value is still within the annealing values
         direction: int = self.get_linear_direction()
 
