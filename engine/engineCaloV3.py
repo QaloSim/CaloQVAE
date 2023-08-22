@@ -91,8 +91,12 @@ class EngineCaloV3(Engine):
                         logger.info(self._scheduler)
                     else:
                         #TODO This should take into account the end of the schedule and set to end point when appropriate
-                        logger.warning("Annealing did not work properly!")
-                        if not self._scheduler.did_anneal_yet(): beta = self._config.engine.scheduler_dict["start_point"]
+                        if not self._scheduler.did_anneal_yet():
+                            beta = self._config.engine.scheduler_dict["start_point"]
+                            logger.warning("Annealing did not work properly!")
+                        else:
+                            #If it finished annealing
+                            beta = self._scheduler.get_annealing_var()
                         
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["beta"] = beta
