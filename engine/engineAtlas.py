@@ -57,6 +57,7 @@ class EngineAtlas(EngineCaloV3):
         kl_annealing = self._config.engine.kl_annealing
         kl_annealing_ratio = self._config.engine.kl_annealing_ratio
         ae_enabled = self._config.engine.ae_enabled
+        self.R = self._config.engine.r_param
         
         with torch.set_grad_enabled(is_training):
             for batch_idx, (input_data, label) in enumerate(data_loader):
@@ -65,7 +66,7 @@ class EngineAtlas(EngineCaloV3):
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
                 
                 if self._config.reducedata:
-                    in_data = self._reduce(in_data, true_energy, R=0.04)
+                    in_data = self._reduce(in_data, true_energy, R=self.R)
 
                 if self._config.usinglayers:
                     in_data = self.parseToLayer(in_data)
@@ -153,12 +154,12 @@ class EngineAtlas(EngineCaloV3):
                             sample_energies, sample_data = self._model.generate_samples()
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                         elif self._config.reducedata:
-                            in_data = self._reduceinv(in_data, true_energy)
-                            recon_data = self._reduceinv(fwd_output.output_activations, true_energy)
+                            in_data = self._reduceinv(in_data, true_energy, R=self.R)
+                            recon_data = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
                             sample_energies, sample_data = self._model.generate_samples()
                             if self._config.usinglayers:
                                 sample_data = self.layerTo1D(sample_data)
-                            sample_data = self._reduceinv(sample_data, sample_energies)
+                            sample_data = self._reduceinv(sample_data, sample_energies, R=self.R)
                         else:
                             # Multiply by 1000. to scale to MeV
                             in_data = in_data*1000.
@@ -296,9 +297,9 @@ class EngineAtlas(EngineCaloV3):
             sample_data_t = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000.
             self._hist_handler.update(in_data_t, recon_data_t, sample_data_t)  
         elif self._config.reducedata:
-            in_data_t = self._reduceinv(in_data, true_energy)/1000
-            recon_data_t = self._reduceinv(output_activations, true_energy)/1000
-            sample_data_t = self._reduceinv(sample_data, sample_energies)/1000
+            in_data_t = self._reduceinv(in_data, true_energy, R=self.R)/1000
+            recon_data_t = self._reduceinv(output_activations, true_energy, R=self.R)/1000
+            sample_data_t = self._reduceinv(sample_data, sample_energies, R=self.R)/1000
             self._hist_handler.update(in_data_t.detach().cpu().numpy(), 
                                       recon_data_t.detach().cpu().numpy(), 
                                       sample_data_t.detach().cpu().numpy())
@@ -317,7 +318,7 @@ class EngineAtlas(EngineCaloV3):
             if self._config.data.scaled:
                 sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. 
             elif self._config.reducedata:
-                sample_data = self._reduceinv(sample_data, sample_energies)/1000
+                sample_data = self._reduceinv(sample_data, sample_energies, R=self.R)/1000
             
             conditioned_samples.append(sample_data.detach().cpu())
                         
@@ -340,7 +341,7 @@ class EngineAtlas(EngineCaloV3):
                 in_data, true_energy, in_data_flat = self._preprocess(input_data, label)
 
                 if self._config.reducedata:
-                    in_data = self._reduce(in_data, true_energy, R=0.04)
+                    in_data = self._reduce(in_data, true_energy, R=self.R)
 
                 if self._config.usinglayers:
                     in_data = self.parseToLayer(in_data)

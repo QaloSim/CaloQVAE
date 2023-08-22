@@ -2,10 +2,11 @@ _target_: engine.engineAtlas.EngineAtlas
 learning_rate: 0.0001
 n_epochs: 100
 
-kl_enabled: 0
+kl_enabled: 1
 ae_enabled: 1
 kl_annealing: 1
 kl_annealing_ratio: 0.3
+r_param : 0.005
 
 n_train_batch_size: 128
 n_test_batch_size: 1024

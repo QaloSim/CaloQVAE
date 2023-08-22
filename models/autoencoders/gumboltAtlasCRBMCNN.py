@@ -34,7 +34,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         self.encoder=self._create_encoder()
         self.prior=self._create_prior()
         self.decoder=self._create_decoder()
-        # self.classifier=self._create_classifier()
+        self.classifier=self._create_classifier()
         self.sampler = self._create_sampler(rbm=self.prior)
 
     def _create_encoder(self):
@@ -115,10 +115,10 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
 #         post_samples = torch.cat([post_samples, x[1]], dim=1)
         
         output_hits, output_activations = self.decoder(post_samples, x0)
-        # labels = self.classifier(output_hits)
+        labels = self.classifier(output_hits)
         
         out.output_hits = output_hits
-        # out.labels = labels
+        out.labels = labels
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         return out
@@ -161,20 +161,21 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         logger.debug("loss")
         
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-        ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(2*input_data)  #<------JQTM: Weighed MSE
+        ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)  #<------JQTM: Weighed MSE
         ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0)
         
         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
-        sparsity_weight = torch.exp(3 - torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1])
+        spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
+        sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
 
-        # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
-        # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
+        labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
+        hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
         
         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":0*ae_loss}
+                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
 
 
 
