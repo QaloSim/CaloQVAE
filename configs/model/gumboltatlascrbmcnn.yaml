@@ -22,3 +22,4 @@ bernoulli : 0
 alpha: 5
 gamma: 5
 mse_weight: 0.5
+rbmMethod: CD

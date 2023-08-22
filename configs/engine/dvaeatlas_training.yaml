@@ -6,6 +6,7 @@ kl_enabled: 1
 ae_enabled: 1
 kl_annealing: 1
 kl_annealing_ratio: 0.3
+kl_gamma_max: 0.5
 r_param : 0.005
 
 n_train_batch_size: 128

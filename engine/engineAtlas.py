@@ -80,7 +80,7 @@ class EngineAtlas(EngineCaloV3):
                     fwd_output.output_hits = self.layerTo1D(fwd_output.output_hits)
                     
                 if is_training:
-                    gamma = min((((epoch-1)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), 1.0)
+                    gamma = min((((epoch-1)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), self._config.engine.kl_gamma_max)
                     if kl_enabled:
                         if kl_annealing:
                             kl_gamma = gamma

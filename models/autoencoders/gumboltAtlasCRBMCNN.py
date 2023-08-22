@@ -5,7 +5,9 @@ CNN - Changed to CNN encoder creation
 # Torch imports
 import torch
 from torch.nn.functional import binary_cross_entropy_with_logits
-import torch.nn as nn  
+import torch.nn as nn 
+
+from models.samplers.GibbsSampling import GS
 
 # DiVAE.models imports
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
@@ -36,6 +38,19 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         self.decoder=self._create_decoder()
         self.classifier=self._create_classifier()
         self.sampler = self._create_sampler(rbm=self.prior)
+        
+    def _create_sampler(self, rbm=None):
+        """
+        - Overrides _create_sampler in discreteVAE.py
+        
+        Returns:
+            Gibbs Sampler
+        """
+        logger.debug("GumBoltCaloCRBM::_create_sampler")
+        return GS(batch_size=self._config.engine.rbm_batch_size,
+                   RBM=self.prior,
+                   n_gibbs_sampling_steps\
+                       =self._config.engine.n_gibbs_sampling_steps)
 
     def _create_encoder(self):
         """
@@ -122,6 +137,158 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         return out
+    
+    def kl_divergence(self, post_logits, post_samples, is_training=True):
+        """
+        - Compute KLD b.w. hierarchical posterior and RBM prior using GumBolt trick
+        - Overrides kl_divergence in gumbolt.py
+        - Uses negative energy expectation value as an approximation to logZ
+        
+        Args:
+            post_logits: List of posterior logits (logit_q_z)
+            post_samples: List of posterior samples (zeta)
+        Returns:
+            kl_loss: "Approximate integral KLD" loss whose gradient equals the
+                     gradient of the true KLD loss
+        """
+        logger.debug("GumBoltCaloCRBM::kl_divergence")
+        
+        # Concatenate all hierarchy levels
+        logits_q_z = torch.cat(post_logits, 1)
+        post_zetas = torch.cat(post_samples, 1)
+        
+        # Compute cross-entropy b/w post_logits and post_samples
+        entropy = - self._bce_loss(logits_q_z, post_zetas)
+        entropy = torch.mean(torch.sum(entropy, 1), 0)
+        
+        # Compute positive energy expval using hierarchical posterior samples
+        
+        # Number of hidden and visible variables on each side of the RBM
+        num_var_rbm = (self.n_latent_hierarchy_lvls 
+                       * self._latent_dimensions)//2
+        
+        # Compute positive energy contribution to the KL divergence
+        if "mapping" in self._config.model and self._config.model.mapping.lower()=="chains":
+            post_zetas_1, post_zetas_2 = post_zetas[:, :num_var_rbm], post_zetas[:, num_var_rbm:]
+            post_zetas_vis, post_zetas_hid = torch.zeros(post_zetas_1.size(), device=post_zetas.device), torch.zeros(post_zetas_1.size(), device=post_zetas.device)
+            
+            for i, idx in enumerate(self._visible_qubit_idxs):
+                if idx in self._level_1_qubit_idxs:
+                    post_zetas_vis[:, i] = post_zetas_1[:, i]
+                    #print("_visible_qubit_idx : ", idx, " level 1 i : ", i)
+                else:
+                    post_zetas_vis[:, i] = post_zetas_2[:, i]
+                    #print("_visible_qubit_idx : ", idx, " level 2 i : ", i)
+
+            for i, idx in enumerate(self._hidden_qubit_idxs):
+                if idx in self._level_1_qubit_idxs:
+                    post_zetas_hid[:, i] = post_zetas_1[:, i]
+                    #print("_hidden_qubit_idxs : ", idx, " level 1 i : ", i)
+                else:
+                    post_zetas_hid[:, i] = post_zetas_2[:, i]
+                    #print("_hidden_qubit_idxs : ", idx, " level 2 i : ", i)
+            
+            pos_energy = self.energy_exp(post_zetas_vis, post_zetas_hid)
+        else:
+            post_zetas_vis, post_zetas_hid = post_zetas[:, :num_var_rbm], post_zetas[:, num_var_rbm:]
+            pos_energy = self.energy_exp(post_zetas_vis, post_zetas_hid)
+        
+        # Compute gradient contribution of the logZ term
+        rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling(post_zetas_vis, method=self._config.model.rbmMethod)
+        rbm_vis, rbm_hid = rbm_visible_samples.detach(), rbm_hidden_samples.detach()
+        neg_energy = - self.energy_exp(rbm_vis, rbm_hid)
+        
+        kl_loss = entropy + pos_energy + neg_energy
+        return kl_loss, entropy, pos_energy, neg_energy
+    
+    def energy_exp(self, rbm_vis, rbm_hid):
+        """
+        - Compute the energy expectation value
+        
+        Returns:
+            rbm_energy_exp_val : mean(-vis^T W hid - a^T hid - b^T vis)
+        """
+        logger.debug("GumBolt::energy_exp")
+        
+        # Broadcast W to (pcd_batchSize * nVis * nHid)
+        w, vbias, hbias = self.prior.weights, self.prior.visible_bias, self.prior.hidden_bias
+        w = w + torch.zeros((rbm_vis.size(0),) + w.size(), device=rbm_vis.device)
+        vbias = vbias.to(rbm_vis.device)
+        hbias = hbias.to(rbm_hid.device)
+        
+        # Prepare H, V for torch.matmul()
+        # Change V.size() from (batchSize * nVis) to (batchSize * 1 * nVis)
+        vis = rbm_vis.unsqueeze(2).permute(0, 2, 1)
+        # Change H.size() from (batchSize * nHid) to (batchSize * nHid * 1)
+        hid = rbm_hid.unsqueeze(2)
+        
+        batch_energy = (- torch.matmul(vis, torch.matmul(w, hid)).reshape(-1)
+                        - torch.matmul(rbm_vis, vbias)
+                        - torch.matmul(rbm_hid, hbias))
+        
+        return torch.mean(batch_energy, 0)
+    
+    def generate_samples_qpu(self, num_samples=64, true_energy=None):
+        """
+        generate_samples()
+        
+        Overrides generate samples in gumboltCaloV5.py
+        """
+        # Extract the RBM parameters
+        crbm_weights = self.prior.weights
+        crbm_vbias = self.prior.visible_bias
+        crbm_hbias = self.prior.hidden_bias
+        crbm_edgelist = self.prior.pruned_edge_list
+        
+        qubit_idxs = self.prior.visible_qubit_idxs + self.prior.hidden_qubit_idxs
+        
+        visible_idx_map = {visible_qubit_idx:i for i, visible_qubit_idx in enumerate(self.prior.visible_qubit_idxs)}
+        hidden_idx_map = {hidden_qubit_idx:i for i, hidden_qubit_idx in enumerate(self.prior.hidden_qubit_idxs)}
+        
+        # Convert the RBM parameters into Ising parameters
+        dwave_weights = -(crbm_weights/4.)
+        dwave_vbias = -(crbm_vbias/2. + torch.sum(crbm_weights, dim=1)/4.)
+        dwave_hbias = -(crbm_hbias/2. + torch.sum(crbm_weights, dim=0)/4.)
+        
+        dwave_weights = torch.clamp(dwave_weights, min=-2., max=1.)
+        dwave_vbias = torch.clamp(dwave_vbias, min=-2., max=2.)
+        dwave_hbias = torch.clamp(dwave_hbias, min=-2., max=2.)
+        
+        dwave_weights_np = dwave_weights.detach().cpu().numpy()
+        biases = torch.cat((dwave_vbias, dwave_hbias)).detach().cpu().numpy()
+        
+        # Initialize the values of biases and couplers
+        h = {qubit_idx:bias for qubit_idx, bias in zip(qubit_idxs, biases)}
+        J = {}
+        for edge in crbm_edgelist:
+            if edge[0] in self.prior.visible_qubit_idxs:
+                J[edge] = dwave_weights_np[visible_idx_map[edge[0]]][hidden_idx_map[edge[1]]]
+            else:
+                J[edge] = dwave_weights_np[visible_idx_map[edge[1]]][hidden_idx_map[edge[0]]]
+        
+        response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+        dwave_samples, dwave_energies = batch_dwave_samples(response)
+        dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(crbm_weights.device)
+        
+        # Convert spin Ising samples to binary RBM samples
+        _ZERO = torch.tensor(0., dtype=torch.float).to(crbm_weights.device)
+        _MINUS_ONE = torch.tensor(-1., dtype=torch.float).to(crbm_weights.device)
+        
+        dwave_samples = torch.where(dwave_samples == _MINUS_ONE, _ZERO, dwave_samples)
+        
+        if true_energy is None:
+            true_e = torch.rand((num_samples, 1), device=crbm_weights.device).detach() * 100.
+        else:
+            true_e = torch.ones((num_samples, 1), device=crbm_weights.device).detach() * true_energy
+        prior_samples = torch.cat([dwave_samples, true_e], dim=1)
+            
+        output_hits, output_activations = self.decoder(prior_samples)
+        beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+        samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False) 
+        
+        labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)    
+        true_e.append(torch.pow(2,labels)*256) 
+        return torch.cat(true_energies, dim=0).unsqueeze(dim=1), samples
     
     def generate_samples(self, num_samples=64, true_energy=None):
         """
