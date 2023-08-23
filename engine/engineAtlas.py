@@ -51,12 +51,13 @@ class EngineAtlas(EngineCaloV3):
         valid_batch_idx = max(num_batches//self._config.engine.n_valid_per_epoch, 1)
         num_epochs = self._config.engine.n_epochs
         num_plot_samples = self._config.engine.n_plot_samples
-        total_batches = num_batches*num_epochs
         
         kl_enabled = self._config.engine.kl_enabled
         kl_annealing = self._config.engine.kl_annealing
         kl_annealing_ratio = self._config.engine.kl_annealing_ratio
         ae_enabled = self._config.engine.ae_enabled
+        epoch_anneal_start = self._config.engine.epoch_annealing_start
+        total_batches = num_batches*(num_epochs-epoch_anneal_start+1)
         self.R = self._config.engine.r_param
         
         with torch.set_grad_enabled(is_training):
@@ -80,7 +81,10 @@ class EngineAtlas(EngineCaloV3):
                     fwd_output.output_hits = self.layerTo1D(fwd_output.output_hits)
                     
                 if is_training:
-                    gamma = min((((epoch-1)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), self._config.engine.kl_gamma_max)
+                    if epoch >= epoch_anneal_start:
+                        gamma = min((((epoch-epoch_anneal_start)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), self._config.engine.kl_gamma_max)
+                    else:
+                        gamma = 0
                     if kl_enabled:
                         if kl_annealing:
                             kl_gamma = gamma

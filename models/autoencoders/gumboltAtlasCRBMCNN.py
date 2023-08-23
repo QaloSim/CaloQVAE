@@ -4,6 +4,7 @@ CNN - Changed to CNN encoder creation
 """
 # Torch imports
 import torch
+from torch.nn import BCEWithLogitsLoss
 from torch.nn.functional import binary_cross_entropy_with_logits
 import torch.nn as nn 
 
@@ -26,6 +27,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
     def __init__(self, **kwargs):
         super(GumBoltAtlasCRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasCRBMCNN"
+        self._bce_loss = BCEWithLogitsLoss(reduction="none")
 
     def create_networks(self):
         """
@@ -158,7 +160,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         post_zetas = torch.cat(post_samples, 1)
         
         # Compute cross-entropy b/w post_logits and post_samples
-        entropy = - self._bce_loss(logits_q_z, post_zetas)
+        # entropy = - self._bce_loss(logits_q_z, post_zetas)
+        entropy = self._bce_loss(logits_q_z, post_zetas)
         entropy = torch.mean(torch.sum(entropy, 1), 0)
         
         # Compute positive energy expval using hierarchical posterior samples
