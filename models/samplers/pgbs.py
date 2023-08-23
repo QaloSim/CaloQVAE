@@ -61,7 +61,7 @@ class PGBS:
         :return p3_state (torch.Tensor) : (batch_size, n_nodes_p4)
         """
         prbm = self._prbm
-        p0_bias = prbm.bias_dict['0']
+        p0_bias = prbm._bias_dict['0']
 
         # Initialize the random state of partitions 1, 2, and 3
         p1_state = torch.bernoulli(torch.rand(self._batch_size,
@@ -74,27 +74,49 @@ class PGBS:
                                               prbm.nodes_per_partition,
                                               device=p0_bias.device))
 
+#         for _ in range(self._n_steps):
+#             p0_state = self._p_state(prbm._weight_dict['01'].T,
+#                                      prbm._weight_dict['02'].T,
+#                                      prbm._weight_dict['03'].T,
+#                                      p1_state, p2_state, p3_state,
+#                                      p0_bias)
+#             p1_state = self._p_state(prbm._weight_dict['01'],
+#                                      prbm._weight_dict['02'].T,
+#                                      prbm._weight_dict['03'].T,
+#                                      p0_state, p2_state, p3_state,
+#                                      prbm._bias_dict['1'])
+#             p2_state = self._p_state(prbm._weight_dict['01'],
+#                                      prbm._weight_dict['02'],
+#                                      prbm._weight_dict['03'].T,
+#                                      p0_state, p1_state, p3_state,
+#                                      prbm._bias_dict['2'])
+#             p3_state = self._p_state(prbm._weight_dict['01'],
+#                                      prbm._weight_dict['02'],
+#                                      prbm._weight_dict['03'],
+#                                      p0_state, p1_state, p2_state,
+#                                      prbm._bias_dict['3'])
+            
         for _ in range(self._n_steps):
-            p0_state = self._p_state(prbm.weight_dict['01'].T,
-                                     prbm.weight_dict['02'].T,
-                                     prbm.weight_dict['03'].T,
+            p0_state = self._p_state(prbm._weight_dict['01'].T,
+                                     prbm._weight_dict['02'].T,
+                                     prbm._weight_dict['03'].T,
                                      p1_state, p2_state, p3_state,
                                      p0_bias)
-            p1_state = self._p_state(prbm.weight_dict['01'],
-                                     prbm.weight_dict['02'].T,
-                                     prbm.weight_dict['03'].T,
+            p1_state = self._p_state(prbm._weight_dict['01'],
+                                     prbm._weight_dict['12'].T,
+                                     prbm._weight_dict['13'].T,
                                      p0_state, p2_state, p3_state,
-                                     prbm.bias_dict['1'])
-            p2_state = self._p_state(prbm.weight_dict['01'],
-                                     prbm.weight_dict['02'],
-                                     prbm.weight_dict['03'].T,
+                                     prbm._bias_dict['1'])
+            p2_state = self._p_state(prbm._weight_dict['02'],
+                                     prbm._weight_dict['12'],
+                                     prbm._weight_dict['23'].T,
                                      p0_state, p1_state, p3_state,
-                                     prbm.bias_dict['2'])
-            p3_state = self._p_state(prbm.weight_dict['01'],
-                                     prbm.weight_dict['02'],
-                                     prbm.weight_dict['03'],
+                                     prbm._bias_dict['2'])
+            p3_state = self._p_state(prbm._weight_dict['03'],
+                                     prbm._weight_dict['13'],
+                                     prbm._weight_dict['23'],
                                      p0_state, p1_state, p2_state,
-                                     prbm.bias_dict['3'])
+                                     prbm._bias_dict['3'])
 
         return p0_state.detach(), p1_state.detach(), \
             p2_state.detach(), p3_state.detach()

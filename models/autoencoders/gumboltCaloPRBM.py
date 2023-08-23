@@ -85,8 +85,8 @@ class GumBoltCaloPRBM(gcv6.GumBoltCaloV6):
 
         :return energy expectation value over the current batch
         """
-        w_dict = self.prior.weight_dict
-        b_dict = self.prior.bias_dict
+        w_dict = self.prior._weight_dict
+        b_dict = self.prior._bias_dict
 
         w_dict_cp = {}
 

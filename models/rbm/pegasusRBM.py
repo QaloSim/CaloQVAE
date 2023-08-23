@@ -75,9 +75,10 @@ class PegasusRBM(nn.Module):
         """
         if self._qpu:
             for key in self._weight_dict.keys():
-                self._weight_dict[key] = self._weight_dict[key] \
-                    * self._weight_mask_dict[key]
+                self._weight_dict[key] = self._weight_dict[key].to(self.device) \
+                    * self._weight_mask_dict[key].to(self.device)
         return self._weight_dict
+
 
     @property
     def bias_dict(self):
