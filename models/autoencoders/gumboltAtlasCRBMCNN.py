@@ -160,8 +160,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         post_zetas = torch.cat(post_samples, 1)
         
         # Compute cross-entropy b/w post_logits and post_samples
-        # entropy = - self._bce_loss(logits_q_z, post_zetas)
-        entropy = self._bce_loss(logits_q_z, post_zetas)
+        entropy = - self._bce_loss(logits_q_z, post_zetas)
+        # entropy = self._bce_loss(logits_q_z, post_zetas)
         entropy = torch.mean(torch.sum(entropy, 1), 0)
         
         # Compute positive energy expval using hierarchical posterior samples

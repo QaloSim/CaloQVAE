@@ -59,6 +59,7 @@ class EngineAtlas(EngineCaloV3):
         epoch_anneal_start = self._config.engine.epoch_annealing_start
         total_batches = num_batches*(num_epochs-epoch_anneal_start+1)
         self.R = self._config.engine.r_param
+        cl_lambda = self._config.engine.cl_lambda
         
         with torch.set_grad_enabled(is_training):
             for batch_idx, (input_data, label) in enumerate(data_loader):
@@ -98,10 +99,10 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 500 * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
                         # batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
                     else:
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + 500 * batch_loss_dict["label_loss"]
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"]
                         # batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"]
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].sum().backward()
