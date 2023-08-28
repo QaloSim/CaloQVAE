@@ -4,12 +4,15 @@ n_epochs: 100
 
 kl_enabled: 1
 ae_enabled: 1
-kl_annealing: 1
+kl_annealing: 0
 kl_annealing_ratio: 0.3
 kl_gamma_max: 1.0
-epoch_annealing_start: 50
+epoch_annealing_start: 1
 r_param : 0.0020
 cl_lambda: 1000
+beta_smoothing_fct: 5
+beta_smoothing_fct_final: 100
+beta_smoothing_fct_anneal: True
 
 n_train_batch_size: 128
 n_test_batch_size: 1024

@@ -70,7 +70,7 @@ class EncoderCNN(HierarchicalEncoder):
         x = self.sequential2(x)
         return x
 
-    def forward(self, x, x0, is_training=True):
+    def forward(self, x, x0, is_training=True, beta_smoothing_fct=5):
         """ This function defines a hierarchical approximate posterior distribution. The length of the output is equal 
             to n_latent_hierarchy_lvls and each element in the list is a DistUtil object containing posterior distribution 
             for the group of latent nodes in each hierarchy level. 
@@ -104,7 +104,10 @@ class EncoderCNN(HierarchicalEncoder):
         post_logits.append(logits)
         
         # Scalar tensor - device doesn't matter but made explicit
-        beta = torch.tensor(self._config.model.beta_smoothing_fct,
+        # beta = torch.tensor(self._config.model.beta_smoothing_fct,
+        #                     dtype=torch.float, device=logits.device,
+        #                     requires_grad=False)
+        beta = torch.tensor(beta_smoothing_fct,
                             dtype=torch.float, device=logits.device,
                             requires_grad=False)
         

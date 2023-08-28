@@ -109,7 +109,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
     
-    def forward(self, xx, is_training):
+    def forward(self, xx, is_training, beta_smoothing_fct=5):
         """
         - Overrides forward in GumBoltCaloV5.py
         
@@ -125,7 +125,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
 	    #Step 1: Feed data through encoder
         # in_data = torch.cat([x[0], x[1]], dim=1)
         
-        out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training)
+        out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training, beta_smoothing_fct)
         # out.post_samples = self.encoder(x, x0, is_training)
         post_samples = out.post_samples
         post_samples = torch.cat(out.post_samples, 1)

@@ -29,6 +29,15 @@ class EngineAtlas(EngineCaloV3):
     def __init__(self, cfg, **kwargs):
         logger.info("Setting up engine Atlas.")
         super(EngineAtlas, self).__init__(cfg, **kwargs)
+        
+    def beta_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
+        delta_beta = self._config.engine.beta_smoothing_fct_final - self._config.engine.beta_smoothing_fct
+        delta = (self._config.engine.n_epochs - epoch_anneal_start)*num_batches
+        if delta_beta > 0:
+            beta = min(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
+        else:
+            beta = max(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
+        return beta
 
     def fit(self, epoch, is_training=True, mode="train"):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
@@ -72,8 +81,13 @@ class EngineAtlas(EngineCaloV3):
 
                 if self._config.usinglayers:
                     in_data = self.parseToLayer(in_data)
+                    
+                if self._config.engine.beta_smoothing_fct_anneal:
+                    beta_smoothing_fct = self.beta_value(epoch_anneal_start, num_batches, batch_idx, epoch)
+                else:
+                    beta_smoothing_fct = self._config.engine.beta_smoothing_fct
                 
-                fwd_output = self._model((in_data, true_energy), is_training)
+                fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct)
                 batch_loss_dict = self._model.loss(in_data, fwd_output, true_energy)
 
                 if self._config.usinglayers:
@@ -97,6 +111,7 @@ class EngineAtlas(EngineCaloV3):
                     ae_gamma = 1. if ae_enabled else 0.
                         
                     batch_loss_dict["gamma"] = kl_gamma
+                    batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
