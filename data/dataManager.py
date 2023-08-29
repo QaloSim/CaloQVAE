@@ -231,7 +231,8 @@ class DataManager(object):
         Returns:
             nparr - Inverse transformed np array (num_examples * num_features)
         """
-        nparr = np.where(data > 0., data, np.inf)
+        # nparr = np.where(data > 0., data, np.inf)
+        nparr = np.where(data > 0., data, np.nan)
 #         logger.info(nparr.shape)
         
         for j in range(nparr.shape[1]):
@@ -241,6 +242,7 @@ class DataManager(object):
                 nparr[:, j] += amin
                 
         nparr = self._transformer.inverse_transform(nparr)
-        nparr = np.where(np.isinf(nparr), 0., nparr)
+        # nparr = np.where(np.isinf(nparr), 0., nparr)
+        nparr = np.where(np.isnan(nparr), 0., nparr)
         
         return nparr

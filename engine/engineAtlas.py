@@ -339,8 +339,12 @@ class EngineAtlas(EngineCaloV3):
                 sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. 
             elif self._config.reducedata:
                 sample_data = self._reduceinv(sample_data, sample_energies, R=self.R)/1000
-            
-            conditioned_samples.append(sample_data.detach().cpu())
+                sample_data = sample_data.detach().cpu()
+                
+            if type(sample_data) == torch.Tensor:
+                conditioned_samples.append(sample_data)
+            else:
+                conditioned_samples.append(torch.tensor(sample_data))
                         
         conditioned_samples = torch.cat(conditioned_samples, dim=0).numpy()
         self._hist_handler.update_samples(conditioned_samples)

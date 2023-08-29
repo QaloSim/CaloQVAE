@@ -24,4 +24,4 @@ defaults:
   - engine: dvaeatlas_training
 
 usinglayers: False
-reducedata: True
+reducedata: False
