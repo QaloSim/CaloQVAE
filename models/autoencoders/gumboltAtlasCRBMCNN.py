@@ -319,13 +319,15 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             sample = self._energy_activation_fct(output_activations) \
                 * self._hit_smoothing_dist_mod(output_hits, beta, False)
             
-            labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
+            if self._config.engine.cl_lambda != 0:
+                labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
             
-            true_energies.append(torch.pow(2,labels)*256) 
-            # true_energies.append(true_e) 
+                true_energies.append((torch.pow(2,labels)*256).unsqueeze(dim=1)) 
+            else:
+                true_energies.append(true_e) 
             samples.append(sample)
             
-        return torch.cat(true_energies, dim=0).unsqueeze(dim=1), torch.cat(samples, dim=0)
+        return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
 
     def loss(self, input_data, fwd_out, true_energy):
         """

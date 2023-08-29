@@ -47,8 +47,12 @@ class CaloImageContainer(Dataset):
     def __init__(self, particle_type=None, input_data=None, layer_subset=[]):
         self._particle_type=particle_type
 
-        self._dataset_size=len(input_data["voxels"])
-#         self._dataset_size=len(input_data["layer_0"])
+        try:
+            self._dataset_size=len(input_data["voxels"])
+        except:
+            try:
+                self._dataset_size=len(input_data["layer_0"])
+            except: self._dataset_size=len(input_data["showers"])
         #dictionary of all calo images - keys are layer names
         self._images=None
         #true energy of the jets per event (same for all layers)
@@ -125,8 +129,14 @@ class CaloImageContainer(Dataset):
             calo_images[key]=CaloImage(image=torch.Tensor(ds),layer=key)
 
         self._images=calo_images
-        self._true_energies=input_data["energy"][:]
-#         self._overflow_energies=input_data["overflow"][:]
+        try:
+            self._true_energies=input_data["energy"][:]
+        except:
+            self._true_energies=input_data["incident_energies"][:]
+        try:
+            self._overflow_energies=input_data["overflow"][:]
+        except:
+            pass
 
 def get_atlas_datasets(inFiles={}, particle_type=["pions1"], layer_subset=[],
                       frac_train_dataset=0.6, frac_test_dataset=0.2):

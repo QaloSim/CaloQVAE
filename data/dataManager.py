@@ -150,7 +150,7 @@ class DataManager(object):
             train_dataset,test_dataset,val_dataset=get_calo_datasets(
                 inFiles=inFiles,
                 particle_type=[self._config.data.particle_type],
-                layer_subset=self._config.data.calo_layers,
+                layer_subset=self._config.data._layers,
                 frac_train_dataset=self._config.data.frac_train_dataset,
                 frac_test_dataset=self._config.data.frac_test_dataset, 
                 )
@@ -175,12 +175,13 @@ class DataManager(object):
                 'pionEn5':   self._config.data.atlas_input_pionEn5,
                 'pionEn6':   self._config.data.atlas_input_pionEn6,
                 'pionEn7':   self._config.data.atlas_input_pionEn7,
+            'electron-ds2': self._config.data.atlas_input_electron,
         }
 
             train_dataset,test_dataset,val_dataset=get_atlas_datasets(
                 inFiles=inFiles,
                 particle_type=[self._config.data.particle_type],
-                layer_subset=self._config.data.calo_layers,
+                layer_subset=self._config.data._layers,
                 frac_train_dataset=self._config.data.frac_train_dataset,
                 frac_test_dataset=self._config.data.frac_test_dataset, 
                 )

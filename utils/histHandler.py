@@ -23,6 +23,8 @@ from utils.hists.eratiohist import ERatioHist
 #               "layer_1" : [288, 432],
 #               "layer_2" : [432, 504]}
 _LAYER_SIZES={"voxels" : [0, 533]}
+# _LAYER_SIZES={"showers" : [0, 6480]}       #dataset2
+#_LAYER_SIZES={"showers" : [0, 40500]}     #dataset3
 _SCATTER_KEYS = ["totalEnergyHist", "_EnergyHist", "_sparsityHist"]
 
 class HistHandler(object):
@@ -31,9 +33,10 @@ class HistHandler(object):
         self._cfg = cfg
         self._hdict = {"totalEnergyHist":TotalEnergyHist(),
                        "diffEnergyHist":DiffEnergyHist()}
+        self._LAYER_SIZES = self.layersizes(self._cfg.data.dataset)
         
-        for layer in cfg.data.calo_layers:
-            start_idx, end_idx = _LAYER_SIZES[layer]
+        for layer in cfg.data._layers:
+            start_idx, end_idx = self._LAYER_SIZES[layer]
             if layer in ["layer_0", "layer_2"]:
                 self._hdict[layer + "_EnergyHist"] = LayerEnergyHist(start_idx, end_idx, max_bin=25, n_bins=25)
                 self._hdict[layer + "_fracEnergyHist"] = FracTotalEnergyHist(start_idx, end_idx)
@@ -43,7 +46,7 @@ class HistHandler(object):
             self._hdict[layer + "_sparsityHist"] = SparsityHist(start_idx, end_idx)
             self._hdict[layer + "_eRatioHist"] = ERatioHist(start_idx, end_idx)
             
-        layer_dict = {layer : _LAYER_SIZES[layer] for layer in cfg.data.calo_layers}
+        layer_dict = {layer : self._LAYER_SIZES[layer] for layer in cfg.data._layers}
         self._hdict["dwTotalEnergyHist"] = DWTotalEnergyHist(layer_dict)
         self._hdict["showerDepthHist"] = ShowerDepthHist(layer_dict)
         
@@ -193,3 +196,16 @@ class HistHandler(object):
         plt.close()
         
         return image
+    
+    def layersizes(self, dataset):
+        if dataset == 'dataset1pion':
+            return {"voxels" : [0, 533]}
+        elif dataset == 'calo':
+            return {"layer_0" : [0, 288],
+                  "layer_1" : [288, 432],
+                  "layer_2" : [432, 504]}
+        elif dataset == 'dataset2':
+            return {"showers" : [0, 6480]}
+        elif dataset == 'dataset3':
+            return {"showers" : [0, 40500]}
+        
