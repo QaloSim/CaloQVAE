@@ -209,9 +209,9 @@ class EngineAtlas(EngineCaloV3):
 
 #                         logger.info(input_images[0].shape)
 
-                        batch_loss_dict["input"] = plot_calo_images(input_images)
-                        batch_loss_dict["recon"] = plot_calo_images(recon_images)
-                        batch_loss_dict["sample"] = plot_calo_images(sample_images)
+                        batch_loss_dict["input"] = plot_calo_images(input_images, particle=self._config.data.particle)
+                        batch_loss_dict["recon"] = plot_calo_images(recon_images, particle=self._config.data.particle)
+                        batch_loss_dict["sample"] = plot_calo_images(sample_images, particle=self._config.data.particle)
                         
                         if not is_training:
                             for key in batch_loss_dict.keys():

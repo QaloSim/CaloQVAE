@@ -1,6 +1,6 @@
 data_type: atlas
 # _layers: 
-#   - voxels
+  # - voxels
 # particle_type: pion1
 # particle_type: pionEn5
 # dataset: dataset1pion
@@ -12,6 +12,7 @@ frac_test_dataset: 0.1
 frac_train_dataset: 0.8
 
 # particle: pion
+particle: electron
 # numvoxels: 533
 
 scaled: True
