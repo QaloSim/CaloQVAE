@@ -114,11 +114,15 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
-                        # batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] #<------JQTM: prefactor to hit_loss
+                        if "label_loss" in batch_loss_dict.keys():
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
+                        else:
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] 
                     else:
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"]
-                        # batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"]
+                        if "label_loss" in batch_loss_dict.keys():
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"]
+                        else:
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] 
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].sum().backward()
                     self._optimiser.step()

@@ -33,7 +33,7 @@ class GumBoltCaloV5(GumBolt):
         
         self._hit_smoothing_dist_mod = GumbelMod()
         
-    def forward(self, x, is_training):
+    def forward(self, x, is_training, beta_smoothing_fct=5):
         """
         - Overrides forward in dvaepp.py
         
@@ -47,7 +47,7 @@ class GumBoltCaloV5(GumBolt):
         
 	    #Step 1: Feed data through encoder
         in_data = torch.cat([x[0], x[1]], dim=1)
-        out.beta, out.post_logits, out.post_samples = self.encoder(in_data, is_training)
+        out.beta, out.post_logits, out.post_samples = self.encoder(in_data, is_training, beta_smoothing_fct)
         post_samples = torch.cat(out.post_samples, 1)
         post_samples = torch.cat([post_samples, x[1]], dim=1)
         
@@ -58,7 +58,7 @@ class GumBoltCaloV5(GumBolt):
         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         return out
     
-    def loss(self, input_data, fwd_out):
+    def loss(self, input_data, fwd_out, true_energy=None):
         logger.debug("loss")
         
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
