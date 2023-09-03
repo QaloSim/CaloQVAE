@@ -15,7 +15,7 @@ frac_train_dataset: 0.8
 particle: electron
 # numvoxels: 533
 
-scaled: True
+scaled: False
 # scaler_path: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions_samples_highStat_En_5_scaler.gz
 # scaler_amin: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions_samples_highStat_En_5_amin.npy
 scaler_path: /raid/javier/Datasets/CaloVAE/data/atlas_dataset2and3_scaled/dataset_2_1_scaler.gz
@@ -39,4 +39,5 @@ atlas_input_pionEn4: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_high
 atlas_input_pionEn5: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_5.hdf5
 atlas_input_pionEn6: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_6.hdf5
 atlas_input_pionEn7: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_7.hdf5
-atlas_input_electron: /raid/javier/Datasets/CaloVAE/data/atlas_dataset2and3_scaled/dataset_2_1.hdf5
+atlas_input_electron: /raid/javier/Datasets/CaloVAE/data/atlas_dataset2and3/dataset_2_1.hdf5
+# atlas_input_electron: /raid/javier/Datasets/CaloVAE/data/atlas_dataset2and3_scaled/dataset_2_1.hdf5

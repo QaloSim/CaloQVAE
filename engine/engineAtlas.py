@@ -175,12 +175,18 @@ class EngineAtlas(EngineCaloV3):
                         if self._config.data.scaled:
                             in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                             recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
+                            # self._model.sampler._batch_size = true_energy.shape[0]
+                            # sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            # self._model.sampler._batch_size = self._config.engine.rbm_batch_size
                             sample_energies, sample_data = self._model.generate_samples()
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                         elif self._config.reducedata:
                             in_data = self._reduceinv(in_data, true_energy, R=self.R)
                             recon_data = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
-                            sample_energies, sample_data = self._model.generate_samples()
+                            self._model.sampler._batch_size = true_energy.shape[0]
+                            sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            self._model.sampler._batch_size = self._config.engine.rbm_batch_size
+                            # sample_energies, sample_data = self._model.generate_samples()
                             if self._config.usinglayers:
                                 sample_data = self.layerTo1D(sample_data)
                             sample_data = self._reduceinv(sample_data, sample_energies, R=self.R)

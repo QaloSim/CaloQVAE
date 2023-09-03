@@ -18,6 +18,8 @@ from models.networks.hierarchicalEncoder import HierarchicalEncoder
 # DiVAE.utils imports
 from utils.dists.gumbelmod import GumbelMod
 
+from models.samplers.GibbsSampling import GS
+
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
@@ -32,6 +34,19 @@ class GumBoltCaloV5(GumBolt):
         self._hit_loss = BCEWithLogitsLoss(reduction="none")
         
         self._hit_smoothing_dist_mod = GumbelMod()
+        
+    def _create_sampler(self, rbm=None):
+        """
+        - Overrides _create_sampler in discreteVAE.py
+        
+        Returns:
+            Gibbs Sampler
+        """
+        logger.debug("GumBoltCaloCRBM::_create_sampler")
+        return GS(batch_size=self._config.engine.rbm_batch_size,
+                   RBM=self.prior,
+                   n_gibbs_sampling_steps\
+                       =self._config.engine.n_gibbs_sampling_steps)
         
     def forward(self, x, is_training, beta_smoothing_fct=5):
         """
@@ -77,6 +92,7 @@ class GumBoltCaloV5(GumBolt):
         """
         generate_samples()
         """
+        # self.sampler._batch_size = num_samples   #< JQTM
         true_energies = []
         num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
         samples = []
@@ -89,6 +105,7 @@ class GumBoltCaloV5(GumBolt):
                 true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.
             else:
                 true_e = torch.ones((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * true_energy
+                # true_e = true_energy
             prior_samples = torch.cat([rbm_vis, rbm_hid, true_e], dim=1)
             
             output_hits, output_activations = self.decoder(prior_samples)
