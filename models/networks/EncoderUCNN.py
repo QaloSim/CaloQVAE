@@ -142,6 +142,7 @@ class EncoderUCNN(HierarchicalEncoder):
         return beta, post_logits, post_samples
 
 
+
 class EncoderUCNNv2(HierarchicalEncoder):
     def __init__(self, **kwargs):
         super(EncoderUCNNv2, self).__init__(**kwargs)

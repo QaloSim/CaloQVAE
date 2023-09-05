@@ -19,7 +19,7 @@ task:
   - test
 
 defaults:
-  - model: gumboltatlascrbmcnn
+  - model: gumboltatlascrbmcnndcond
   - data: atlasDGX
   - engine: dvaeatlas_training
 
@@ -27,4 +27,4 @@ defaults:
 # model: gumboltatlascrbmfcn
 # model: gumboltatlascrbmcnn
 usinglayers: False
-reducedata: True
+reducedata: False

@@ -19,7 +19,7 @@ n_latent_nodes: 1000
 
 mapping: bipartite
 bernoulli : 0
-alpha: 5.0
+alpha: 10.0
 gamma: 10
-mse_weight: 0.001
+mse_weight: 0.008
 rbmMethod: CD
