@@ -22,4 +22,5 @@ bernoulli : 0
 alpha: 5.0
 gamma: 5.0
 mse_weight: 0.7
-rbmMethod: Rdm
+interpolation_param: 0.9
+rbmMethod: CD

@@ -336,8 +336,12 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         logger.debug("loss")
         
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-        ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)  #<------JQTM: Weighed MSE
-        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0)
+        # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
+        sigma = torch.max(torch.sqrt(input_data), torch.tensor([0.1], device=input_data.device))
+        interpolation_param = self._config.model.interpolation_param
+        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
+        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
+        # torch.min(x[x>0])
         
         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
@@ -349,8 +353,14 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
         hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
         
+        # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
+        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+        
         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
+                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+        
+        # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
 
 
 

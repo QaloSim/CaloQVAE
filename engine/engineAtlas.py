@@ -32,7 +32,7 @@ class EngineAtlas(EngineCaloV3):
         
     def beta_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
         delta_beta = self._config.engine.beta_smoothing_fct_final - self._config.engine.beta_smoothing_fct
-        delta = (self._config.engine.n_epochs - epoch_anneal_start)*num_batches
+        delta = (self._config.engine.n_epochs * 0.7 - epoch_anneal_start)*num_batches
         if delta_beta > 0:
             beta = min(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
         else:
@@ -124,7 +124,8 @@ class EngineAtlas(EngineCaloV3):
                         else:
                             batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] 
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
-                    batch_loss_dict["loss"].sum().backward()
+                    batch_loss_dict["loss"].backward()
+                    # batch_loss_dict["loss"].sum().backward()
                     self._optimiser.step()
                     # Trying this to free up memory on the GPU and run validation during a training epoch
                     # - hopefully backprop will work with the code above - didn't work
@@ -302,6 +303,7 @@ class EngineAtlas(EngineCaloV3):
         """
         
         return torch.log1p((in_data/true_energy)/R)
+        # return torch.log1p((in_data/torch.sqrt(true_energy))/R)
         
     def _reduceinv(self, in_data, true_energy, R=0.04):
         """
@@ -309,6 +311,7 @@ class EngineAtlas(EngineCaloV3):
         """
         
         return (in_data.exp() - 1)*R*true_energy
+        # return (in_data.exp() - 1)*R*torch.sqrt(true_energy)
     
     def _update_histograms(self, in_data, output_activations, true_energy):
         """

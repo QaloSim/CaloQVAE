@@ -27,4 +27,4 @@ defaults:
 # model: gumboltatlascrbmfcn
 # model: gumboltatlascrbmcnn
 usinglayers: False
-reducedata: False
+reducedata: True
