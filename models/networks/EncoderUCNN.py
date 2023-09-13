@@ -1,7 +1,7 @@
 """
 Encoder CNN
 
-Changes the way the encoder is constructed wrt V2. No hierarchy! Everyone's equal!
+Changes the way the encoder is constructed wrt V2.
 
 """
 import torch
@@ -62,7 +62,7 @@ class EncoderUCNN(HierarchicalEncoder):
                            nn.BatchNorm2d(1024),
                            nn.PReLU(1024, 0.02),
         
-                            nn.Conv2d(1024, 1000, 2, 1, 0),
+                            nn.Conv2d(1024, self.n_latent_nodes, 2, 1, 0),
                            # nn.MaxPool2d(2,stride=2),
                            # nn.PReLU(self.n_latent_nodes, 0.02),
                            nn.Sigmoid(),

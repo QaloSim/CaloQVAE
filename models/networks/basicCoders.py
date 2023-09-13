@@ -158,11 +158,12 @@ class DecoderCNNCond(BasicDecoderV3):
         self._output_activation_fct=output_activation_fct
         self.num_output_nodes = num_output_nodes
         self.minEnergy = 256.0
+        self.n_latent_nodes = self._config.model.n_latent_nodes
 
         self._layers = nn.Sequential(
-                   nn.Unflatten(1, (1000, 1,1)),
+                   nn.Unflatten(1, (self.n_latent_nodes, 1,1)),
     
-                   nn.ConvTranspose2d(1000, 512, 4, 1, 0),
+                   nn.ConvTranspose2d(self.n_latent_nodes, 512, 4, 1, 0),
                    nn.BatchNorm2d(512),
                    nn.PReLU(512, 0.02),
                    
