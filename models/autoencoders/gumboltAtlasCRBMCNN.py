@@ -337,7 +337,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
         # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
-        sigma = torch.max(torch.sqrt(input_data), torch.tensor([0.1], device=input_data.device))
+        sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
         interpolation_param = self._config.model.interpolation_param
         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
         ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
