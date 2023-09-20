@@ -88,6 +88,9 @@ class EngineAtlas(EngineCaloV3):
                     beta_smoothing_fct = self._config.engine.beta_smoothing_fct
                 
                 fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct)
+                # if self._config.reducedata:
+                #     in_data = self._reduceinv(in_data, true_energy, R=self.R)
+                #     fwd_output.output_activations = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
                 batch_loss_dict = self._model.loss(in_data, fwd_output, true_energy)
 
                 if self._config.usinglayers:
@@ -288,8 +291,8 @@ class EngineAtlas(EngineCaloV3):
         true_energy = label[0]
                 
         # Scaled the raw data to GeV units
-#         if not self._config.data.scaled:
-#             in_data = in_data/1000.
+        # if not self._config.data.scaled:
+        #     in_data = in_data/1000.
                     
         in_data = in_data.to(self._device)
         true_energy = true_energy.to(self._device).float()
@@ -303,7 +306,7 @@ class EngineAtlas(EngineCaloV3):
         """
         
         return torch.log1p((in_data/true_energy)/R)
-        # return torch.log1p((in_data/torch.sqrt(true_energy))/R)
+
         
     def _reduceinv(self, in_data, true_energy, R=0.04):
         """
@@ -311,7 +314,7 @@ class EngineAtlas(EngineCaloV3):
         """
         
         return (in_data.exp() - 1)*R*true_energy
-        # return (in_data.exp() - 1)*R*torch.sqrt(true_energy)
+
     
     def _update_histograms(self, in_data, output_activations, true_energy):
         """
@@ -346,7 +349,7 @@ class EngineAtlas(EngineCaloV3):
         conditioned_samples = []
         for energy in conditioning_energies:
             sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
-            sample_data = sample_data.detach().cpu()
+            # sample_data = sample_data.detach().cpu()
             if self._config.usinglayers:
                 sample_data = self.layerTo1D(sample_data)
             if self._config.data.scaled:
@@ -385,6 +388,9 @@ class EngineAtlas(EngineCaloV3):
                     in_data = self.parseToLayer(in_data)
                 
                 fwd_output_v = self._model((in_data, true_energy), False)
+                # if self._config.reducedata:
+                #     in_data = self._reduceinv(in_data, true_energy, R=self.R)
+                #     fwd_output_v.output_activations = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
                 batch_loss_dict = self._model.loss(in_data, fwd_output_v, true_energy)
 
                 if self._config.usinglayers:

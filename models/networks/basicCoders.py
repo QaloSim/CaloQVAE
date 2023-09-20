@@ -161,9 +161,12 @@ class DecoderCNNCond(BasicDecoderV3):
         self.n_latent_nodes = self._config.model.n_latent_nodes
 
         self._layers = nn.Sequential(
-                   nn.Unflatten(1, (self.n_latent_nodes, 1,1)),
+                   # nn.Unflatten(1, (self.n_latent_nodes, 1,1)),
+                   nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+
     
-                   nn.ConvTranspose2d(self.n_latent_nodes, 512, 4, 1, 0),
+                   # nn.ConvTranspose2d(self.n_latent_nodes, 512, 4, 1, 0),
+                   nn.ConvTranspose2d(self._node_sequence[0][0]-1, 512, 4, 1, 0),
                    nn.BatchNorm2d(512),
                    nn.PReLU(512, 0.02),
                    

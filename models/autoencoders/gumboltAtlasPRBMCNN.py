@@ -15,7 +15,7 @@ from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDC
 from CaloQVAE.models.rbm import pegasusRBM
 from CaloQVAE.models.samplers import pgbs
 # from models.networks.EncoderCNN import EncoderCNN
-from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNv2
+from models.networks.EncoderUCNN import EncoderUCNN
 from models.networks.basicCoders import DecoderCNNCond
 
 from CaloQVAE import logging

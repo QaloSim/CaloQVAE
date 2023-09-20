@@ -12,9 +12,9 @@ from models.samplers.GibbsSampling import GS
 
 # DiVAE.models imports
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
-from models.networks.EncoderCNN import EncoderCNN
-from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNv2
-from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNv2
+# from models.networks.EncoderCNN import EncoderCNN
+from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH
+from models.networks.basicCoders import DecoderCNN, Classifier
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         self.encoder=self._create_encoder()
         self.prior=self._create_prior()
         self.decoder=self._create_decoder()
-        self.classifier=self._create_classifier()
+        # self.classifier=self._create_classifier()
         self.sampler = self._create_sampler(rbm=self.prior)
         
     def _create_sampler(self, rbm=None):
@@ -62,20 +62,20 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             EncoderCNN instance
         """
         logger.debug("GumBoltAtlasCRBMCNN::_create_encoder")
-        return EncoderUCNN(
+        # return EncoderUCNN(
+        #     input_dimension=self._flat_input_size,
+        #     n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+        #     n_latent_nodes=self.n_latent_nodes,
+        #     skip_latent_layer=False,
+        #     smoother="Gumbel",
+        #     cfg=self._config)
+        return EncoderUCNNH(
             input_dimension=self._flat_input_size,
             n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
             n_latent_nodes=self.n_latent_nodes,
             skip_latent_layer=False,
             smoother="Gumbel",
             cfg=self._config)
-        # return EncoderUCNNv2(
-        #     input_dimension=7,
-        #     n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
-        #     n_latent_nodes=self.n_latent_nodes,
-        #     skip_latent_layer=False,
-        #     smoother="Gumbel",
-        #     cfg=self._config)
     
     def _create_decoder(self):
         """
@@ -91,23 +91,19 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                               activation_fct=self._activation_fct, #<--- try identity
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
-        # return DecoderCNNv2(node_sequence=self._decoder_nodes,
-        #                       activation_fct=self._activation_fct, #<--- try identity
-        #                       num_output_nodes = 7, # self._flat_input_size,
-        #                       cfg=self._config)
 
-    def _create_classifier(self):
-        """
-        Returns:
-            Classifier instance
-        """
-        logger.debug("GumBoltAtlasCRBMCNN::_create_classifier")
-        self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
-                                  self._decoder_nodes[0][1])
-        return Classifier(node_sequence=self._decoder_nodes,
-                              activation_fct=self._activation_fct, #<--- try identity
-                              num_output_nodes = self._flat_input_size,
-                              cfg=self._config)
+    # def _create_classifier(self):
+    #     """
+    #     Returns:
+    #         Classifier instance
+    #     """
+    #     logger.debug("GumBoltAtlasCRBMCNN::_create_classifier")
+    #     self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
+    #                               self._decoder_nodes[0][1])
+    #     return Classifier(node_sequence=self._decoder_nodes,
+    #                           activation_fct=self._activation_fct, #<--- try identity
+    #                           num_output_nodes = self._flat_input_size,
+    #                           cfg=self._config)
     
     def forward(self, xx, is_training, beta_smoothing_fct=5):
         """
@@ -132,10 +128,10 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
 #         post_samples = torch.cat([post_samples, x[1]], dim=1)
         
         output_hits, output_activations = self.decoder(post_samples, x0)
-        labels = self.classifier(output_hits)
+        # labels = self.classifier(output_hits)
         
         out.output_hits = output_hits
-        out.labels = labels
+        # out.labels = labels
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         return out
@@ -340,8 +336,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
         interpolation_param = self._config.model.interpolation_param
         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
-        # torch.min(x[x>0])
+        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0)
         
         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
@@ -350,8 +345,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
 
-        labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
-        hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
+        # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
+        # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
         
         # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}

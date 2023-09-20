@@ -13,8 +13,8 @@ from models.samplers.GibbsSampling import GS
 # DiVAE.models imports
 from models.autoencoders.gumboltAtlasCRBMCNN import GumBoltAtlasCRBMCNN
 from models.networks.EncoderCNN import EncoderCNN
-from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNv2
-from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNv2, DecoderCNNCond
+from models.networks.EncoderUCNN import EncoderUCNN
+from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
