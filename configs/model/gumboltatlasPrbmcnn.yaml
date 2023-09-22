@@ -16,6 +16,7 @@ encoder_hidden_nodes:
   - 300
 n_latent_hierarchy_lvls: 1
 n_latent_nodes: 2048
+# n_latent_nodes: 4096
 
 
 # bernoulli : 0
