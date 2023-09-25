@@ -143,8 +143,10 @@ class EncoderUCNN(HierarchicalEncoder):
     
     
 class EncoderUCNNH(HierarchicalEncoder):
-    def __init__(self, **kwargs):
+    def __init__(self, encArch = 'Large', **kwargs):
+        self.encArch = encArch
         super(EncoderUCNNH, self).__init__(**kwargs)
+        
         
     def _create_hierarchy_network(self, level: int = 0):
         """Overrides _create_hierarchy_network in HierarchicalEncoder
@@ -159,7 +161,10 @@ class EncoderUCNNH(HierarchicalEncoder):
         moduleLayers = nn.ModuleList([])
         for l in range(len(layers)-1):
             # moduleLayers.append(nn.Linear(layers[l], layers[l+1]))
-            moduleLayers.append(EncoderBlock(layers[l], layers[l+1]))
+            if self.encArch == 'Large':
+                moduleLayers.append(EncoderBlock(layers[l], layers[l+1]))
+            elif self.encArch == 'Small':
+                moduleLayers.append(EncoderBlockSmall(layers[l], layers[l+1]))
             # apply the activation function for all layers except the last
             # (latent) layer
             # act_fct = nn.Identity() if l==len(layers)-2 else self.activation_fct
@@ -302,6 +307,49 @@ class sequentialMultiInput(nn.Sequential):
             else:
                 inputs = module(inputs)
         return inputs
+    
+    
+class EncoderBlockSmall(nn.Module):
+    def __init__(self, num_input_nodes, n_latent_nodes):
+        super(EncoderBlockSmall, self).__init__()
+        self.num_input_nodes = num_input_nodes
+        self.n_latent_nodes = n_latent_nodes
+        self.minEnergy = 256
+        
+        self.seq1 = nn.Sequential(
+                   nn.Linear(self.num_input_nodes, 24*24),
+                   nn.Unflatten(1, (1,24, 24)),
+    
+                   nn.Conv2d(1, 64, 3, 2, 0),
+                   nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+    
+                   nn.Conv2d(64, 256, 3, 2, 0),
+                   nn.BatchNorm2d(256),
+                   nn.PReLU(256, 0.02),
+                )
+
+        self.seq2 = nn.Sequential(
+                           nn.Conv2d(257, 512, 3, 1, 0),
+                           nn.PReLU(512, 0.02),
+                           nn.BatchNorm2d(512),
+
+                           nn.Conv2d(512, self.n_latent_nodes, 3, 1, 0),
+                           nn.BatchNorm2d(self.n_latent_nodes),
+                           # nn.PReLU(self.n_latent_nodes, 0.02),
+
+                           nn.Sigmoid(),            
+                           nn.Flatten(),
+                        )
+        
+
+    def forward(self, x, x0):
+        x = self.seq1(x)
+        # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(self.minEnergy).log2()), 1)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000.0)), 1)
+        x = self.seq2(x)
+        
+        return x
 
 
 # class EncoderUCNNv2(HierarchicalEncoder):

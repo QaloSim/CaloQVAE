@@ -11,6 +11,8 @@ import torch.nn as nn
 from models.samplers.GibbsSampling import GS
 
 # DiVAE.models imports
+# from models.rbm.qimeraRBM import QimeraRBM
+from models.rbm.chimerav2 import QimeraRBM
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 # from models.networks.EncoderCNN import EncoderCNN
 from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH
@@ -41,6 +43,14 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         # self.classifier=self._create_classifier()
         self.sampler = self._create_sampler(rbm=self.prior)
         
+    def _create_prior(self):
+        """
+        - Override _create_prior in discreteVAE.py
+        """
+        logger.debug("GumBoltCaloCRBM::_create_prior")
+        num_rbm_nodes_per_layer=self._config.model.n_latent_hierarchy_lvls*self._latent_dimensions//2
+        return QimeraRBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer)
+        
     def _create_sampler(self, rbm=None):
         """
         - Overrides _create_sampler in discreteVAE.py
@@ -69,7 +79,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         #     skip_latent_layer=False,
         #     smoother="Gumbel",
         #     cfg=self._config)
-        return EncoderUCNNH(
+        return EncoderUCNNH(encArch='Small',
             input_dimension=self._flat_input_size,
             n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
             n_latent_nodes=self.n_latent_nodes,
