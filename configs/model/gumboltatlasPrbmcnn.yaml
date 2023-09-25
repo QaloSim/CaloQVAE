@@ -18,7 +18,7 @@ n_latent_hierarchy_lvls: 1
 n_latent_nodes: 2048
 # n_latent_nodes: 4096
 
-
+fullyconnected: False
 # bernoulli : 0
 # alpha: 5.0
 # gamma: 5.0

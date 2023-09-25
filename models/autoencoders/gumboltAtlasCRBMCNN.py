@@ -49,7 +49,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         """
         logger.debug("GumBoltCaloCRBM::_create_prior")
         num_rbm_nodes_per_layer=self._config.model.n_latent_hierarchy_lvls*self._latent_dimensions//2
-        return QimeraRBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer)
+        return QimeraRBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer, fullyconnected=self._config.model.fullyconnected)
         
     def _create_sampler(self, rbm=None):
         """

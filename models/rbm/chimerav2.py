@@ -20,7 +20,7 @@ _CELL_SIDE_QUBITS = 4
 _MAX_ROW_COLS = 16
 
 class QimeraRBM(PegasusRBM):
-    def __init__(self, n_visible, n_hidden, bernoulli=False, **kwargs):
+    def __init__(self, n_visible, n_hidden, bernoulli=False, fullyconnected=False, **kwargs):
         super(QimeraRBM, self).__init__(nodes_per_partition=n_visible, **kwargs)
         
         require_grad=True
@@ -29,7 +29,10 @@ class QimeraRBM(PegasusRBM):
         self._weights = nn.Parameter(torch.randn(n_visible, n_visible), requires_grad=require_grad)
         #self._weights = nn.Parameter(3.*torch.rand(n_visible, n_hidden) + 1., requires_grad=require_grad)
         
-        weights_mask = self._weight_mask_dict['01']
+        if fullyconnected:
+            weights_mask = torch.ones(n_visible, n_hidden, requires_grad=False)
+        else:
+            weights_mask = self._weight_mask_dict['01']
         self._weights_mask = nn.Parameter(weights_mask, requires_grad=False)
 
         # all biases initialised to 0.5

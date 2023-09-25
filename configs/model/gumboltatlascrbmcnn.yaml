@@ -19,6 +19,7 @@ n_latent_nodes: 1000
 
 mapping: bipartite
 bernoulli : 0
+fullyconnected: False
 alpha: 5.0
 gamma: 5.0
 mse_weight: 0.7
