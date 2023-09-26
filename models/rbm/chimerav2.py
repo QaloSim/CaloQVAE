@@ -40,6 +40,38 @@ class QimeraRBM(PegasusRBM):
         # #applying a 0 bias to the hidden nodes
         self._hidden_bias = nn.Parameter(torch.zeros(n_hidden), requires_grad=require_grad)
         
+    def check_partition(self):
+        idx_dict, device = self.gen_qubit_idx_dict()
+        qpu_edgelist = device.edgelist
+        qpu_nodelist = device.nodelist
+        ps = ["0","1","2","3"]
+        # Checks that no qbit in a given partition has connections with qbits in same partition
+        # If nothing gets printed => Good!
+        for p in ps:
+            # print(p)
+            for i in idx_dict[p]:
+                checkTuples = [item for item in qpu_edgelist if i in item]
+                for j in idx_dict[p]:
+                    if i != j:
+                        checkTuples2 = [item for item in checkTuples if j in item]
+                        assert checkTuples2 == []
+        logger.info("For given idx_dict: No connections between qbits in same partition.")
+
+
+        l = []
+        for k,p in enumerate(ps):
+            for q in ps[k+1:]:
+                if p != q:
+                    l=[]
+                    # print(p,q)
+                    for i in idx_dict[p]:
+                        checkTuples = [item for item in qpu_edgelist if i in item]
+                        for j in idx_dict[q]:
+                            if i != j:
+                                l = l + [item for item in checkTuples if j in item]
+                    assert l != []
+        logger.info("Only edges connecting qbits from different partitions.")
+        
     @property
     def weights(self):
         return self._weights * self._weights_mask
