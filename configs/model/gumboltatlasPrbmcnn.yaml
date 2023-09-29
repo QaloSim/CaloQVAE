@@ -14,8 +14,8 @@ encoder_hidden_nodes:
   - 400
   - 350
   - 300
-n_latent_hierarchy_lvls: 1
-n_latent_nodes: 2048
+n_latent_hierarchy_lvls: 4
+n_latent_nodes: 512
 # n_latent_nodes: 4096
 
 fullyconnected: False
@@ -23,8 +23,8 @@ fullyconnected: False
 # alpha: 5.0
 # gamma: 5.0
 # mse_weight: 0.1
-alpha: 5.0
-gamma: 5.0
-mse_weight: 1.0
-interpolation_param: 0.9
+alpha: 0.0
+gamma: 0.0
+mse_weight: 0.0
+interpolation_param: 0.0
 rbmMethod: CD
