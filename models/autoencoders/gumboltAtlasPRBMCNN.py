@@ -11,25 +11,39 @@ import torch.nn as nn
 from models.samplers.GibbsSampling import GS
 
 # DiVAE.models imports
-# from models.rbm.qimeraRBM import QimeraRBM
-from models.rbm.chimerav2 import QimeraRBM
-from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
+from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
+from CaloQVAE.models.rbm import pegasusRBM
+from CaloQVAE.models.samplers import pgbs
 # from models.networks.EncoderCNN import EncoderCNN
-from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH
-from models.networks.basicCoders import DecoderCNN, Classifier
+from models.networks.EncoderUCNN import EncoderUCNN
+from models.networks.basicCoders import DecoderCNNCond
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
-class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
+class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
     """
     GumBolt
     """
 
     def __init__(self, **kwargs):
-        super(GumBoltAtlasCRBMCNN, self).__init__(**kwargs)
-        self._model_type = "GumBoltAtlasCRBMCNN"
+        super(GumBoltAtlasPRBMCNN, self).__init__(**kwargs)
+        self._model_type = "GumBoltAtlasPRBMCNN"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        
+    def _create_prior(self):
+        """Override _create_prior in GumBoltCaloV6.py
+
+        :return: Instance of a PegasusRBM
+        """
+        assert (self._config.model.n_latent_hierarchy_lvls *
+                self._config.model.n_latent_nodes) % 4 == 0, \
+            'total no. of latent nodes should be divisible by 4'
+
+        nodes_per_partition = int((self._config.model.n_latent_hierarchy_lvls *
+                                   self._config.model.n_latent_nodes)/4)
+        
+        return pegasusRBM.PegasusRBM(nodes_per_partition)
 
     def create_networks(self):
         """
@@ -43,26 +57,13 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         # self.classifier=self._create_classifier()
         self.sampler = self._create_sampler(rbm=self.prior)
         
-    def _create_prior(self):
-        """
-        - Override _create_prior in discreteVAE.py
-        """
-        logger.debug("GumBoltCaloCRBM::_create_prior")
-        num_rbm_nodes_per_layer=self._config.model.n_latent_hierarchy_lvls*self._latent_dimensions//2
-        return QimeraRBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer, fullyconnected=self._config.model.fullyconnected)
-        
     def _create_sampler(self, rbm=None):
+        """Override _create_sampler in GumBoltCaloV6.py
+
+        :return: Instance of a PGBS sampler
         """
-        - Overrides _create_sampler in discreteVAE.py
-        
-        Returns:
-            Gibbs Sampler
-        """
-        logger.debug("GumBoltCaloCRBM::_create_sampler")
-        return GS(batch_size=self._config.engine.rbm_batch_size,
-                   RBM=self.prior,
-                   n_gibbs_sampling_steps\
-                       =self._config.engine.n_gibbs_sampling_steps)
+        return pgbs.PGBS(self.prior, self._config.engine.rbm_batch_size,
+                         n_steps=self._config.engine.n_gibbs_sampling_steps)
 
     def _create_encoder(self):
         """
@@ -71,15 +72,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         Returns:
             EncoderCNN instance
         """
-        logger.debug("GumBoltAtlasCRBMCNN::_create_encoder")
-        # return EncoderUCNN(
-        #     input_dimension=self._flat_input_size,
-        #     n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
-        #     n_latent_nodes=self.n_latent_nodes,
-        #     skip_latent_layer=False,
-        #     smoother="Gumbel",
-        #     cfg=self._config)
-        return EncoderUCNNH(encArch='Small',
+        logger.debug("GumBoltAtlasPRBMCNN::_create_encoder")
+        return EncoderUCNN(
             input_dimension=self._flat_input_size,
             n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
             n_latent_nodes=self.n_latent_nodes,
@@ -89,15 +83,15 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
     
     def _create_decoder(self):
         """
-        - Overrides _create_decoder in GumBoltCaloV5.py
+        - Overrides _create_decoder in gumboltAtlasCRBMCNN.py
 
         Returns:
-            DecoderCNN instance
+            DecoderCNNCond instance
         """
-        logger.debug("GumBoltAtlasCRBMCNN::_create_decoder")
+        logger.debug("GumBoltAtlasPRBMCNN::_create_decoder")
         self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
                                   self._decoder_nodes[0][1])
-        return DecoderCNN(node_sequence=self._decoder_nodes,
+        return DecoderCNNCond(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct, #<--- try identity
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
@@ -147,95 +141,93 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         return out
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):
+        """Overrides kl_divergence in GumBolt.py
+
+        :param post_logits (list) : List of f(logit_i|x, e) for each hierarchy
+                                    layer i. Each element is a tensor of size
+                                    (batch_size * n_nodes_per_hierarchy_layer)
+        :param post_zetas (list) : List of q(zeta_i|x, e) for each hierarchy
+                                   layer i. Each element is a tensor of size
+                                   (batch_size * n_nodes_per_hierarchy_layer)
         """
-        - Compute KLD b.w. hierarchical posterior and RBM prior using GumBolt trick
-        - Overrides kl_divergence in gumbolt.py
-        - Uses negative energy expectation value as an approximation to logZ
-        
-        Args:
-            post_logits: List of posterior logits (logit_q_z)
-            post_samples: List of posterior samples (zeta)
-        Returns:
-            kl_loss: "Approximate integral KLD" loss whose gradient equals the
-                     gradient of the true KLD loss
-        """
-        logger.debug("GumBoltCaloCRBM::kl_divergence")
-        
         # Concatenate all hierarchy levels
         logits_q_z = torch.cat(post_logits, 1)
         post_zetas = torch.cat(post_samples, 1)
-        
+
         # Compute cross-entropy b/w post_logits and post_samples
         entropy = - self._bce_loss(logits_q_z, post_zetas)
-        # entropy = self._bce_loss(logits_q_z, post_zetas)
-        entropy = torch.mean(torch.sum(entropy, 1), 0)
-        
-        # Compute positive energy expval using hierarchical posterior samples
-        
-        # Number of hidden and visible variables on each side of the RBM
-        num_var_rbm = (self.n_latent_hierarchy_lvls 
-                       * self._latent_dimensions)//2
-        
-        # Compute positive energy contribution to the KL divergence
-        if "mapping" in self._config.model and self._config.model.mapping.lower()=="chains":
-            post_zetas_1, post_zetas_2 = post_zetas[:, :num_var_rbm], post_zetas[:, num_var_rbm:]
-            post_zetas_vis, post_zetas_hid = torch.zeros(post_zetas_1.size(), device=post_zetas.device), torch.zeros(post_zetas_1.size(), device=post_zetas.device)
-            
-            for i, idx in enumerate(self._visible_qubit_idxs):
-                if idx in self._level_1_qubit_idxs:
-                    post_zetas_vis[:, i] = post_zetas_1[:, i]
-                    #print("_visible_qubit_idx : ", idx, " level 1 i : ", i)
-                else:
-                    post_zetas_vis[:, i] = post_zetas_2[:, i]
-                    #print("_visible_qubit_idx : ", idx, " level 2 i : ", i)
+        entropy = torch.mean(torch.sum(entropy, dim=1), dim=0)
 
-            for i, idx in enumerate(self._hidden_qubit_idxs):
-                if idx in self._level_1_qubit_idxs:
-                    post_zetas_hid[:, i] = post_zetas_1[:, i]
-                    #print("_hidden_qubit_idxs : ", idx, " level 1 i : ", i)
-                else:
-                    post_zetas_hid[:, i] = post_zetas_2[:, i]
-                    #print("_hidden_qubit_idxs : ", idx, " level 2 i : ", i)
-            
-            pos_energy = self.energy_exp(post_zetas_vis, post_zetas_hid)
-        else:
-            post_zetas_vis, post_zetas_hid = post_zetas[:, :num_var_rbm], post_zetas[:, num_var_rbm:]
-            pos_energy = self.energy_exp(post_zetas_vis, post_zetas_hid)
-        
-        # Compute gradient contribution of the logZ term
-        rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling(post_zetas_vis, method=self._config.model.rbmMethod)
-        rbm_vis, rbm_hid = rbm_visible_samples.detach(), rbm_hidden_samples.detach()
-        neg_energy = - self.energy_exp(rbm_vis, rbm_hid)
-        
+        # Compute positive phase (energy expval under posterior variables) 
+        n_nodes_p = self.prior.nodes_per_partition
+        pos_energy = self.energy_exp(post_zetas[:, :n_nodes_p],
+                                     post_zetas[:, n_nodes_p:2*n_nodes_p],
+                                     post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
+                                     post_zetas[:, 3*n_nodes_p:])
+
+        # Compute gradient computation of the logZ term
+        p0_state, p1_state, p2_state, p3_state \
+            = self.sampler.block_gibbs_sampling()
+        neg_energy = - self.energy_exp(p0_state, p1_state, p2_state, p3_state)
+
+        # Estimate of the kl-divergence
         kl_loss = entropy + pos_energy + neg_energy
         return kl_loss, entropy, pos_energy, neg_energy
-    
-    def energy_exp(self, rbm_vis, rbm_hid):
+
+    def energy_exp(self, p0_state, p1_state, p2_state, p3_state):
+        """Energy expectation value under the 4-partite BM
+        Overrides energy_exp in gumbolt.py
+
+        :param p0_state (torch.Tensor) : (batch_size, n_nodes_p1)
+        :param p1_state (torch.Tensor) : (batch_size, n_nodes_p2)
+        :param p2_state (torch.Tensor) : (batch_size, n_nodes_p3)
+        :param p3_state (torch.Tensor) : (batch_size, n_nodes_p4)
+
+        :return energy expectation value over the current batch
         """
-        - Compute the energy expectation value
-        
-        Returns:
-            rbm_energy_exp_val : mean(-vis^T W hid - a^T hid - b^T vis)
-        """
-        logger.debug("GumBolt::energy_exp")
-        
-        # Broadcast W to (pcd_batchSize * nVis * nHid)
-        w, vbias, hbias = self.prior.weights, self.prior.visible_bias, self.prior.hidden_bias
-        w = w + torch.zeros((rbm_vis.size(0),) + w.size(), device=rbm_vis.device)
-        vbias = vbias.to(rbm_vis.device)
-        hbias = hbias.to(rbm_hid.device)
-        
-        # Prepare H, V for torch.matmul()
-        # Change V.size() from (batchSize * nVis) to (batchSize * 1 * nVis)
-        vis = rbm_vis.unsqueeze(2).permute(0, 2, 1)
-        # Change H.size() from (batchSize * nHid) to (batchSize * nHid * 1)
-        hid = rbm_hid.unsqueeze(2)
-        
-        batch_energy = (- torch.matmul(vis, torch.matmul(w, hid)).reshape(-1)
-                        - torch.matmul(rbm_vis, vbias)
-                        - torch.matmul(rbm_hid, hbias))
-        
-        return torch.mean(batch_energy, 0)
+        w_dict = self.prior._weight_dict
+        b_dict = self.prior._bias_dict
+
+        w_dict_cp = {}
+
+        # Broadcast weight matrices (n_nodes_pa, n_nodes_pb) to
+        # (batch_size, n_nodes_pa, n_nodes_pb)
+        for key in w_dict.keys():
+            w_dict_cp[key] = w_dict[key] + torch.zeros((p0_state.size(0),) +
+                                                    w_dict[key].size(),
+                                                    device=w_dict[key].device)
+
+        # Prepare px_state_t for torch.bmm()
+        # Change px_state.size() to (batch_size, 1, n_nodes_px)
+        p0_state_t = p0_state.unsqueeze(2).permute(0, 2, 1)
+        p1_state_t = p1_state.unsqueeze(2).permute(0, 2, 1)
+        p2_state_t = p2_state.unsqueeze(2).permute(0, 2, 1)
+
+        # Prepare py_state for torch.bmm()
+        # Change py_state.size() to (batch_size, n_nodes_py, 1)
+        p1_state_i = p1_state.unsqueeze(2)
+        p2_state_i = p2_state.unsqueeze(2)
+        p3_state_i = p3_state.unsqueeze(2)
+
+        # Compute the energies for batch samples
+        batch_energy = -torch.matmul(p0_state, b_dict['0']) - \
+            torch.matmul(p1_state, b_dict['1']) - \
+            torch.matmul(p2_state, b_dict['2']) - \
+            torch.matmul(p3_state, b_dict['3']) - \
+            torch.bmm(p0_state_t,
+                      torch.bmm(w_dict_cp['01'], p1_state_i)).reshape(-1) - \
+            torch.bmm(p0_state_t,
+                      torch.bmm(w_dict_cp['02'], p2_state_i)).reshape(-1) - \
+            torch.bmm(p0_state_t,
+                      torch.bmm(w_dict_cp['03'], p3_state_i)).reshape(-1) - \
+            torch.bmm(p1_state_t,
+                      torch.bmm(w_dict_cp['12'], p2_state_i)).reshape(-1) - \
+            torch.bmm(p1_state_t,
+                      torch.bmm(w_dict_cp['13'], p3_state_i)).reshape(-1) - \
+            torch.bmm(p2_state_t,
+                      torch.bmm(w_dict_cp['23'], p3_state_i)).reshape(-1)
+
+        return torch.mean(batch_energy, dim=0)
     
     def generate_samples_qpu(self, num_samples=64, true_energy=None):
         """
@@ -299,41 +291,80 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         true_e.append(torch.pow(2,labels)*256) 
         return torch.cat(true_energies, dim=0).unsqueeze(dim=1), samples
     
-    def generate_samples(self, num_samples=64, true_energy=None):
+    def generate_samples(self, num_samples: int = 128, true_energy=None):
+        """Generate data samples by decoding RBM samples
+
+        :param num_samples (int): No. of data samples to generate in one shot
+        :param true_energy (int): Default None, Incident energy of the particle
+
+        :return true_energies (torch.Tensor): Incident energies of the particle
+        for each sample (num_samples,)
+        :return samples (torch.Tensor): Data samples, (num_samples, *)
         """
-        generate_samples()
-        """
-        true_energies = []
-        num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
-        samples = []
-        for i in range(num_iterations):
-            rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling()
-            rbm_vis = rbm_visible_samples.detach()
-            rbm_hid = rbm_hidden_samples.detach()
-            
+        n_iter = max(num_samples//self.sampler.batch_size, 1)
+        true_es, samples = [], []
+
+        for _ in range(n_iter):
+            p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
+
             if true_energy is None:
-                true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.
+                # true_e ~ U[1, 100]
+                true_e = (torch.rand((p0_state.size(0), 1),
+                                     device=p0_state.device) * 99.) + 1.
             else:
-                true_e = torch.ones((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * true_energy
-#             prior_samples = torch.cat([rbm_vis, rbm_hid, true_e], dim=1)
-            prior_samples = torch.cat([rbm_vis, rbm_hid], dim=1)
-            
-            output_hits, output_activations = self.decoder(prior_samples, true_e)
+                # true_e = true_energy
+                true_e = torch.ones((p0_state.size(0), 1),
+                                    device=p0_state.device) * true_energy
+            # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
+            #                            true_e], dim=1)
+            prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
+
+            hits, activations = self.decoder(prior_samples, true_e)
             beta = torch.tensor(self._config.model.beta_smoothing_fct,
-                                dtype=torch.float, device=output_hits.device,
-                                requires_grad=False)
-            sample = self._energy_activation_fct(output_activations) \
-                * self._hit_smoothing_dist_mod(output_hits, beta, False)
-            
-            if self._config.engine.cl_lambda != 0:
-                labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
-            
-                true_energies.append((torch.pow(2,labels)*256).unsqueeze(dim=1)) 
-            else:
-                true_energies.append(true_e) 
+                                dtype=torch.float, device=hits.device)
+            sample = self._energy_activation_fct(activations) \
+                * self._hit_smoothing_dist_mod(hits, beta, False)
+
+            true_es.append(true_e)
             samples.append(sample)
+
+        return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
+    
+#     def generate_samples(self, num_samples=64, true_energy=None):
+#         """
+#         generate_samples()
+#         """
+#         true_energies = []
+#         num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
+#         samples = []
+#         for i in range(num_iterations):
+#             rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling()
+#             rbm_vis = rbm_visible_samples.detach()
+#             rbm_hid = rbm_hidden_samples.detach()
             
-        return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
+#             if true_energy is None:
+#                 true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.
+#             else:
+#                 true_e = torch.ones((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * true_energy
+# #             prior_samples = torch.cat([rbm_vis, rbm_hid, true_e], dim=1)
+#             prior_samples = torch.cat([rbm_vis, rbm_hid], dim=1)
+            
+#             output_hits, output_activations = self.decoder(prior_samples, true_e)
+#             beta = torch.tensor(self._config.model.beta_smoothing_fct,
+#                                 dtype=torch.float, device=output_hits.device,
+#                                 requires_grad=False)
+#             sample = self._energy_activation_fct(output_activations) \
+#                 * self._hit_smoothing_dist_mod(output_hits, beta, False)
+            
+#             if self._config.engine.cl_lambda != 0:
+#                 labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
+            
+#                 true_energies.append((torch.pow(2,labels)*256).unsqueeze(dim=1)) 
+#             else:
+#                 true_energies.append(true_e) 
+#             samples.append(sample)
+            
+#         return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
 
     def loss(self, input_data, fwd_out, true_energy):
         """
@@ -343,10 +374,11 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
         # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
-        sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
+        sigma = torch.max(torch.sqrt(input_data), torch.tensor([0.1], device=input_data.device))
         interpolation_param = self._config.model.interpolation_param
         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0)
+        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
+        # torch.min(x[x>0])
         
         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)

@@ -8,10 +8,12 @@ save_hists: 1
 
 wandb_enabled: 1
 
+# run_path: /home/blazerjia/CaloQVAE/outputs/2023-08-10/15-17-46/wandb/run-20230810_151752-kn1hyrzm/files/GumBoltCaloPRBM_calo_default_latest.pth
+
 output_path: /fast_scratch_1/jtoledo/outputs
 device: gpu
 gpu_list:
-  - 2
+  - 1
 
 task:
   - train
@@ -26,5 +28,10 @@ defaults:
 # model: gumboltatlascrbmcnndcond
 # model: gumboltatlascrbmfcn
 # model: gumboltatlascrbmcnn
+# engine: dvaeatlas_training
+
+# model: gumboltatlasPrbmcnn
+# engine: dvaeatlas_training_peg
+
 usinglayers: False
 reducedata: False

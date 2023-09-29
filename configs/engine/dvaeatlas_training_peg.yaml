@@ -16,12 +16,12 @@ beta_smoothing_fct: 5
 beta_smoothing_fct_final: 500
 beta_smoothing_fct_anneal: 1
 
-n_train_batch_size: 512
+n_train_batch_size: 128
 n_test_batch_size: 1024
 n_valid_batch_size: 1024
 rbm_batch_size: 128
 
-n_gibbs_sampling_steps: 1000
+n_gibbs_sampling_steps: 3000
 
 n_val_batches: 3
 n_valid_per_epoch: 5
