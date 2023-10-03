@@ -291,8 +291,8 @@ class EngineAtlas(EngineCaloV3):
         true_energy = label[0]
                 
         # Scaled the raw data to GeV units
-        # if not self._config.data.scaled:
-        #     in_data = in_data/1000.
+        if not self._config.data.scaled and not self._config.reducedata:
+            in_data = in_data/1000.
                     
         in_data = in_data.to(self._device)
         true_energy = true_energy.to(self._device).float()
