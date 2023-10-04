@@ -26,5 +26,5 @@ mse_weight: 0.0
 # alpha: 5.0
 # gamma: 5.0
 # mse_weight: 1.0
-interpolation_param: 1.0
+interpolation_param: 0.0
 rbmMethod: CD

@@ -25,6 +25,6 @@ fullyconnected: False
 # mse_weight: 0.1
 alpha: 0.0
 gamma: 0.0
-mse_weight: 0.1
-interpolation_param: 0.0
+mse_weight: 0.0
+interpolation_param: 1.0
 rbmMethod: CD
