@@ -351,8 +351,8 @@ class EngineAtlas(EngineCaloV3):
         for energy in conditioning_energies:
             sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
             # sample_data = sample_data.detach().cpu()
-            if self._config.usinglayers:
-                sample_data = self.layerTo1D(sample_data)
+            # if self._config.usinglayers:
+            #     sample_data = self.layerTo1D(sample_data)
             if self._config.data.scaled:
                 sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. 
             elif self._config.reducedata:

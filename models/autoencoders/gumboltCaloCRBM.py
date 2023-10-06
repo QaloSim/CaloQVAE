@@ -11,8 +11,10 @@ import numpy as np
 from models.autoencoders.gumboltCaloV6 import GumBoltCaloV6
 
 from models.rbm.chimeraRBM import ChimeraRBM
-from models.rbm.qimeraRBM import QimeraRBM
-from models.samplers.pcd import PCD
+# from models.rbm.qimeraRBM import QimeraRBM
+from models.rbm.chimerav2 import QimeraRBM
+# from models.samplers.pcd import PCD
+from models.samplers.GibbsSampling import GS
 
 from dwave.system import DWaveSampler
 from notebooks.nbutils import *
@@ -78,24 +80,44 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
 #         self._qpu_sampler = DWaveSampler(solver={"topology__type":"chimera", "chip_id":"DW_2000Q_6"})
         self._qpu_sampler = DWaveSampler(solver={"topology__type":"pegasus"})
                         
+#     def _create_prior(self):
+#         """
+#         - Override _create_prior in discreteVAE.py
+#         """
+#         logger.debug("GumBoltCaloCRBM::_create_prior")
+#         num_rbm_nodes_per_layer=self._config.model.n_latent_hierarchy_lvls*self._latent_dimensions//2
+#         return QimeraRBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer,
+#                          bernoulli=self._config.model.bernoulli)
+ 
+#     def _create_sampler(self, rbm=None):
+#         """
+#         - Overrides _create_sampler in discreteVAE.py
+        
+#         Returns:
+#             PCD Sampler
+#         """
+#         logger.debug("GumBoltCaloCRBM::_create_sampler")
+#         return PCD(batch_size=self._config.engine.rbm_batch_size,
+#                    RBM=self.prior,
+#                    n_gibbs_sampling_steps\
+#                        =self._config.engine.n_gibbs_sampling_steps)
     def _create_prior(self):
         """
         - Override _create_prior in discreteVAE.py
         """
         logger.debug("GumBoltCaloCRBM::_create_prior")
         num_rbm_nodes_per_layer=self._config.model.n_latent_hierarchy_lvls*self._latent_dimensions//2
-        return QimeraRBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer,
-                         bernoulli=self._config.model.bernoulli)
- 
+        return QimeraRBM(n_visible=num_rbm_nodes_per_layer, n_hidden=num_rbm_nodes_per_layer, fullyconnected=self._config.model.fullyconnected)
+        
     def _create_sampler(self, rbm=None):
         """
         - Overrides _create_sampler in discreteVAE.py
         
         Returns:
-            PCD Sampler
+            Gibbs Sampler
         """
         logger.debug("GumBoltCaloCRBM::_create_sampler")
-        return PCD(batch_size=self._config.engine.rbm_batch_size,
+        return GS(batch_size=self._config.engine.rbm_batch_size,
                    RBM=self.prior,
                    n_gibbs_sampling_steps\
                        =self._config.engine.n_gibbs_sampling_steps)

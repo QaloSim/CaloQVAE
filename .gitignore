@@ -20,6 +20,7 @@ nohup.out
 runJT.sh
 figs/
 runSG.sh
+init_container.sh
 ##############################################
 #### Automatically created
 ##############################################

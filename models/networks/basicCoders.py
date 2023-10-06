@@ -248,8 +248,8 @@ class DecoderCNNCondSmall(BasicDecoderV3):
         
         self._layers2 = nn.Sequential(
                    nn.ConvTranspose2d(257, 64, 4, 2, 0),
-                   nn.PReLU(64, 0.02),
                    nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
 
                    nn.ConvTranspose2d(64, 1, 3, 1, 0),
                    nn.BatchNorm2d(1),
@@ -262,8 +262,8 @@ class DecoderCNNCondSmall(BasicDecoderV3):
         
         self._layers3 = nn.Sequential(
                    nn.ConvTranspose2d(257, 64, 4, 2, 0),
-                   nn.PReLU(64, 0.02),
                    nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
 
                    nn.ConvTranspose2d(64, 1, 3, 1, 0),
                    nn.BatchNorm2d(1),

@@ -6,6 +6,7 @@ CNN - Changed to CNN encoder creation
 import torch
 from torch.nn import BCEWithLogitsLoss
 from torch.nn.functional import binary_cross_entropy_with_logits
+from torch.nn import LeakyReLU, ReLU
 import torch.nn as nn 
 
 from models.samplers.GibbsSampling import GS
@@ -30,6 +31,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         super(GumBoltAtlasCRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasCRBMCNN"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        self._energy_activation_fct = LeakyReLU(0.02)
+        self._inference_energy_activation_fct = ReLU()
 
     def create_networks(self):
         """
@@ -143,7 +146,12 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         out.output_hits = output_hits
         # out.labels = labels
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        
+        if is_training:
+            out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        else:
+            out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        
         return out
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):

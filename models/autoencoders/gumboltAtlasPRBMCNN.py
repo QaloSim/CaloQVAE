@@ -45,17 +45,17 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         
         return pegasusRBM.PegasusRBM(nodes_per_partition)
 
-    def create_networks(self):
-        """
-        - Overrides _create_networks in discreteVAE.py
+#     def create_networks(self):
+#         """
+#         - Overrides _create_networks in discreteVAE.py
 
-        """
-        logger.debug("Creating Network Structures")
-        self.encoder=self._create_encoder()
-        self.prior=self._create_prior()
-        self.decoder=self._create_decoder()
-        # self.classifier=self._create_classifier()
-        self.sampler = self._create_sampler(rbm=self.prior)
+#         """
+#         logger.debug("Creating Network Structures")
+#         self.encoder=self._create_encoder()
+#         self.prior=self._create_prior()
+#         self.decoder=self._create_decoder()
+#         # self.classifier=self._create_classifier()
+#         self.sampler = self._create_sampler(rbm=self.prior)
         
     def _create_sampler(self, rbm=None):
         """Override _create_sampler in GumBoltCaloV6.py
@@ -65,49 +65,36 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         return pgbs.PGBS(self.prior, self._config.engine.rbm_batch_size,
                          n_steps=self._config.engine.n_gibbs_sampling_steps)
 
-    def _create_encoder(self):
-        """
-        - Overrides _create_encoder in GumBoltCaloCRBM.py
+#     def _create_encoder(self):
+#         """
+#         - Overrides _create_encoder in GumBoltCaloCRBM.py
 
-        Returns:
-            EncoderCNN instance
-        """
-        logger.debug("GumBoltAtlasPRBMCNN::_create_encoder")
-        return EncoderUCNN(
-            input_dimension=self._flat_input_size,
-            n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
-            n_latent_nodes=self.n_latent_nodes,
-            skip_latent_layer=False,
-            smoother="Gumbel",
-            cfg=self._config)
+#         Returns:
+#             EncoderCNN instance
+#         """
+#         logger.debug("GumBoltAtlasPRBMCNN::_create_encoder")
+#         return EncoderUCNN(
+#             input_dimension=self._flat_input_size,
+#             n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+#             n_latent_nodes=self.n_latent_nodes,
+#             skip_latent_layer=False,
+#             smoother="Gumbel",
+#             cfg=self._config)
     
-    def _create_decoder(self):
-        """
-        - Overrides _create_decoder in gumboltAtlasCRBMCNN.py
+#     def _create_decoder(self):
+#         """
+#         - Overrides _create_decoder in gumboltAtlasCRBMCNN.py
 
-        Returns:
-            DecoderCNNCond instance
-        """
-        logger.debug("GumBoltAtlasPRBMCNN::_create_decoder")
-        self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
-                                  self._decoder_nodes[0][1])
-        return DecoderCNNCond(node_sequence=self._decoder_nodes,
-                              activation_fct=self._activation_fct, #<--- try identity
-                              num_output_nodes = self._flat_input_size,
-                              cfg=self._config)
-
-    # def _create_classifier(self):
-    #     """
-    #     Returns:
-    #         Classifier instance
-    #     """
-    #     logger.debug("GumBoltAtlasCRBMCNN::_create_classifier")
-    #     self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
-    #                               self._decoder_nodes[0][1])
-    #     return Classifier(node_sequence=self._decoder_nodes,
-    #                           activation_fct=self._activation_fct, #<--- try identity
-    #                           num_output_nodes = self._flat_input_size,
-    #                           cfg=self._config)
+#         Returns:
+#             DecoderCNNCond instance
+#         """
+#         logger.debug("GumBoltAtlasPRBMCNN::_create_decoder")
+#         self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
+#                                   self._decoder_nodes[0][1])
+#         return DecoderCNNCond(node_sequence=self._decoder_nodes,
+#                               activation_fct=self._activation_fct, #<--- try identity
+#                               num_output_nodes = self._flat_input_size,
+#                               cfg=self._config)
     
     def forward(self, xx, is_training, beta_smoothing_fct=5):
         """
@@ -329,42 +316,6 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
             samples.append(sample)
 
         return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
-    
-#     def generate_samples(self, num_samples=64, true_energy=None):
-#         """
-#         generate_samples()
-#         """
-#         true_energies = []
-#         num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
-#         samples = []
-#         for i in range(num_iterations):
-#             rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling()
-#             rbm_vis = rbm_visible_samples.detach()
-#             rbm_hid = rbm_hidden_samples.detach()
-            
-#             if true_energy is None:
-#                 true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.
-#             else:
-#                 true_e = torch.ones((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * true_energy
-# #             prior_samples = torch.cat([rbm_vis, rbm_hid, true_e], dim=1)
-#             prior_samples = torch.cat([rbm_vis, rbm_hid], dim=1)
-            
-#             output_hits, output_activations = self.decoder(prior_samples, true_e)
-#             beta = torch.tensor(self._config.model.beta_smoothing_fct,
-#                                 dtype=torch.float, device=output_hits.device,
-#                                 requires_grad=False)
-#             sample = self._energy_activation_fct(output_activations) \
-#                 * self._hit_smoothing_dist_mod(output_hits, beta, False)
-            
-#             if self._config.engine.cl_lambda != 0:
-#                 labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
-            
-#                 true_energies.append((torch.pow(2,labels)*256).unsqueeze(dim=1)) 
-#             else:
-#                 true_energies.append(true_e) 
-#             samples.append(sample)
-            
-#         return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
 
     def loss(self, input_data, fwd_out, true_energy):
         """
@@ -380,15 +331,11 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
         # torch.min(x[x>0])
         
-        #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
-        #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
 
-        # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
-        # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
         
         # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
