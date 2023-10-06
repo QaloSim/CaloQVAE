@@ -9,7 +9,7 @@ kl_annealing_ratio: 0.3
 kl_gamma_max: 1.0
 epoch_annealing_start: 1
 # r_param : 0.002
-r_param : 0.0005
+r_param : 0.04
 cl_lambda: 0
 beta_smoothing_fct: 5
 beta_smoothing_fct_final: 500

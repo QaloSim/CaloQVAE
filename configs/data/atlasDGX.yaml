@@ -1,6 +1,6 @@
 data_type: atlas
 # _layers: 
-  # - voxels
+#   - voxels
 # particle_type: pion1
 # particle_type: pionEn5
 # dataset: dataset1pion
@@ -32,8 +32,8 @@ atlas_input_photonEn4: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_
 atlas_input_photonEn5: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/photons_samples_highStat_En_5.hdf5
 atlas_input_photonEn6: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_6.hdf5
 atlas_input_photonEn7: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_7.hdf5
-# atlas_input_pion1: /raid/javier/Datasets/CaloVAE/data/atlas/pions1.hdf5
-atlas_input_pion1: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions1.hdf5
+atlas_input_pion1: /raid/javier/Datasets/CaloVAE/data/atlas/pions1.hdf5
+# atlas_input_pion1: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions1.hdf5
 atlas_input_pionEn0: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_0.hdf5
 atlas_input_pionEn1: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_1.hdf5
 atlas_input_pionEn2: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_2.hdf5
