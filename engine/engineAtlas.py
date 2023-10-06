@@ -182,7 +182,7 @@ class EngineAtlas(EngineCaloV3):
                             # self._model.sampler._batch_size = true_energy.shape[0]
                             # sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
                             # self._model.sampler._batch_size = self._config.engine.rbm_batch_size
-                            sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            sample_energies, sample_data = self._model.generate_samples()
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                             logger.info("Successfully sampled from model conditioning on energy!")
                         elif self._config.reducedata:
@@ -292,8 +292,8 @@ class EngineAtlas(EngineCaloV3):
         true_energy = label[0]
                 
         # Scaled the raw data to GeV units
-        # if not self._config.data.scaled:
-        #     in_data = in_data/1000.
+        if not self._config.data.scaled and not self._config.reducedata:
+            in_data = in_data/1000.
                     
         in_data = in_data.to(self._device)
         true_energy = true_energy.to(self._device).float()
@@ -306,8 +306,8 @@ class EngineAtlas(EngineCaloV3):
         log(1+reduced_energy/R)
         """
         eps = 0.001*torch.rand(in_data.size(), device=self._device) # [0,1]KeV noise to avoid clamping
-        return torch.log1p(((in_data+eps)/true_energy)/R)
-        #return torch.log1p((in_data/true_energy)/R)
+        #return torch.log1p(((in_data+eps)/true_energy)/R)
+        return torch.log1p((in_data/true_energy)/R)
         
     def _reduceinv(self, in_data, true_energy, R=0.04):
         """
@@ -357,6 +357,8 @@ class EngineAtlas(EngineCaloV3):
                 sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. 
             elif self._config.reducedata:
                 sample_data = self._reduceinv(sample_data, sample_energies, R=self.R)/1000
+                sample_data = sample_data.detach().cpu()
+            else:
                 sample_data = sample_data.detach().cpu()
                 
             if type(sample_data) == torch.Tensor:
