@@ -7,7 +7,7 @@ Author : Abhi (abhishek@myumanitoba.ca)
 
 # Torch imports
 import torch
-from torch.nn import ReLU, MSELoss, BCEWithLogitsLoss, L1Loss, Sigmoid
+from torch.nn import ReLU, MSELoss, BCEWithLogitsLoss, L1Loss, Sigmoid, LeakyReLU
 from torch.nn.functional import binary_cross_entropy_with_logits
 
 # DiVAE.models imports
@@ -28,7 +28,7 @@ class GumBoltCaloV5(GumBolt):
     def __init__(self, **kwargs):
         super(GumBoltCaloV5, self).__init__(**kwargs)
         self._model_type = "GumBoltCaloV5"
-        self._energy_activation_fct = ReLU()
+        self._energy_activation_fct = LeakyReLU(0.02)
         self._hit_activation_fct = Sigmoid()
         self._output_loss = MSELoss(reduction="none")
         self._hit_loss = BCEWithLogitsLoss(reduction="none")

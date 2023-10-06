@@ -6,6 +6,7 @@ CNN - Changed to CNN encoder creation
 import torch
 from torch.nn import BCEWithLogitsLoss
 from torch.nn.functional import binary_cross_entropy_with_logits
+from torch.nn import LeakyReLU
 import torch.nn as nn 
 
 from models.samplers.GibbsSampling import GS
@@ -30,6 +31,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         super(GumBoltAtlasCRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasCRBMCNN"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        self._energy_activation_fct = LeakyReLU(0.02)
 
     def create_networks(self):
         """

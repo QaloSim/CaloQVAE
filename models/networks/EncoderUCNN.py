@@ -331,8 +331,8 @@ class EncoderBlockSmall(nn.Module):
 
         self.seq2 = nn.Sequential(
                            nn.Conv2d(257, 512, 3, 1, 0),
-                           nn.PReLU(512, 0.02),
                            nn.BatchNorm2d(512),
+                           nn.PReLU(512, 0.02),
 
                            nn.Conv2d(512, self.n_latent_nodes, 3, 1, 0),
                            nn.BatchNorm2d(self.n_latent_nodes),
