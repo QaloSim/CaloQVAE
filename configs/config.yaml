@@ -34,4 +34,4 @@ defaults:
 # engine: dvaeatlas_training_peg
 
 usinglayers: False
-reducedata: False
+reducedata: True

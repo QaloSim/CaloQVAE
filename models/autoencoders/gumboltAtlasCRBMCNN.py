@@ -6,7 +6,7 @@ CNN - Changed to CNN encoder creation
 import torch
 from torch.nn import BCEWithLogitsLoss
 from torch.nn.functional import binary_cross_entropy_with_logits
-from torch.nn import LeakyReLU
+from torch.nn import LeakyReLU, ReLU
 import torch.nn as nn 
 
 from models.samplers.GibbsSampling import GS
@@ -32,6 +32,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         self._model_type = "GumBoltAtlasCRBMCNN"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
         self._energy_activation_fct = LeakyReLU(0.02)
+        self._inference_energy_activation_fct = ReLU()
 
     def create_networks(self):
         """
@@ -145,7 +146,14 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         out.output_hits = output_hits
         # out.labels = labels
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        if self._config.engine.modelhits:
+            if is_training:
+                out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            else:
+                out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        else:
+            out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
         return out
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):
@@ -324,8 +332,10 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             beta = torch.tensor(self._config.model.beta_smoothing_fct,
                                 dtype=torch.float, device=output_hits.device,
                                 requires_grad=False)
-            sample = self._energy_activation_fct(output_activations) \
-                * self._hit_smoothing_dist_mod(output_hits, beta, False)
+            if self._config.engine.modelhits:
+                sample = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
+            else:
+                sample = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
             
             if self._config.engine.cl_lambda != 0:
                 labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
@@ -360,10 +370,12 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
         # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
         
-        # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         
-        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+        if self._config.engine.modelhits:
+            return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+        else:
+            return {"ae_loss":ae_loss, "kl_loss":kl_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         
         # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
