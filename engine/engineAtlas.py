@@ -38,6 +38,15 @@ class EngineAtlas(EngineCaloV3):
         else:
             beta = max(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
         return beta
+    
+    def slope_act_fct_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
+        delta_slope = self._config.engine.slope_activation_fct_final - self._config.engine.slope_activation_fct
+        delta = (self._config.engine.n_epochs * 0.7 - epoch_anneal_start)*num_batches
+        if delta_slope < 0:
+            slope = max(self._config.engine.slope_activation_fct + delta_slope/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.slope_activation_fct_final)
+        else:
+            slope = min(self._config.engine.slope_activation_fct + delta_slope/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.slope_activation_fct_final)
+        return slope
 
     def fit(self, epoch, is_training=True, mode="train"):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
@@ -86,8 +95,13 @@ class EngineAtlas(EngineCaloV3):
                     beta_smoothing_fct = self.beta_value(epoch_anneal_start, num_batches, batch_idx, epoch)
                 else:
                     beta_smoothing_fct = self._config.engine.beta_smoothing_fct
+                    
+                if self._config.engine.slope_activation_fct_anneal:
+                    slope_act_fct = self.slope_act_fct_value(epoch_anneal_start, num_batches, batch_idx, epoch)
+                else:
+                    slope_act_fct = self._config.engine.slope_activation_fct
                 
-                fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct)
+                fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct, slope_act_fct)
                 # if self._config.reducedata:
                 #     in_data = self._reduceinv(in_data, true_energy, R=self.R)
                 #     fwd_output.output_activations = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
@@ -115,6 +129,7 @@ class EngineAtlas(EngineCaloV3):
                         
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["beta"] = beta_smoothing_fct
+                    batch_loss_dict["LeakyReLUSlope"] = slope_act_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
                         if "label_loss" in batch_loss_dict.keys():
@@ -169,11 +184,12 @@ class EngineAtlas(EngineCaloV3):
                 #         self._model_creator.save_state(config_string)
                         
                 if (batch_idx % log_batch_idx) == 0:
-                    logger.info('Epoch: {} [{}/{} ({:.0f}%)]\t Batch Loss: {:.4f}'.format(epoch,
+                    logger.info('Epoch: {} [{}/{} ({:.0f}%)]\t Batch Loss: {:.4f}, Slope: {:.3f}'.format(epoch,
                                                                                           batch_idx,
                                                                                           len(data_loader),
                                                                                           100.*batch_idx/len(data_loader),
-                                                                                          batch_loss_dict["loss"].sum()))
+                                                                                          batch_loss_dict["loss"].sum(),
+                                                                                          slope_act_fct))
                     
                     if (batch_idx % (num_batches//2)) == 0:
                         if self._config.data.scaled:
