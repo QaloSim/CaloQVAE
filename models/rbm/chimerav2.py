@@ -23,7 +23,29 @@ class QimeraRBM(PegasusRBM):
     def __init__(self, n_visible, n_hidden, bernoulli=False, fullyconnected=False, **kwargs):
         super(QimeraRBM, self).__init__(nodes_per_partition=n_visible, **kwargs)
         
-        require_grad=True
+        require_grad=True   
+        ######
+        idx_dict, device = self.gen_qubit_idx_dict()
+        qpu_nodes = device.nodelist
+        qpu_edges = device.edgelist
+        visible_qubit_idxs = idx_dict['0'] #visible_qubit_idxs[:n_visible]
+        hidden_qubit_idxs = idx_dict['1'] #hidden_qubit_idxs[:n_hidden]
+                            
+        # Prune the edgelist to remove couplings between qubits not in the RBM
+        pruned_edge_list = []
+        for edge in qpu_edges:
+            # Coupling between RBM qubits
+            if (edge[0] in visible_qubit_idxs and edge[1] in hidden_qubit_idxs) or (edge[0] in hidden_qubit_idxs and edge[1] in visible_qubit_idxs):
+                pruned_edge_list.append(edge)
+                
+        self._visible_qubit_idxs = visible_qubit_idxs
+        self._hidden_qubit_idxs = hidden_qubit_idxs
+        self._pruned_edge_list = pruned_edge_list
+        
+        # Chimera-RBM matrix
+        visible_qubit_idx_map = {visible_qubit_idx:i for i, visible_qubit_idx in enumerate(visible_qubit_idxs)}
+        hidden_qubit_idx_map = {hidden_qubit_idx:i for i, hidden_qubit_idx in enumerate(hidden_qubit_idxs)}
+        #####
         
         #arbitrarily scaled by 0.01 
         self._weights = nn.Parameter(torch.randn(n_visible, n_visible), requires_grad=require_grad)
