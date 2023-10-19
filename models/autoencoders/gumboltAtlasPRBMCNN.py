@@ -18,6 +18,8 @@ from CaloQVAE.models.samplers import pgbs
 from models.networks.EncoderUCNN import EncoderUCNN
 from models.networks.basicCoders import DecoderCNNCond
 
+import time
+
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,8 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         super(GumBoltAtlasPRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasPRBMCNN"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        self.sampling_time_qpu = []
+        self.sampling_time_gpu = []
         
     def _create_prior(self):
         """Override _create_prior in GumBoltCaloV6.py
@@ -174,7 +178,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
         return torch.mean(batch_energy, dim=0)
     
-    def generate_samples_qpu(self, num_samples=64, true_energy=None):
+    def generate_samples_qpu(self, num_samples=64, true_energy=None, measure_time=False):
         """
         generate_samples()
         
@@ -226,14 +230,11 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
                     s = s - torch.sum(prbm_weights[wKey], dim=0)/4.
             dwave_bias[key] = - prbm_bias[key]/2.0 + s
             
-        for key in dwave_bias.keys():
-            dwave_bias[key] = torch.clamp(dwave_bias[key], min=-2., max=2.)
-        for key in dwave_weights.keys():
-            dwave_weights[key] = torch.clamp(dwave_weights[key], min=-2., max=1.)
-        # Convert the RBM parameters into Ising parameters
-        # dwave_weights = -(crbm_weights/4.)
-        # dwave_vbias = -(crbm_vbias/2. + torch.sum(crbm_weights, dim=1)/4.)
-        # dwave_hbias = -(crbm_hbias/2. + torch.sum(crbm_weights, dim=0)/4.)
+        # for key in dwave_bias.keys():
+        #     dwave_bias[key] = torch.clamp(dwave_bias[key], min=-5., max=5.)
+        # for key in dwave_weights.keys():
+        #     dwave_weights[key] = torch.clamp(dwave_weights[key], min=-5., max=5.)
+        
         
         # dwave_weights = torch.clamp(dwave_weights, min=-2., max=1.)
         # dwave_vbias = torch.clamp(dwave_vbias, min=-2., max=2.)
@@ -268,7 +269,15 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         #     else:
         #         J[edge] = dwave_weights_np[visible_idx_map[edge[1]]][hidden_idx_map[edge[0]]]
         
-        response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+        if measure_time:
+            # start = time.process_time()
+            start = time.perf_counter()
+            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+            self.sampling_time_qpu.append([time.perf_counter() - start, num_samples])
+            # self.sampling_time_qpu.append([time.process_time() - start, num_samples])
+        else:
+            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+
         dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
         dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(prbm_weights['01'].device)
         
@@ -305,7 +314,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
             if idx in qubit_idxs[key]:
                 return key
     
-    def generate_samples(self, num_samples: int = 128, true_energy=None):
+    def generate_samples(self, num_samples: int = 128, true_energy=None, measure_time=False):
         """Generate data samples by decoding RBM samples
 
         :param num_samples (int): No. of data samples to generate in one shot
@@ -319,7 +328,15 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         true_es, samples = [], []
 
         for _ in range(n_iter):
-            p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
+            if measure_time:
+                # start = time.process_time()
+                start = time.perf_counter()
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
+                torch.cuda.current_stream().synchronize()
+                self.sampling_time_gpu.append([time.perf_counter() - start, self.sampler.batch_size])
+                # self.sampling_time_gpu.append([time.process_time() - start, self.sampler.batch_size])
+            else:
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
 
             if true_energy is None:
                 # true_e ~ U[1, 100]
