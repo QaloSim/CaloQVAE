@@ -39,7 +39,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         n_rows = math.ceil(math.sqrt(n_cells))
         n_cols = n_rows
         
-        assert n_cols<=_MAX_ROW_COLS
+        # assert n_cols<=_MAX_ROW_COLS
         
         # Idx lists mapping approximate posterior and prior nodes to qubits on the QPU
         visible_qubit_idxs = []

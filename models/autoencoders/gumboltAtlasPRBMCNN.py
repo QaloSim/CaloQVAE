@@ -178,7 +178,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
         return torch.mean(batch_energy, dim=0)
     
-    def generate_samples_qpu(self, num_samples=64, true_energy=None, measure_time=False):
+    def generate_samples_qpu(self, num_samples=64, true_energy=None, measure_time=False, beta=1.0):
         """
         generate_samples()
         
@@ -218,17 +218,17 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         dwave_weights = {}
         dwave_bias = {}
         for key in prbm_weights.keys():
-            dwave_weights[key] = - prbm_weights[key]/4.
+            dwave_weights[key] = - prbm_weights[key]/4. * beta
         for key in prbm_bias.keys():
             s = torch.zeros(prbm_bias[key].size(), device=prbm_bias[key].device)
             for i in range(4):
                 if i > int(key):
                     wKey = key + str(i)
-                    s = s - torch.sum(prbm_weights[wKey], dim=1)/4.
+                    s = s - torch.sum(prbm_weights[wKey], dim=1)/4. * beta
                 elif i < int(key):
                     wKey = str(i) + key
-                    s = s - torch.sum(prbm_weights[wKey], dim=0)/4.
-            dwave_bias[key] = - prbm_bias[key]/2.0 + s
+                    s = s - torch.sum(prbm_weights[wKey], dim=0)/4. * beta
+            dwave_bias[key] = - prbm_bias[key]/2.0 * beta + s
             
         # for key in dwave_bias.keys():
         #     dwave_bias[key] = torch.clamp(dwave_bias[key], min=-5., max=5.)
@@ -268,6 +268,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         #         J[edge] = dwave_weights_np[visible_idx_map[edge[0]]][hidden_idx_map[edge[1]]]
         #     else:
         #         J[edge] = dwave_weights_np[visible_idx_map[edge[1]]][hidden_idx_map[edge[0]]]
+        
         
         if measure_time:
             # start = time.process_time()
@@ -353,7 +354,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
             hits, activations = self.decoder(prior_samples, true_e)
             beta = torch.tensor(self._config.model.beta_smoothing_fct,
                                 dtype=torch.float, device=hits.device)
-            sample = self._energy_activation_fct(activations) \
+            sample = self._inference_energy_activation_fct(activations) \
                 * self._hit_smoothing_dist_mod(hits, beta, False)
 
             true_es.append(true_e)
@@ -361,34 +362,34 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
         return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
 
-    def loss(self, input_data, fwd_out, true_energy):
-        """
-        - Overrides loss in gumboltCaloV5.py
-        """
-        logger.debug("loss")
+#     def loss(self, input_data, fwd_out, true_energy):
+#         """
+#         - Overrides loss in gumboltCaloV5.py
+#         """
+#         logger.debug("loss")
         
-        kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-        # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
-        sigma = torch.max(torch.sqrt(input_data), torch.tensor([0.1], device=input_data.device))
-        interpolation_param = self._config.model.interpolation_param
-        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
-        # torch.min(x[x>0])
+#         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
+#         # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
+#         sigma = torch.max(torch.sqrt(input_data), torch.tensor([0.1], device=input_data.device))
+#         interpolation_param = self._config.model.interpolation_param
+#         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
+#         ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
+#         # torch.min(x[x>0])
         
-        hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
-        spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
-        sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
-        hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
+#         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
+#         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
+#         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
+#         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
 
         
-        # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+#         # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
+#         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         
-        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+#         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+#                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         
-        # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
+#         # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+#         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
 
 
 

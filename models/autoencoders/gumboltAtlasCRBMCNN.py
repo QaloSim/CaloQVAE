@@ -32,8 +32,12 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         super(GumBoltAtlasCRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasCRBMCNN"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
-        self._energy_activation_fct = LeakyReLU(0.2) # <--- 0.02
+        # self._energy_activation_fct = LeakyReLU(0.2) # <--- 0.02
         self._inference_energy_activation_fct = ReLU()
+        
+    
+    def _training_activation_fct(self, slope):
+        return LeakyReLU(slope)
 
     def create_networks(self):
         """
@@ -119,7 +123,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
     #                           num_output_nodes = self._flat_input_size,
     #                           cfg=self._config)
     
-    def forward(self, xx, is_training, beta_smoothing_fct=5):
+    def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
         """
         - Overrides forward in GumBoltCaloV5.py
         
@@ -149,12 +153,16 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         if self._config.engine.modelhits:
             if is_training:
-                out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+                # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+                out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
             else:
                 out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         else:
             if is_training:
-                out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+                # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+                out.output_activations = activation_fct_annealed(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
             else:
                 out.output_activations = self._inference_energy_activation_fct(output_activations) *torch.ones(output_hits.size(), device=output_hits.device)
             # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
