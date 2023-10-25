@@ -8,6 +8,7 @@ kl_annealing: 0
 kl_annealing_ratio: 0.3
 kl_gamma_max: 1.0
 epoch_annealing_start: 1
+kl_turn_on_epoch': 15
 # r_param : 0.0020
 r_param : 0.00005 #0.001 #0.00004
 cl_lambda: 0
