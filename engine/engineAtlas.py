@@ -70,7 +70,7 @@ class EngineAtlas(EngineCaloV3):
         num_epochs = self._config.engine.n_epochs
         num_plot_samples = self._config.engine.n_plot_samples
         
-        kl_enabled = self._config.engine.kl_enabled
+        kl_enabled = self._config.engine.kl_enabled and (epoch >= self._config.engine.kl_turn_on_epoch)
         kl_annealing = self._config.engine.kl_annealing
         kl_annealing_ratio = self._config.engine.kl_annealing_ratio
         ae_enabled = self._config.engine.ae_enabled

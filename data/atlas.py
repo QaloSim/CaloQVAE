@@ -145,8 +145,6 @@ def get_atlas_datasets(inFiles={}, particle_type=["pions1"], layer_subset=[],
     dataStore={}
     for key,fpath in inFiles.items():     
         in_data=h5py.File(fpath,'r')
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        print(in_data.keys())
         #for each particle_type, create a Container instance for our needs   
         dataStore[key]=CaloImageContainer(  particle_type=key,
                                             input_data=in_data,
