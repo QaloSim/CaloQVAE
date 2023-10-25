@@ -8,6 +8,7 @@ from torch.nn import BCEWithLogitsLoss
 from torch.nn.functional import binary_cross_entropy_with_logits
 from torch.nn import LeakyReLU, ReLU
 import torch.nn as nn 
+import numpy as np
 
 from models.samplers.GibbsSampling import GS
 
@@ -31,9 +32,10 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         super(GumBoltAtlasCRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasCRBMCNN"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
-        #self._energy_activation_fct = LeakyReLU(0.02)
+        # self._energy_activation_fct = LeakyReLU(0.2) # <--- 0.02
         self._inference_energy_activation_fct = ReLU()
         
+    
     def _training_activation_fct(self, slope):
         return LeakyReLU(slope)
 
@@ -147,15 +149,23 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         # labels = self.classifier(output_hits)
         
         out.output_hits = output_hits
-        # out.labels = labels
+
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        
-        if is_training:
-            activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-            out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        if self._config.engine.modelhits:
+            if is_training:
+                # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+                out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            else:
+                out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         else:
-            out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-        
+            if is_training:
+                # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+                out.output_activations = activation_fct_annealed(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+            else:
+                out.output_activations = self._inference_energy_activation_fct(output_activations) *torch.ones(output_hits.size(), device=output_hits.device)
+            # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
         return out
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):
@@ -255,6 +265,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         
         Overrides generate samples in gumboltCaloV5.py
         """
+        true_energies = []
+        samples = []
         # Extract the RBM parameters
         crbm_weights = self.prior.weights
         crbm_vbias = self.prior.visible_bias
@@ -288,7 +300,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                 J[edge] = dwave_weights_np[visible_idx_map[edge[1]]][hidden_idx_map[edge[0]]]
         
         response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
-        dwave_samples, dwave_energies = batch_dwave_samples(response)
+        dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
         dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(crbm_weights.device)
         
         # Convert spin Ising samples to binary RBM samples
@@ -296,20 +308,28 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         _MINUS_ONE = torch.tensor(-1., dtype=torch.float).to(crbm_weights.device)
         
         dwave_samples = torch.where(dwave_samples == _MINUS_ONE, _ZERO, dwave_samples)
+        self.dwave_samples = dwave_samples
         
         if true_energy is None:
             true_e = torch.rand((num_samples, 1), device=crbm_weights.device).detach() * 100.
         else:
             true_e = torch.ones((num_samples, 1), device=crbm_weights.device).detach() * true_energy
-        prior_samples = torch.cat([dwave_samples, true_e], dim=1)
+        # prior_samples = torch.cat([dwave_samples, true_e], dim=1)
+        prior_samples = torch.cat([dwave_samples], dim=1)
+        self.prior_samples = prior_samples
             
-        output_hits, output_activations = self.decoder(prior_samples)
+        # output_hits, output_activations = self.decoder(prior_samples)
+        output_hits, output_activations = self.decoder(prior_samples, true_e)
         beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False) 
-        
-        labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)    
-        true_e.append(torch.pow(2,labels)*256) 
-        return torch.cat(true_energies, dim=0).unsqueeze(dim=1), samples
+        if self._config.engine.modelhits:
+            sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
+        else:
+            sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
+        # samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False) 
+        true_energies.append(true_e)
+        samples.append(sample) 
+        # return torch.cat(true_energies, dim=0).unsqueeze(dim=1), samples
+        return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
     
     def generate_samples(self, num_samples=64, true_energy=None):
         """
@@ -334,15 +354,13 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             beta = torch.tensor(self._config.model.beta_smoothing_fct,
                                 dtype=torch.float, device=output_hits.device,
                                 requires_grad=False)
-            
-            sample = self._inference_energy_activation_fct(output_activations) \
-                * self._hit_smoothing_dist_mod(output_hits, beta, False)
-            #sample = self._energy_activation_fct(output_activations) \
-            #    * self._hit_smoothing_dist_mod(output_hits, beta, False)
+            if self._config.engine.modelhits:
+                sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
+            else:
+                sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
             
             if self._config.engine.cl_lambda != 0:
                 labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
-            
                 true_energies.append((torch.pow(2,labels)*256).unsqueeze(dim=1)) 
             else:
                 true_energies.append(true_e) 
@@ -373,14 +391,54 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
         # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
         
-        # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         
-        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+        if self._config.engine.modelhits:
+            return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+        else:
+            return {"ae_loss":ae_loss, "kl_loss":kl_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         
         # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
+        
+        
+    def batch_dwave_samples(self, response, qubit_idxs):
+        """
+        sampler.sample_ising() method returns a nested SampleSet structure
+        with unique samples, energies and number of occurences stored in dict 
+
+        Extract those values and construct a batch_size * (num_vis+num_hid) numpy array
+
+        Returns:
+            batch_samples : batch_size * (num_vis+num_hid) numpy array of samples collected by the DWave sampler
+            batch_energies : batch_size * 1 numpy array of energies of samples
+
+        UPDATE: There was a bug in which the dictionary was being processed. Thus bug has been fixed in this update
+        """
+        samples = []
+        energies = []
+        origSamples = []
+
+        for sample_info in response.data():
+            origSamples.extend([sample_info[0]]*sample_info[2]) # this is the original sample
+            # the first step is to reorder
+            origDict = sample_info[0] # it is a dictionary {0:-1,1:1,2:-1,3:-1,4:-1 ...} 
+                                      # we need to rearrange it to {0:-1,1:1,2:-1,3:-1,132:-1 ...}
+            keyorder = qubit_idxs
+            reorderedDict = {k: origDict[k] for k in keyorder if k in origDict} # reorder dict
+
+            uniq_sample = list(reorderedDict.values()) # one sample
+            sample_energy = sample_info[1]
+            num_occurences = sample_info[2]
+
+            samples.extend([uniq_sample]*num_occurences)
+            energies.extend([sample_energy]*num_occurences)
+
+        batch_samples = np.array(samples)
+        batch_energies = np.array(energies).reshape(-1)
+
+        return batch_samples, batch_energies, origSamples
 
 
 

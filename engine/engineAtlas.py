@@ -21,8 +21,8 @@ from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from utils.plotting.HighLevelFeatures import HighLevelFeatures as HLF
-HLF_1_photons = HLF('photon', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_photons.xml')
-HLF_1_pions = HLF('pion', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_pions.xml')
+HLF_1_photons = HLF('photon', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_photons.xml')
+HLF_1_pions = HLF('pion', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_pions.xml')
 
 class EngineAtlas(EngineCaloV3):
 
@@ -38,6 +38,7 @@ class EngineAtlas(EngineCaloV3):
         else:
             beta = max(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
         return beta
+    
     
     def slope_act_fct_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
         delta_slope = self._config.engine.slope_activation_fct_final - self._config.engine.slope_activation_fct
@@ -70,7 +71,7 @@ class EngineAtlas(EngineCaloV3):
         num_epochs = self._config.engine.n_epochs
         num_plot_samples = self._config.engine.n_plot_samples
         
-        kl_enabled = self._config.engine.kl_enabled and (epoch >= self._config.engine.kl_turn_on_epoch)
+        kl_enabled = self._config.engine.kl_enabled
         kl_annealing = self._config.engine.kl_annealing
         kl_annealing_ratio = self._config.engine.kl_annealing_ratio
         ae_enabled = self._config.engine.ae_enabled
@@ -96,6 +97,7 @@ class EngineAtlas(EngineCaloV3):
                 else:
                     beta_smoothing_fct = self._config.engine.beta_smoothing_fct
                     
+                
                 if self._config.engine.slope_activation_fct_anneal:
                     slope_act_fct = self.slope_act_fct_value(epoch_anneal_start, num_batches, batch_idx, epoch)
                 else:
@@ -114,7 +116,8 @@ class EngineAtlas(EngineCaloV3):
                     
                 if is_training:
                     if epoch >= epoch_anneal_start:
-                        gamma = min((((epoch-epoch_anneal_start)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), self._config.engine.kl_gamma_max)
+                        # gamma = min((((epoch-epoch_anneal_start)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), self._config.engine.kl_gamma_max)
+                        gamma = 1
                     else:
                         gamma = 0
                     if kl_enabled:
@@ -128,8 +131,8 @@ class EngineAtlas(EngineCaloV3):
                     ae_gamma = 1. if ae_enabled else 0.
                         
                     batch_loss_dict["gamma"] = kl_gamma
-                    batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["LeakyReLUSlope"] = slope_act_fct
+                    batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
                         if "label_loss" in batch_loss_dict.keys():
@@ -184,12 +187,11 @@ class EngineAtlas(EngineCaloV3):
                 #         self._model_creator.save_state(config_string)
                         
                 if (batch_idx % log_batch_idx) == 0:
-                    logger.info('Epoch: {} [{}/{} ({:.0f}%)]\t Batch Loss: {:.4f}, Slope: {:.3f}'.format(epoch,
+                    logger.info('Epoch: {} [{}/{} ({:.0f}%)]\t Batch Loss: {:.4f}'.format(epoch,
                                                                                           batch_idx,
                                                                                           len(data_loader),
                                                                                           100.*batch_idx/len(data_loader),
-                                                                                          batch_loss_dict["loss"].sum(),
-                                                                                          slope_act_fct))
+                                                                                          batch_loss_dict["loss"].sum()))
                     
                     if (batch_idx % (num_batches//2)) == 0:
                         if self._config.data.scaled:
@@ -200,7 +202,6 @@ class EngineAtlas(EngineCaloV3):
                             # self._model.sampler._batch_size = self._config.engine.rbm_batch_size
                             sample_energies, sample_data = self._model.generate_samples()
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
-                            logger.info("Successfully sampled from model conditioning on energy!")
                         elif self._config.reducedata:
                             in_data = self._reduceinv(in_data, true_energy, R=self.R)
                             recon_data = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
@@ -321,9 +322,9 @@ class EngineAtlas(EngineCaloV3):
         """
         log(1+reduced_energy/R)
         """
-        eps = 0.001*torch.rand(in_data.size(), device=self._device) # [0,1]KeV noise to avoid clamping
-        #return torch.log1p(((in_data+eps)/true_energy)/R)
+        
         return torch.log1p((in_data/true_energy)/R)
+
         
     def _reduceinv(self, in_data, true_energy, R=0.04):
         """

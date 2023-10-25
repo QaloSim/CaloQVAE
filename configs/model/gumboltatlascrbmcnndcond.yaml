@@ -17,7 +17,8 @@ encoder_hidden_nodes:
 n_latent_hierarchy_lvls: 2
 n_latent_nodes: 1000
 
-mapping: bipartite
+# mapping: bipartite
+mapping: chains
 bernoulli : 0
 fullyconnected: False
 alpha: 0.0

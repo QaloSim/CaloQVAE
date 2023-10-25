@@ -157,7 +157,7 @@ class PegasusRBM(nn.Module):
                     edge_1 = coords.linear_to_nice(edge[1])
                     print(f"{edge} in qpu_edges : {edge[0]} = {edge_0}",
                           f"{edge[1]} = {edge_1}")"""
-
+        self.idx_dict = idx_dict
         return idx_dict, device
 
     def gen_weight_mask_dict(self, qubit_idx_dict, device):
@@ -182,7 +182,8 @@ class PegasusRBM(nn.Module):
             if edge[0] in idx_list and edge[1] in idx_list:
                 pruned_edge_list.append(edge)
                 
-        print(len(device.edgelist), len(pruned_edge_list))
+        # print(len(device.edgelist), len(pruned_edge_list))
+        self._pruned_edge_list = pruned_edge_list
 
         # Initialize the dict with torch.zeros
         weight_mask_dict = {}

@@ -39,7 +39,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
         n_rows = math.ceil(math.sqrt(n_cells))
         n_cols = n_rows
         
-        assert n_cols<=_MAX_ROW_COLS
+        # assert n_cols<=_MAX_ROW_COLS
         
         # Idx lists mapping approximate posterior and prior nodes to qubits on the QPU
         visible_qubit_idxs = []
@@ -223,7 +223,7 @@ class GumBoltCaloCRBM(GumBoltCaloV6):
             else:
                 J[edge] = dwave_weights_np[visible_idx_map[edge[1]]][hidden_idx_map[edge[0]]]
         
-        response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+        self.response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
         dwave_samples, dwave_energies = batch_dwave_samples(response)
         dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(crbm_weights.device)
         
