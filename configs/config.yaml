@@ -23,7 +23,7 @@ task:
 defaults:
   - model: gumboltatlascrbmcnndcond #gumboltatlascrbmfcn # #
   - data: atlasDGX
-  - engine: dvaeatlas_training_peg
+  - engine: dvaeatlas_training
 
 # model: gumboltatlascrbmcnndcond
 # model: gumboltatlascrbmfcn
