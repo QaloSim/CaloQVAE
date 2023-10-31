@@ -3,18 +3,18 @@ debug: False
 load_data_from_pkl: 0
 
 save_state: 1
-load_state: 1
+load_state: 0
 save_hists: 1
 
 wandb_enabled: 1
 
-run_path: /home/blazerjia/CaloQVAE/outputs/2023-08-10/15-17-46/wandb/run-20230810_151752-kn1hyrzm/files/GumBoltCaloPRBM_calo_default_latest.pth
+# run_path: /home/blazerjia/CaloQVAE/outputs/2023-08-10/15-17-46/wandb/run-20230810_151752-kn1hyrzm/files/GumBoltCaloPRBM_calo_default_latest.pth
 
 
 output_path: /fast_scratch_1/blazerjia/outputs
 device: gpu
 gpu_list:
-  - 6
+  - 2
 
 task:
   - train
