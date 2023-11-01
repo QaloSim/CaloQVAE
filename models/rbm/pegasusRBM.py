@@ -182,6 +182,7 @@ class PegasusRBM(nn.Module):
         for edge in device.edgelist:
             if edge[0] in idx_list and edge[1] in idx_list:
                 pruned_edge_list.append(edge)
+        self._pruned_edge_list = pruned_edge_list
                 
         print(len(device.edgelist), len(pruned_edge_list))
 
