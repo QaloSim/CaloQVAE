@@ -82,4 +82,4 @@ class GS(BaseSampler):
         if method == 'PCD':
             self._MCState = visible_states
         
-        return visible_states, hidden_states
+        return visible_states.detach(), hidden_states.detach()

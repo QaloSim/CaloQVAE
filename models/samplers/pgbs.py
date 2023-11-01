@@ -62,6 +62,12 @@ class PGBS:
         """
         prbm = self._prbm
         p0_bias = prbm._bias_dict['0']
+        p_bias = prbm.bias_dict
+        p_weight = prbm.weight_dict
+        p0_bias = p_bias['0']
+        p1_bias = p_bias['1']
+        p2_bias = p_bias['2']
+        p3_bias = p_bias['3']
 
         # Initialize the random state of partitions 1, 2, and 3
         p1_state = torch.bernoulli(torch.rand(self._batch_size,
@@ -73,50 +79,28 @@ class PGBS:
         p3_state = torch.bernoulli(torch.rand(self._batch_size,
                                               prbm.nodes_per_partition,
                                               device=p0_bias.device))
-
-#         for _ in range(self._n_steps):
-#             p0_state = self._p_state(prbm._weight_dict['01'].T,
-#                                      prbm._weight_dict['02'].T,
-#                                      prbm._weight_dict['03'].T,
-#                                      p1_state, p2_state, p3_state,
-#                                      p0_bias)
-#             p1_state = self._p_state(prbm._weight_dict['01'],
-#                                      prbm._weight_dict['02'].T,
-#                                      prbm._weight_dict['03'].T,
-#                                      p0_state, p2_state, p3_state,
-#                                      prbm._bias_dict['1'])
-#             p2_state = self._p_state(prbm._weight_dict['01'],
-#                                      prbm._weight_dict['02'],
-#                                      prbm._weight_dict['03'].T,
-#                                      p0_state, p1_state, p3_state,
-#                                      prbm._bias_dict['2'])
-#             p3_state = self._p_state(prbm._weight_dict['01'],
-#                                      prbm._weight_dict['02'],
-#                                      prbm._weight_dict['03'],
-#                                      p0_state, p1_state, p2_state,
-#                                      prbm._bias_dict['3'])
             
         for _ in range(self._n_steps):
-            p0_state = self._p_state(prbm._weight_dict['01'].T,
-                                     prbm._weight_dict['02'].T,
-                                     prbm._weight_dict['03'].T,
+            p0_state = self._p_state(p_weight['01'].T,
+                                     p_weight['02'].T,
+                                     p_weight['03'].T,
                                      p1_state, p2_state, p3_state,
                                      p0_bias)
-            p1_state = self._p_state(prbm._weight_dict['01'],
-                                     prbm._weight_dict['12'].T,
-                                     prbm._weight_dict['13'].T,
+            p1_state = self._p_state(p_weight['01'],
+                                     p_weight['12'].T,
+                                     p_weight['13'].T,
                                      p0_state, p2_state, p3_state,
-                                     prbm._bias_dict['1'])
-            p2_state = self._p_state(prbm._weight_dict['02'],
-                                     prbm._weight_dict['12'],
-                                     prbm._weight_dict['23'].T,
+                                     p1_bias)
+            p2_state = self._p_state(p_weight['02'],
+                                     p_weight['12'],
+                                     p_weight['23'].T,
                                      p0_state, p1_state, p3_state,
-                                     prbm._bias_dict['2'])
-            p3_state = self._p_state(prbm._weight_dict['03'],
-                                     prbm._weight_dict['13'],
-                                     prbm._weight_dict['23'],
+                                     p2_bias)
+            p3_state = self._p_state(p_weight['03'],
+                                     p_weight['13'],
+                                     p_weight['23'],
                                      p0_state, p1_state, p2_state,
-                                     prbm._bias_dict['3'])
+                                     p3_bias)
 
         return p0_state.detach(), p1_state.detach(), \
             p2_state.detach(), p3_state.detach()
