@@ -110,7 +110,7 @@ class PegasusRBM(nn.Module):
         n_rows = math.ceil(math.sqrt(n_cells_per_layer))
         n_cols = n_rows
 
-        device = DWaveSampler(solver={'topology__type': 'pegasus'})
+        device = DWaveSampler(solver={'topology__type': 'pegasus',  "chip_id":"Advantage_system6.3"})
         qpu_nodes = device.nodelist
 
         # Add one extra row and col to each layer to account for dead qubits

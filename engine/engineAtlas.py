@@ -136,14 +136,14 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
                         if "label_loss" in batch_loss_dict.keys():
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
                         else:
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] 
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
                     else:
                         if "label_loss" in batch_loss_dict.keys():
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"]
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"]
                         else:
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] 
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] 
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].backward()
                     # batch_loss_dict["loss"].sum().backward()
