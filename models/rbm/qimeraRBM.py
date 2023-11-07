@@ -78,8 +78,7 @@ class QimeraRBM(RBM):
         # Chimera-RBM matrix
         visible_qubit_idx_map = {visible_qubit_idx:i for i, visible_qubit_idx in enumerate(visible_qubit_idxs)}
         hidden_qubit_idx_map = {hidden_qubit_idx:i for i, hidden_qubit_idx in enumerate(hidden_qubit_idxs)}
-
-        ''' 
+        
         weights_mask = torch.zeros(n_visible, n_hidden, requires_grad=False)
         if not bernoulli:
             for edge in pruned_edge_list:
@@ -88,10 +87,7 @@ class QimeraRBM(RBM):
                 else:
                     weights_mask[visible_qubit_idx_map[edge[1]], hidden_qubit_idx_map[edge[0]]] = 1.
             logger.debug("weights_mask = ", weights_mask)
-        '''
-
-        # Temporarily not masking anything
-        weights_mask = torch.ones(n_visible, n_hidden, requires_grad=False)
+                        
         #arbitrarily scaled by 0.01 
         self._weights = nn.Parameter(torch.randn(n_visible, n_hidden), requires_grad=require_grad)
         #self._weights = nn.Parameter(3.*torch.rand(n_visible, n_hidden) + 1., requires_grad=require_grad)

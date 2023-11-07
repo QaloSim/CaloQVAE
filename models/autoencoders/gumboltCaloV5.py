@@ -28,7 +28,6 @@ class GumBoltCaloV5(GumBolt):
     def __init__(self, **kwargs):
         super(GumBoltCaloV5, self).__init__(**kwargs)
         self._model_type = "GumBoltCaloV5"
-
         self._energy_activation_fct = LeakyReLU(0.02)
         self._hit_activation_fct = Sigmoid()
         self._output_loss = MSELoss(reduction="none")
