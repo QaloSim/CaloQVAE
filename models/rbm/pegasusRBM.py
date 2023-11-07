@@ -37,6 +37,7 @@ class PegasusRBM(nn.Module):
         self._weight_dict = nn.ParameterDict()
         self._bias_dict = nn.ParameterDict()
         self._nodes_per_partition = nodes_per_partition
+        self._weight_mask_dict = nn.ParameterDict()
 
         # Fully-connected or Pegasus-restricted 4-partite BM
         self._qpu = qpu
@@ -75,8 +76,8 @@ class PegasusRBM(nn.Module):
         """
         if self._qpu:
             for key in self._weight_dict.keys():
-                self._weight_dict[key] = self._weight_dict[key].to(self.device) \
-                    * self._weight_mask_dict[key].to(self.device)
+                self._weight_dict[key] = self._weight_dict[key] \
+                    * self._weight_mask_dict[key]
         return self._weight_dict
 
 
@@ -109,7 +110,7 @@ class PegasusRBM(nn.Module):
         n_rows = math.ceil(math.sqrt(n_cells_per_layer))
         n_cols = n_rows
 
-        device = DWaveSampler(solver={'topology__type': 'pegasus'})
+        device = DWaveSampler(solver={'topology__type': 'pegasus',  "chip_id":"Advantage_system6.3"})
         qpu_nodes = device.nodelist
 
         # Add one extra row and col to each layer to account for dead qubits
@@ -216,7 +217,11 @@ class PegasusRBM(nn.Module):
 
             weight_mask_dict[p_a + p_b][p_a_idx, p_b_idx] = 1.
 
-        return weight_mask_dict
+        # return weight_mask_dict
+        nn_weight_mask_dict = nn.ParameterDict()
+        for name, layer in weight_mask_dict.items():
+            nn_weight_mask_dict[name] = nn.Parameter(layer.data, requires_grad=False)
+        return nn_weight_mask_dict
 
 
 if __name__ == "__main__":

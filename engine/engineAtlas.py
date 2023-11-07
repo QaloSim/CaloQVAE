@@ -31,22 +31,28 @@ class EngineAtlas(EngineCaloV3):
         super(EngineAtlas, self).__init__(cfg, **kwargs)
         
     def beta_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
-        delta_beta = self._config.engine.beta_smoothing_fct_final - self._config.engine.beta_smoothing_fct
-        delta = (self._config.engine.n_epochs * 0.7 - epoch_anneal_start)*num_batches
-        if delta_beta > 0:
-            beta = min(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
+        if epoch > epoch_anneal_start:
+            delta_beta = self._config.engine.beta_smoothing_fct_final - self._config.engine.beta_smoothing_fct
+            delta = (self._config.engine.n_epochs * 0.7 - epoch_anneal_start)*num_batches
+            if delta_beta > 0:
+                beta = min(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
+            else:
+                beta = max(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
         else:
-            beta = max(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
+            beta = self._config.engine.beta_smoothing_fct
         return beta
     
     
     def slope_act_fct_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
-        delta_slope = self._config.engine.slope_activation_fct_final - self._config.engine.slope_activation_fct
-        delta = (self._config.engine.n_epochs * 0.7 - epoch_anneal_start)*num_batches
-        if delta_slope < 0:
-            slope = max(self._config.engine.slope_activation_fct + delta_slope/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.slope_activation_fct_final)
+        if epoch > epoch_anneal_start:
+            delta_slope = self._config.engine.slope_activation_fct_final - self._config.engine.slope_activation_fct
+            delta = (self._config.engine.n_epochs * 0.7 - epoch_anneal_start)*num_batches
+            if delta_slope < 0:
+                slope = max(self._config.engine.slope_activation_fct + delta_slope/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.slope_activation_fct_final)
+            else:
+                slope = min(self._config.engine.slope_activation_fct + delta_slope/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.slope_activation_fct_final)
         else:
-            slope = min(self._config.engine.slope_activation_fct + delta_slope/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.slope_activation_fct_final)
+            slope = self._config.engine.slope_activation_fct
         return slope
 
     def fit(self, epoch, is_training=True, mode="train"):
@@ -136,14 +142,14 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
                         if "label_loss" in batch_loss_dict.keys():
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
                         else:
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"] 
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
                     else:
                         if "label_loss" in batch_loss_dict.keys():
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] + cl_lambda * batch_loss_dict["label_loss"]
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"]
                         else:
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["kl_loss"] 
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] 
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].backward()
                     # batch_loss_dict["loss"].sum().backward()
@@ -197,10 +203,10 @@ class EngineAtlas(EngineCaloV3):
                         if self._config.data.scaled:
                             in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                             recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
-                            # self._model.sampler._batch_size = true_energy.shape[0]
-                            # sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
-                            # self._model.sampler._batch_size = self._config.engine.rbm_batch_size
-                            sample_energies, sample_data = self._model.generate_samples()
+                            self._model.sampler._batch_size = true_energy.shape[0]
+                            sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            self._model.sampler._batch_size = self._config.engine.rbm_batch_size
+                            # sample_energies, sample_data = self._model.generate_samples()
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
                         elif self._config.reducedata:
                             in_data = self._reduceinv(in_data, true_energy, R=self.R)
@@ -339,7 +345,10 @@ class EngineAtlas(EngineCaloV3):
         Update the coffea histograms' distributions
         """
         # Samples with uniformly distributed energies - [0, 100]
-        sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
+        self._model.sampler._batch_size = true_energy.shape[0]
+        sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+        self._model.sampler._batch_size = self._config.engine.rbm_batch_size
+        # sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
         if self._config.usinglayers:
             sample_data = self.layerTo1D(sample_data)
         
