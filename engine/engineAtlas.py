@@ -21,8 +21,8 @@ from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from utils.plotting.HighLevelFeatures import HighLevelFeatures as HLF
-HLF_1_photons = HLF('photon', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_photons.xml')
-HLF_1_pions = HLF('pion', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_pions.xml')
+HLF_1_photons = HLF('photon', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_photons.xml')
+HLF_1_pions = HLF('pion', filename='/fast_scratch/QVAE/data/atlas/binning_dataset_1_pions.xml')
 
 class EngineAtlas(EngineCaloV3):
 
@@ -77,7 +77,7 @@ class EngineAtlas(EngineCaloV3):
         num_epochs = self._config.engine.n_epochs
         num_plot_samples = self._config.engine.n_plot_samples
         
-        kl_enabled = self._config.engine.kl_enabled
+        kl_enabled = self._config.engine.kl_enabled and (epoch >= self._config.engine.kl_turn_on_epoch)
         kl_annealing = self._config.engine.kl_annealing
         kl_annealing_ratio = self._config.engine.kl_annealing_ratio
         ae_enabled = self._config.engine.ae_enabled
