@@ -36,6 +36,7 @@ from models.autoencoders.gumboltCaloPRBM import GumBoltCaloPRBM
 from models.autoencoders.atlasVAE import ATLASVAE
 from models.autoencoders.gumboltAtlasCRBMCNN import GumBoltAtlasCRBMCNN
 from models.autoencoders.gumboltAtlasPRBMCNN import GumBoltAtlasPRBMCNN
+from models.autoencoders.gumboltAtlasPRBMFCN import GumBoltAtlasPRBMFCN
 from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
 from models.autoencoders.gumboltAtlasCRBMCNNV2 import GumBoltAtlasCRBMCNNV2
 
@@ -62,6 +63,7 @@ _MODEL_DICT={
     "ATLASVAE": ATLASVAE,
     "GumBoltAtlasCRBMCNN": GumBoltAtlasCRBMCNN,
     "GumBoltAtlasPRBMCNN": GumBoltAtlasPRBMCNN,
+    "GumBoltAtlasPRBMFCN": GumBoltAtlasPRBMFCN,
     "GumBoltAtlasCRBMCNNDCond": GumBoltAtlasCRBMCNNDCond,
     "GumBoltAtlasCRBMCNNV2": GumBoltAtlasCRBMCNNV2,
 }

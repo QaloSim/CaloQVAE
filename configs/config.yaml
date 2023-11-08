@@ -21,7 +21,7 @@ task:
   - test
 
 defaults:
-  - model: gumboltatlasPrbmcnn
+  - model: gumboltatlasPrbmfcn
   - data: atlasDGX
   - engine: dvaeatlas_training_peg
 
@@ -31,6 +31,7 @@ defaults:
 # engine: dvaeatlas_training
 
 # model: gumboltatlasPrbmcnn
+# model: gumboltatlasPrbmfcn
 # engine: dvaeatlas_training_peg
 
 usinglayers: False

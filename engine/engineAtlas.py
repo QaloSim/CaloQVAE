@@ -142,14 +142,14 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     if "hit_loss" in batch_loss_dict.keys():
                         if "label_loss" in batch_loss_dict.keys():
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
                         else:
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
                     else:
                         if "label_loss" in batch_loss_dict.keys():
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"]
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"]
                         else:
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + 0.01*kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] 
+                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] 
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].backward()
                     # batch_loss_dict["loss"].sum().backward()
@@ -173,24 +173,6 @@ class EngineAtlas(EngineCaloV3):
                     self._update_histograms(in_data, fwd_output.output_activations, true_energy)
                     # self._update_histograms(input_data[0]/1000, fwd_output.output_activations)
                     
-                # if mode == "train" and (batch_idx % valid_batch_idx) == 0:
-                #     print(fwd_output.output_activations.shape, "#############", true_energy.shape, "before")
-                #     valid_loss_dict = self._validate()
-                #     print(fwd_output.output_activations.shape, "#############", true_energy.shape, "after")
-                    
-                #     if "hit_loss" in valid_loss_dict.keys():
-                #         valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"]
-                #     else:
-                #         valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"]
-                        
-                #     # Check the loss over the validation set is 
-                #     if valid_loss_dict["loss"] < self._best_model_loss:
-                #         self._best_model_loss = valid_loss_dict["loss"]
-                #         # Save the best model here
-                #         config_string = "_".join(str(i) for i in [self._config.model.model_type,
-                #                                                   self._config.data.data_type,
-                #                                                   self._config.tag, "best"])
-                #         self._model_creator.save_state(config_string)
                         
                 if (batch_idx % log_batch_idx) == 0:
                     logger.info('Epoch: {} [{}/{} ({:.0f}%)]\t Batch Loss: {:.4f}'.format(epoch,
