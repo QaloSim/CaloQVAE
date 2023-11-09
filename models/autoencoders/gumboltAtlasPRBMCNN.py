@@ -8,6 +8,8 @@ from torch.nn import BCEWithLogitsLoss
 from torch.nn.functional import binary_cross_entropy_with_logits
 import torch.nn as nn 
 
+import numpy as np
+
 from models.samplers.GibbsSampling import GS
 
 # DiVAE.models imports
@@ -34,6 +36,9 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
         self.sampling_time_qpu = []
         self.sampling_time_gpu = []
+        # self._qpu_sampler = DWaveSampler(solver={"topology__type":"pegasus"})
+        self.prior = self._create_prior()
+        self._qpu_sampler = self.prior._qpu_sampler
         
     def _create_prior(self):
         """Override _create_prior in GumBoltCaloV6.py
@@ -362,34 +367,194 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
         return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
 
-#     def loss(self, input_data, fwd_out, true_energy):
-#         """
-#         - Overrides loss in gumboltCaloV5.py
-#         """
-#         logger.debug("loss")
-        
-#         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-#         # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
-#         sigma = torch.max(torch.sqrt(input_data), torch.tensor([0.1], device=input_data.device))
-#         interpolation_param = self._config.model.interpolation_param
-#         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-#         ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
-#         # torch.min(x[x>0])
-        
-#         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
-#         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
-#         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
-#         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
+    def ising_energy(self, p0_state, p1_state, p2_state, p3_state, weight_dict, bias_dict):
+            """Energy expectation value under the 4-partite BM
+            Overrides energy_exp in gumbolt.py
 
+            :param p0_state (torch.Tensor) : (batch_size, n_nodes_p1)
+            :param p1_state (torch.Tensor) : (batch_size, n_nodes_p2)
+            :param p2_state (torch.Tensor) : (batch_size, n_nodes_p3)
+            :param p3_state (torch.Tensor) : (batch_size, n_nodes_p4)
+
+            :return energy expectation value over the current batch
+            """
+            w_dict = weight_dict
+            b_dict = bias_dict
+
+            w_dict_cp = {}
+
+            # Broadcast weight matrices (n_nodes_pa, n_nodes_pb) to
+            # (batch_size, n_nodes_pa, n_nodes_pb)
+            for key in w_dict.keys():
+                w_dict_cp[key] = w_dict[key] + torch.zeros((p0_state.size(0),) +
+                                                        w_dict[key].size(),
+                                                        device=w_dict[key].device)
+
+            # Prepare px_state_t for torch.bmm()
+            # Change px_state.size() to (batch_size, 1, n_nodes_px)
+            p0_state_t = p0_state.unsqueeze(2).permute(0, 2, 1)
+            p1_state_t = p1_state.unsqueeze(2).permute(0, 2, 1)
+            p2_state_t = p2_state.unsqueeze(2).permute(0, 2, 1)
+
+            # Prepare py_state for torch.bmm()
+            # Change py_state.size() to (batch_size, n_nodes_py, 1)
+            p1_state_i = p1_state.unsqueeze(2)
+            p2_state_i = p2_state.unsqueeze(2)
+            p3_state_i = p3_state.unsqueeze(2)
+
+            # Compute the energies for batch samples
+            batch_energy = torch.matmul(p0_state, b_dict['0']) + \
+                torch.matmul(p1_state, b_dict['1']) + \
+                torch.matmul(p2_state, b_dict['2']) + \
+                torch.matmul(p3_state, b_dict['3']) + \
+                torch.bmm(p0_state_t,
+                          torch.bmm(w_dict_cp['01'], p1_state_i)).reshape(-1) + \
+                torch.bmm(p0_state_t,
+                          torch.bmm(w_dict_cp['02'], p2_state_i)).reshape(-1) + \
+                torch.bmm(p0_state_t,
+                          torch.bmm(w_dict_cp['03'], p3_state_i)).reshape(-1) + \
+                torch.bmm(p1_state_t,
+                          torch.bmm(w_dict_cp['12'], p2_state_i)).reshape(-1) + \
+                torch.bmm(p1_state_t,
+                          torch.bmm(w_dict_cp['13'], p3_state_i)).reshape(-1) + \
+                torch.bmm(p2_state_t,
+                          torch.bmm(w_dict_cp['23'], p3_state_i)).reshape(-1)
+
+            return batch_energy
         
-#         # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-#         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+    def ising_model(self, beta=1.0):
+        """
+        generate_samples()
+
+        Overrides generate samples in gumboltCaloV5.py
+        """
+        true_energies = []
+        samples = []
+        # Extract the RBM parameters
+        prbm_weights = {}
+        prbm_bias = {}
+        for key in self.prior._weight_dict.keys():
+            prbm_weights[key] = self.prior._weight_dict[key]
+        for key in self.prior._bias_dict.keys():
+            prbm_bias[key] = self.prior._bias_dict[key]
+        prbm_edgelist = self.prior._pruned_edge_list
+
+        # crbm_weights = self.prior.weights
+        # crbm_vbias = self.prior.visible_bias
+        # crbm_hbias = self.prior.hidden_bias
+        # crbm_edgelist = self.prior.pruned_edge_list
+        if self.prior.idx_dict is None:
+            idx_dict, device = self.prior.gen_qubit_idx_dict()
+        else:
+            idx_dict = self.prior.idx_dict
+
+        qubit_idxs = idx_dict['0'] + idx_dict['1'] + idx_dict['2'] + idx_dict['3']
+
+        # qubit_idxs = self.prior.visible_qubit_idxs + self.prior.hidden_qubit_idxs
+
+        idx_map = {}
+        for key in idx_dict.keys():
+            idx_map[key] = {idx:i for i, idx in enumerate(self.prior.idx_dict[key])}
+
+        # visible_idx_map = {visible_qubit_idx:i for i, visible_qubit_idx in enumerate(self.prior.visible_qubit_idxs)}
+        # hidden_idx_map = {hidden_qubit_idx:i for i, hidden_qubit_idx in enumerate(self.prior.hidden_qubit_idxs)}
+
+        dwave_weights = {}
+        dwave_bias = {}
+        for key in prbm_weights.keys():
+            dwave_weights[key] = - prbm_weights[key]/4. * beta
+        for key in prbm_bias.keys():
+            s = torch.zeros(prbm_bias[key].size(), device=prbm_bias[key].device)
+            for i in range(4):
+                if i > int(key):
+                    wKey = key + str(i)
+                    s = s - torch.sum(prbm_weights[wKey], dim=1)/4. * beta
+                elif i < int(key):
+                    wKey = str(i) + key
+                    s = s - torch.sum(prbm_weights[wKey], dim=0)/4. * beta
+            dwave_bias[key] = - prbm_bias[key]/2.0 * beta + s
+
+        # for key in dwave_bias.keys():
+        #     dwave_bias[key] = torch.clamp(dwave_bias[key], min=-5., max=5.)
+        # for key in dwave_weights.keys():
+        #     dwave_weights[key] = torch.clamp(dwave_weights[key], min=-5., max=5.)
+
+
+        # dwave_weights = torch.clamp(dwave_weights, min=-2., max=1.)
+        # dwave_vbias = torch.clamp(dwave_vbias, min=-2., max=2.)
+        # dwave_hbias = torch.clamp(dwave_hbias, min=-2., max=2.)
+
+        dwave_weights_np = {}
+        for key in dwave_weights.keys():
+            dwave_weights_np[key] = dwave_weights[key].detach().cpu().numpy()
+        biases = torch.cat([dwave_bias[key] for key in dwave_bias.keys()])
+        # dwave_weights_np = dwave_weights.detach().cpu().numpy()
+        # biases = torch.cat((dwave_vbias, dwave_hbias)).detach().cpu().numpy()
+
+        # Initialize the values of biases and couplers. The next lines are critical
+        # maps the RBM coupling values into dwave's couplings h, J. In particular,
+        # J is a dictionary, each key is an edge in Pegasus
+        h = {qubit_idx:bias for qubit_idx, bias in zip(qubit_idxs, biases)}
+        J = {}
+        for edge in prbm_edgelist:
+            partition_edge_0 = self.find_partition_key(edge[0], idx_dict)
+            partition_edge_1 = self.find_partition_key(edge[1], idx_dict)
+            if int(partition_edge_0) < int(partition_edge_1):
+                wKey = partition_edge_0 + partition_edge_1
+                J[edge] = dwave_weights_np[wKey][idx_map[partition_edge_0][edge[0]]][idx_map[partition_edge_1][edge[1]]]
+            elif int(partition_edge_0) > int(partition_edge_1):
+                wKey = partition_edge_1 + partition_edge_0
+                J[edge] = dwave_weights_np[wKey][idx_map[partition_edge_1][edge[1]]][idx_map[partition_edge_0][edge[0]]]
+        return h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias
         
-#         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-#                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        
-#         # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-#         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
+    def find_beta(self, beta_init=10.0, lr=0.01, num_epochs = 20):
+        # beta_init = 10.0
+        # lr = 0.01
+        # num_epochs = 20
+        beta = beta_init
+        beta_list = []
+        rbm_energy_list = []
+        dwave_energies_list = []
+        mean_rbm_energy_list = []
+        mean_dwave_energy_list = []
+        training_results = {}
+
+        for epoch in range(num_epochs+1):
+            _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0 / 10.0)
+            h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model(1.0 / beta)
+            if epoch == 0:
+                # prbm_sampler = PGBS(self.prior, 512, 3000)
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
+                p0_ising = p0_state * 2 - 1
+                p1_ising = p1_state * 2 - 1
+                p2_ising = p2_state * 2 - 1
+                p3_ising = p3_state * 2 - 1
+                rbm_energies = self.ising_energy(p0_ising, p1_ising, p2_ising, p3_ising, dwave_weights_rbm, dwave_bias_rbm)
+                rbm_energies = rbm_energies.detach().cpu().numpy()
+
+            response = self._qpu_sampler.sample_ising(h, J, num_reads=256, auto_scale=False)
+            dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
+            # dwave_samples, dwave_energies = self.batch_dwave_samples(response, qubit_idxs)
+            nonpl = len(idx_dict['0'])
+            dwave_1, dwave_2, dwave_3, dwave_4 = dwave_samples[:,0:nonpl], dwave_samples[:,nonpl:2*nonpl], dwave_samples[:,2*nonpl:3*nonpl], dwave_samples[:,3*nonpl:4*nonpl]
+            dwave_1_t = torch.tensor(dwave_1).to(p0_ising.device).float()
+            dwave_2_t = torch.tensor(dwave_2).to(p0_ising.device).float()
+            dwave_3_t = torch.tensor(dwave_3).to(p0_ising.device).float()
+            dwave_4_t = torch.tensor(dwave_4).to(p0_ising.device).float()
+            dwave_energies = self.ising_energy(dwave_1_t, dwave_2_t, dwave_3_t, dwave_4_t, dwave_weights, dwave_bias)
+            dwave_energies = dwave_energies.detach().cpu().numpy()
+            mean_rbm_energy = np.mean(rbm_energies)
+            mean_dwave_energy = np.mean(dwave_energies)
+
+            rbm_energy_list.append(rbm_energies)
+            dwave_energies_list.append(dwave_energies)
+            mean_rbm_energy_list.append(mean_rbm_energy)
+            mean_dwave_energy_list.append(mean_dwave_energy)
+            beta_list.append(beta)
+            print (f'Epoch {epoch}: beta = {beta}')
+            beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
+        beta = beta_list[-1]
+        return beta, beta_list
 
 
 

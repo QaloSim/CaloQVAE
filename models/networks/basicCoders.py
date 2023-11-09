@@ -247,7 +247,7 @@ class DecoderCNNCondSmall(BasicDecoderV3):
                                    )
         
         self._layers2 = nn.Sequential(
-                   nn.ConvTranspose2d(256, 64, 4, 2, 0),
+                   nn.ConvTranspose2d(257, 64, 4, 2, 0),
                    nn.BatchNorm2d(64),
                    nn.PReLU(64, 0.02),
 
@@ -278,10 +278,9 @@ class DecoderCNNCondSmall(BasicDecoderV3):
         logger.debug("Decoder::decode")
                 
         x = self._layers(x)
-        x2 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000)), 1)
-        # x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,21,21).divide(self.minEnergy).log2()), 1)
-        x1 = self._layers2(x)
-        x2 = self._layers3(x2)
+        xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000)), 1)
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(xx0)
         return x1, x2
 
 
