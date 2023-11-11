@@ -612,6 +612,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         return batch_energy
     
     def AIS(self, nbeta=10.0):
+        # http://www.cs.utoronto.ca/~rsalakhu/papers/bm.pdf
         lnZa = np.sum([torch.log(1 + torch.exp(-self.prior.bias_dict['0'] )).sum().item() for i in ['0','1','2','3']])
         FreeEnergy_ratios = 0.0
         Δbeta = 1/nbeta
@@ -623,8 +624,8 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
             energy_samples_i = self.energy_samples(p0_state, p1_state, p2_state, p3_state, beta)
             energy_samples_i_plus = self.energy_samples(p0_state, p1_state, p2_state, p3_state, beta+Δbeta)
             FreeEnergy_ratios = FreeEnergy_ratios + torch.log(torch.exp(energy_samples_i - energy_samples_i_plus).mean())
-        FreeEnergy_ratios = FreeEnergy_ratios + lnZa
-        return FreeEnergy_ratios
+        logZb = FreeEnergy_ratios + lnZa
+        return logZb
 
 
 
