@@ -10,7 +10,7 @@ from models.autoencoders.gumboltAtlasPRBMCNN import GumBoltAtlasPRBMCNN
 from models.networks.basicCoders import BasicDecoderV3
 from models.networks.hierarchicalEncoderV2 import HierarchicalEncoderV2
 
-# import time
+import time
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -24,8 +24,8 @@ class GumBoltAtlasPRBMFCN(GumBoltAtlasPRBMCNN):
         super(GumBoltAtlasPRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasPRBMFCN"
         # self._bce_loss = BCEWithLogitsLoss(reduction="none")
-        # self.sampling_time_qpu = []
-        # self.sampling_time_gpu = []
+        self.sampling_time_qpu = []
+        self.sampling_time_gpu = []
         
     def _create_decoder(self):
         logger.debug("GumBoltAtlasPRBMFCN::_create_decoder")
