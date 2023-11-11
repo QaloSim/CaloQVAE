@@ -21,6 +21,7 @@ runJT.sh
 figs/
 runSG.sh
 init_container.sh
+GenSamples.ipynb
 ##############################################
 #### Automatically created
 ##############################################
