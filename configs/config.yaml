@@ -13,7 +13,7 @@ wandb_enabled: 1
 output_path: /fast_scratch_1/jtoledo/outputs
 device: gpu
 gpu_list:
-  - 2
+  - 1
 
 task:
   - train
@@ -21,9 +21,9 @@ task:
   - test
 
 defaults:
-  - model: gumboltatlascrbmcnndcond #gumboltatlascrbmfcn # #
+  - model: gumboltatlasPrbmcnn
   - data: atlasDGX
-  - engine: dvaeatlas_training
+  - engine: dvaeatlas_training_peg
 
 # model: gumboltatlascrbmcnndcond
 # model: gumboltatlascrbmfcn
@@ -31,6 +31,7 @@ defaults:
 # engine: dvaeatlas_training
 
 # model: gumboltatlasPrbmcnn
+# model: gumboltatlasPrbmfcn
 # engine: dvaeatlas_training_peg
 
 usinglayers: False

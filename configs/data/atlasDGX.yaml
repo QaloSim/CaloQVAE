@@ -2,9 +2,8 @@ data_type: atlas
 # _layers: 
 #   - voxels
 # particle_type: pion1
-#particle_type: pionEn4
-#dataset: dataset1pion
- 
+# particle_type: pionEn5
+# dataset: dataset1pion
 _layers: 
   - showers
 particle_type: electron-ds2
@@ -13,35 +12,36 @@ dataset: dataset2
 frac_test_dataset: 0.1
 frac_train_dataset: 0.8
 
-#particle: pion
+# particle: pion
 particle: electron
 
 scaled: True
-#scaler_path: /fast_scratch/QVAE/data/atlas_scaled/pions_samples_highStat_En_4_scaler.gz
-#scaler_amin: /fast_scratch/QVAE/data/atlas_scaled/pions_samples_highStat_En_4_amin.npy
-scaler_path: /fast_scratch/QVAE/data/atlas_dataset2and3_scaled/dataset_2_1_scaler.gz
-scaler_amin: /fast_scratch/QVAE/data/atlas_dataset2and3_scaled/dataset_2_1_amin.npy
+# scaler_path: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions1_scaler.gz
+# scaler_amin: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions1_amin.npy
+# scaler_path: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions_samples_highStat_En_5_scaler.gz
+# scaler_amin: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions_samples_highStat_En_5_amin.npy
+scaler_path: /raid/javier/Datasets/CaloVAE/data/atlas_dataset2and3_scaled/dataset_2_1_scaler.gz
+scaler_amin: /raid/javier/Datasets/CaloVAE/data/atlas_dataset2and3_scaled/dataset_2_1_amin.npy
 
-atlas_input_photon1: /fast_scratch/QVAE/data/atlas/photons1.hdf5
-atlas_input_photonEn0: /fast_scratch/QVAE/data/atlas/photons_samples_highStat_En_0.hdf5
-atlas_input_photonEn1: /fast_scratch/QVAE/data/atlas/photons_samples_highStat_En_1.hdf5
-atlas_input_photonEn2: /fast_scratch/QVAE/data/atlas/photons_samples_highStat_En_2.hdf5
-atlas_input_photonEn3: /fast_scratch/QVAE/data/atlas/photons_samples_highStat_En_3.hdf5
-atlas_input_photonEn4: /fast_scratch/QVAE/data/atlas/photons_samples_highStat_En_4.hdf5
-atlas_input_photonEn5: /fast_scratch/QVAE/data/atlas_scaled/photons_samples_highStat_En_5.hdf5
-atlas_input_photonEn6: /fast_scratch/QVAE/data/atlas/photons_samples_highStat_En_6.hdf5
-atlas_input_photonEn7: /fast_scratch/QVAE/data/atlas/photons_samples_highStat_En_7.hdf5
-atlas_input_pion1: /fast_scratch/QVAE/data/atlas/pions1.hdf5
-atlas_input_pionEn0: /fast_scratch/QVAE/data/atlas/pions_samples_highStat_En_0.hdf5
-atlas_input_pionEn1: /fast_scratch/QVAE/data/atlas/pions_samples_highStat_En_1.hdf5
-atlas_input_pionEn2: /fast_scratch/QVAE/data/atlas/pions_samples_highStat_En_2.hdf5
-atlas_input_pionEn3: /fast_scratch/QVAE/data/atlas/pions_samples_highStat_En_3.hdf5
-#atlas_input_pionEn4: /fast_scratch/QVAE/data/atlas/pions_samples_highStat_En_4.hdf5
-atlas_input_pionEn4: /fast_scratch/QVAE/data/atlas_scaled/pions_samples_highStat_En_4.hdf5
-#atlas_input_pionEn5: /fast_scratch/QVAE/data/atlas/pions_samples_highStat_En_5.hdf5
-atlas_input_pionEn5: /fast_scratch/QVAE/data/atlas_scaled/pions_samples_highStat_En_5.hdf5
-atlas_input_pionEn6: /fast_scratch/QVAE/data/atlas/pions_samples_highStat_En_6.hdf5
-atlas_input_pionEn7: /fast_scratch/QVAE/data/atlas/pions_samples_highStat_En_7.hdf5
-#atlas_input_electron: /fast_scratch/QVAE/data/atlas_dataset2and3/dataset_2_1.hdf5
-atlas_input_electron: /fast_scratch/QVAE/data/atlas_dataset2and3_scaled/dataset_2_1.hdf5
-
+atlas_input_photon1: /raid/javier/Datasets/CaloVAE/data/atlas/photons1.hdf5
+atlas_input_photonEn0: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_0.hdf5
+atlas_input_photonEn1: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_1.hdf5
+atlas_input_photonEn2: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_2.hdf5
+atlas_input_photonEn3: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_3.hdf5
+atlas_input_photonEn4: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_4.hdf5
+atlas_input_photonEn5: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/photons_samples_highStat_En_5.hdf5
+atlas_input_photonEn6: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_6.hdf5
+atlas_input_photonEn7: /raid/javier/Datasets/CaloVAE/data/atlas/photons_samples_highStat_En_7.hdf5
+# atlas_input_pion1: /raid/javier/Datasets/CaloVAE/data/atlas/pions1.hdf5
+atlas_input_pion1: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions1.hdf5
+atlas_input_pionEn0: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_0.hdf5
+atlas_input_pionEn1: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_1.hdf5
+atlas_input_pionEn2: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_2.hdf5
+atlas_input_pionEn3: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_3.hdf5
+atlas_input_pionEn4: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_4.hdf5
+atlas_input_pionEn5: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_5.hdf5
+# atlas_input_pionEn5: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions_samples_highStat_En_5.hdf5
+atlas_input_pionEn6: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_6.hdf5
+atlas_input_pionEn7: /raid/javier/Datasets/CaloVAE/data/atlas/pions_samples_highStat_En_7.hdf5
+# atlas_input_electron: /raid/javier/Datasets/CaloVAE/data/atlas_dataset2and3/dataset_2_1.hdf5
+atlas_input_electron: /raid/javier/Datasets/CaloVAE/data/atlas_dataset2and3_scaled/dataset_2_1.hdf5
