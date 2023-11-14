@@ -163,3 +163,27 @@ class Stats():
             FreeEnergy_ratios = FreeEnergy_ratios + torch.log(torch.exp(energy_samples_i - energy_samples_i_plus).mean())
         logZb = FreeEnergy_ratios + self.lnZa
         return logZb
+    
+    def RAIS(self, nbeta=20.0):
+        self.lnZb = np.sum([torch.log(1 + torch.exp(-self._prbm.bias_dict[i])).sum().item() for i in ['0','1','2','3']])
+        FreeEnergy_ratios = 0.0
+        Δbeta = 1/nbeta
+
+        # Reverse AIS: Start from the target distribution (beta = 1)
+        for beta in np.arange(1.0, 0.0, -Δbeta):
+            if beta == 1:
+                p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_ais(beta)
+            else:
+                # When beta is not 1, continue the sampling from the current state
+                p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_ais(beta - Δbeta, p0_state, p1_state, p2_state, p3_state)
+
+            # Calculate energies for the current beta and the next beta (which is beta - Δbeta)
+            energy_samples_i = self.energy_samples(p0_state, p1_state, p2_state, p3_state, beta)
+            energy_samples_i_minus = self.energy_samples(p0_state, p1_state, p2_state, p3_state, beta - Δbeta)
+
+            # Accumulate the free energy differences
+            FreeEnergy_ratios += torch.log(torch.exp(energy_samples_i_minus - energy_samples_i).mean())
+
+        # The final estimate for logZa (partition function of the base distribution)
+        logZa = FreeEnergy_ratios + self.lnZb
+        return logZa
