@@ -22,6 +22,8 @@ figs/
 runSG.sh
 init_container.sh
 GenSamples.ipynb
+fast_stern_test.ipynb
+stein/
 ##############################################
 #### Automatically created
 ##############################################
