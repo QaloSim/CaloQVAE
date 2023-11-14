@@ -215,8 +215,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             pos_energy = self.energy_exp(post_zetas_vis, post_zetas_hid)
         
         # Compute gradient contribution of the logZ term
-        rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling(post_zetas_vis, method=self._config.model.rbmMethod)
-        rbm_vis, rbm_hid = rbm_visible_samples.detach(), rbm_hidden_samples.detach()
+        rbm_vis, rbm_hid = self.sampler.block_gibbs_sampling(post_zetas_vis, method=self._config.model.rbmMethod)
         neg_energy = - self.energy_exp(rbm_vis, rbm_hid)
         
         kl_loss = entropy + pos_energy + neg_energy
@@ -319,9 +318,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
         samples = []
         for i in range(num_iterations):
-            rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling()
-            rbm_vis = rbm_visible_samples.detach()
-            rbm_hid = rbm_hidden_samples.detach()
+            rbm_vis, rbm_hid = self.sampler.block_gibbs_sampling()
             
             if true_energy is None:
                 true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.

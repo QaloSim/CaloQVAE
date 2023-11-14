@@ -38,6 +38,8 @@ from models.autoencoders.gumboltAtlasCRBMCNN import GumBoltAtlasCRBMCNN
 from models.autoencoders.gumboltAtlasPRBMCNN import GumBoltAtlasPRBMCNN
 from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
 from models.autoencoders.gumboltAtlasCRBMCNNV2 import GumBoltAtlasCRBMCNNV2
+from models.autoencoders.gumboltAtlasCRBMCNNUnCond import GumBoltAtlasCRBMCNNUnCond
+from models.autoencoders.gumboltAtlasCRBMCEncUDec import GumBoltAtlasCRBMCEncUDec
 
 _MODEL_DICT={
     "AE": AutoEncoder, 
@@ -64,6 +66,8 @@ _MODEL_DICT={
     "GumBoltAtlasPRBMCNN": GumBoltAtlasPRBMCNN,
     "GumBoltAtlasCRBMCNNDCond": GumBoltAtlasCRBMCNNDCond,
     "GumBoltAtlasCRBMCNNV2": GumBoltAtlasCRBMCNNV2,
+    "GumBoltAtlasCRBMCNNUnCond": GumBoltAtlasCRBMCNNUnCond,
+    "GumBoltAtlasCRBMCEncUDec": GumBoltAtlasCRBMCEncUDec,
 }
 
 class ModelCreator(object):
