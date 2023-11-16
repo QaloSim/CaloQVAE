@@ -49,7 +49,7 @@ class GumBoltCaloV5(GumBolt):
                    n_gibbs_sampling_steps\
                        =self._config.engine.n_gibbs_sampling_steps)
         
-    def forward(self, x, is_training, beta_smoothing_fct=5):
+    def forward(self, x, is_training, beta_smoothing_fct=5, slope_act_fct=0.02):
         """
         - Overrides forward in dvaepp.py
         
@@ -72,6 +72,7 @@ class GumBoltCaloV5(GumBolt):
         out.output_hits = output_hits
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            
         return out
     
     def loss(self, input_data, fwd_out, true_energy=None):

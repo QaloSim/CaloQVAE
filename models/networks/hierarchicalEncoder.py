@@ -173,7 +173,6 @@ class HierarchicalEncoder(BasicEncoder):
             beta = torch.tensor(beta_smoothing_fct,
                             dtype=torch.float, device=logits.device,
                             requires_grad=False)
-            
             samples=self.smoothing_dist_mod(logits, beta, is_training)
             
             if type(x) is tuple:
