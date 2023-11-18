@@ -175,15 +175,15 @@ class Stats():
                 p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_ais(beta)
             else:
                 # When beta is not 1, continue the sampling from the current state
-                p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_ais(beta - Δbeta, p0_state, p1_state, p2_state, p3_state)
+                p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_ais(beta, p0_state, p1_state, p2_state, p3_state)
 
             # Calculate energies for the current beta and the next beta (which is beta - Δbeta)
             energy_samples_i = self.energy_samples(p0_state, p1_state, p2_state, p3_state, beta)
             energy_samples_i_minus = self.energy_samples(p0_state, p1_state, p2_state, p3_state, beta - Δbeta)
 
             # Accumulate the free energy differences
-            FreeEnergy_ratios += torch.log(torch.exp(energy_samples_i_minus - energy_samples_i).mean())
+            FreeEnergy_ratios += torch.log(torch.exp(- energy_samples_i_minus + energy_samples_i).mean())
 
         # The final estimate for logZa (partition function of the base distribution)
-        logZa = FreeEnergy_ratios + self.lnZb
+        logZa = - FreeEnergy_ratios + self.lnZb
         return logZa

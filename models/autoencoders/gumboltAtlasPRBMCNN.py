@@ -137,7 +137,10 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
         # Compute gradient computation of the logZ term
         p0_state, p1_state, p2_state, p3_state \
-            = self.sampler.block_gibbs_sampling()
+            = self.sampler.block_gibbs_sampling(post_zetas[:, :n_nodes_p],
+                                     post_zetas[:, n_nodes_p:2*n_nodes_p],
+                                     post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
+                                     post_zetas[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
         neg_energy = - self.energy_exp(p0_state, p1_state, p2_state, p3_state)
 
         # Estimate of the kl-divergence
@@ -537,6 +540,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
         for epoch in range(num_epochs+1):
             _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0 / 10.0)
+            # _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
             h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model(1.0 / beta)
             if epoch == 0:
                 # prbm_sampler = PGBS(self.prior, 512, 3000)
@@ -570,5 +574,5 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
             print (f'Epoch {epoch}: beta = {beta}')
             beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
         beta = beta_list[-1]
-        return beta, beta_list
+        return beta, beta_list, rbm_energy_list, dwave_energies_list
     

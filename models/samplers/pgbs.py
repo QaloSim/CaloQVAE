@@ -52,7 +52,7 @@ class PGBS:
                          torch.matmul(pc_state, weights_cx) + bias_x)
         return torch.bernoulli(torch.sigmoid(p_activations))
 
-    def block_gibbs_sampling(self):
+    def block_gibbs_sampling(self, p0=None,p1=None,p2=None,p3=None, method='Rdm'):
         """block_gibbs_sampling()
 
         :return p0_state (torch.Tensor) : (batch_size, n_nodes_p1)
@@ -69,16 +69,25 @@ class PGBS:
         p2_bias = p_bias['2']
         p3_bias = p_bias['3']
 
-        # Initialize the random state of partitions 1, 2, and 3
-        p1_state = torch.bernoulli(torch.rand(self._batch_size,
+        
+        if method == 'Rdm' or p1==None:
+            # Initialize the random state of partitions 1, 2, and 3
+            p1_state = torch.bernoulli(torch.rand(self._batch_size,
+                                                  prbm.nodes_per_partition,
+                                                  device=p0_bias.device))
+            p2_state = torch.bernoulli(torch.rand(self._batch_size,
+                                                  prbm.nodes_per_partition,
+                                                  device=p0_bias.device))
+            p3_state = torch.bernoulli(torch.rand(self._batch_size,
                                               prbm.nodes_per_partition,
                                               device=p0_bias.device))
-        p2_state = torch.bernoulli(torch.rand(self._batch_size,
-                                              prbm.nodes_per_partition,
-                                              device=p0_bias.device))
-        p3_state = torch.bernoulli(torch.rand(self._batch_size,
-                                              prbm.nodes_per_partition,
-                                              device=p0_bias.device))
+        elif method == 'CD':
+            # Initialize the random state of partitions 1, 2, and 3
+            p1_state = p1
+            p2_state = p2
+            p3_state = p3
+        elif method == 'PCD':
+            pass
             
         for _ in range(self._n_steps):
             p0_state = self._p_state(p_weight['01'].T,
