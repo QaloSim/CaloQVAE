@@ -19,4 +19,4 @@ n_latent_nodes: 1000
 
 mapping: bipartite
 bernoulli : 0
-fullyconnected: false
+fullyconnected: True #false

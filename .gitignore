@@ -21,6 +21,7 @@ runJT.sh
 figs/
 runSG.sh
 init_container.sh
+seb2000-dev
 ##############################################
 #### Automatically created
 ##############################################
