@@ -122,6 +122,15 @@ class ModelCreator(object):
         # Save the model parameter dict
         torch.save(state_dict, path)
         
+    def save_RBM_state(self, cfg_string='test'):
+        logger.info("Saving RBM state")
+        pathW = os.path.join(wandb.run.dir, "{0}.pth".format(cfg_string + '_weights'))
+        pathB = os.path.join(wandb.run.dir, "{0}.pth".format(cfg_string + '_biases'))
+        
+        # Save the dictionary to a file
+        torch.save(self._model.prior._weight_dict, pathW)
+        torch.save(self._model.prior._bias_dict, pathB)
+        
     def load_state(self, run_path, device):
         logger.info("Loading state")
         model_loc = run_path
@@ -138,6 +147,14 @@ class ModelCreator(object):
                 if module in local_module_keys:
                     print("Loading weights for module = ", module)
                     getattr(self._model, module).load_state_dict(checkpoint[module])
+                    
+    def load_RBM_state(self, run_path, device):
+        logger.info("Loading RBM state")
+        model_loc = run_path
+        # Load the dictionary with all tensors mapped to the CPU
+        loaded_dict = torch.load(model_loc, map_location=device)
+        return loaded_dict
+
 
 if __name__=="__main__":
     logger.info("Willkommen!")

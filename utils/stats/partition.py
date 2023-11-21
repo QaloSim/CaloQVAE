@@ -30,7 +30,7 @@ class Stats():
         p_activations = (torch.matmul(pa_state, weights_ax * beta) +
                          torch.matmul(pb_state, weights_bx * beta) +
                          torch.matmul(pc_state, weights_cx * beta) + bias_x)
-        return torch.bernoulli(torch.sigmoid(p_activations))
+        return torch.bernoulli(torch.sigmoid(p_activations)).detach()
     
     
     def block_gibbs_sampling_ais(self, beta, p0_state=None, p1_state=None, p2_state=None, p3_state=None):
@@ -71,22 +71,22 @@ class Stats():
                                      p_weight['02'].T,
                                      p_weight['03'].T,
                                      p1_state, p2_state, p3_state,
-                                     p0_bias, beta)
+                                     p0_bias, beta).detach()
             p1_state = self._p_state_ais(p_weight['01'],
                                      p_weight['12'].T,
                                      p_weight['13'].T,
                                      p0_state, p2_state, p3_state,
-                                     p1_bias, beta)
+                                     p1_bias, beta).detach()
             p2_state = self._p_state_ais(p_weight['02'],
                                      p_weight['12'],
                                      p_weight['23'].T,
                                      p0_state, p1_state, p3_state,
-                                     p2_bias, beta)
+                                     p2_bias, beta).detach()
             p3_state = self._p_state_ais(p_weight['03'],
                                      p_weight['13'],
                                      p_weight['23'],
                                      p0_state, p1_state, p2_state,
-                                     p3_bias, beta)
+                                     p3_bias, beta).detach()
 
         return p0_state.detach(), p1_state.detach(), p2_state.detach(), p3_state.detach()
     
@@ -145,7 +145,7 @@ class Stats():
             torch.bmm(p2_state_t,
                       torch.bmm(beta * w_dict_cp['23'], p3_state_i)).reshape(-1)
 
-        return batch_energy
+        return batch_energy.detach()
     
     
     def AIS(self, nbeta=20.0):
