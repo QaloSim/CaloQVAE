@@ -124,8 +124,11 @@ class ModelCreator(object):
         
     def save_RBM_state(self, cfg_string='test'):
         logger.info("Saving RBM state")
-        pathW = os.path.join(wandb.run.dir, "{0}.pth".format(cfg_string + '_weights'))
-        pathB = os.path.join(wandb.run.dir, "{0}.pth".format(cfg_string + '_biases'))
+        if not os.path.exists(os.path.join(wandb.run.dir, "RBM")):
+            # Create the directory
+            os.makedirs(os.path.join(wandb.run.dir, "RBM"))
+        pathW = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_weights'))
+        pathB = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_biases'))
         
         # Save the dictionary to a file
         torch.save(self._model.prior._weight_dict, pathW)

@@ -335,8 +335,8 @@ class EncoderBlockSmall(nn.Module):
                            nn.PReLU(512, 0.02),
 
                            nn.Conv2d(512, self.n_latent_nodes, 3, 1, 0),
-                           nn.BatchNorm2d(self.n_latent_nodes),
-                           nn.PReLU(self.n_latent_nodes, 0.02),
+                           # nn.BatchNorm2d(self.n_latent_nodes),
+                           nn.PReLU(self.n_latent_nodes, 1.0),
 
                            # nn.Sigmoid(),            
                            nn.Flatten(),
