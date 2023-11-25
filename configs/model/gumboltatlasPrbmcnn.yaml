@@ -17,6 +17,10 @@ encoder_hidden_nodes:
 n_latent_hierarchy_lvls: 4
 n_latent_nodes: 512
 # n_latent_nodes: 4096
+encodertype: SmallPosEnc
+#Large, Small, SmallUnconditioned, SmallPosEnc
+decodertype: Small
+# Small, SmallUnconditioned
 
 fullyconnected: False
 # bernoulli : 0

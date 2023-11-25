@@ -87,7 +87,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         #     skip_latent_layer=False,
         #     smoother="Gumbel",
         #     cfg=self._config)
-        return EncoderUCNNH(encArch='Small',
+        return EncoderUCNNH(encArch=self._config.model.encodertype,
             input_dimension=self._flat_input_size,
             n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
             n_latent_nodes=self.n_latent_nodes,

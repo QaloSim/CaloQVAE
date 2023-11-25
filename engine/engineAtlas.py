@@ -288,7 +288,7 @@ class EngineAtlas(EngineCaloV3):
             rbm_energy_hist.append(generate_rbm_energy_hist(self, self._config.model, self.data_mgr.val_loader))
             val_loss_dict["RBM energy"] = rbm_energy_hist
             config_string = f'RBM_{epoch}_{batch_idx}'
-            self._model_creator.save_RBM_state(config_string)
+            # self._model_creator.save_RBM_state(config_string)
                     
             wandb.log(val_loss_dict)
             
