@@ -284,9 +284,9 @@ class DecoderCNNCondSmall(BasicDecoderV3):
         return x1, x2
     
     
-class DecoderCNNCondSmallUnconditioned(BasicDecoderV3):
+class DecoderCNNUnconditioned(BasicDecoderV3):
     def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
-        super(DecoderCNNCondSmallUnconditioned, self).__init__(**kwargs)
+        super(DecoderCNNUnconditioned, self).__init__(**kwargs)
         self._output_activation_fct=output_activation_fct
         self.num_output_nodes = num_output_nodes
         self.minEnergy = 256.0
