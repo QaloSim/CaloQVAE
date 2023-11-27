@@ -15,7 +15,8 @@ from models.samplers.GibbsSampling import GS
 from utils.stats.partition import Stats
 
 # DiVAE.models imports
-from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
+# from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
+from models.autoencoders.gumboltAtlasCRBMCNN import GumBoltAtlasCRBMCNN
 from CaloQVAE.models.rbm import pegasusRBM
 from CaloQVAE.models.samplers import pgbs
 # from models.networks.EncoderCNN import EncoderCNN
@@ -27,7 +28,7 @@ import time
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
-class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
+class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
     """
     GumBolt
     """

@@ -122,17 +122,19 @@ class ModelCreator(object):
         # Save the model parameter dict
         torch.save(state_dict, path)
         
-    def save_RBM_state(self, cfg_string='test'):
+    def save_RBM_state(self, cfg_string='test', encoded_data_energy=None):
         logger.info("Saving RBM state")
         if not os.path.exists(os.path.join(wandb.run.dir, "RBM")):
             # Create the directory
             os.makedirs(os.path.join(wandb.run.dir, "RBM"))
         pathW = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_weights'))
         pathB = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_biases'))
+        pathE = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_EncEn'))
         
         # Save the dictionary to a file
         torch.save(self._model.prior._weight_dict, pathW)
         torch.save(self._model.prior._bias_dict, pathB)
+        torch.save(encoded_data_energy, pathE)
         
     def load_state(self, run_path, device):
         logger.info("Loading state")

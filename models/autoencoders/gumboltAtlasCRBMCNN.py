@@ -17,8 +17,8 @@ from models.samplers.GibbsSampling import GS
 from models.rbm.chimerav2 import QimeraRBM
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 # from models.networks.EncoderCNN import EncoderCNN
-from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH
-from models.networks.basicCoders import DecoderCNN, Classifier
+from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH, EncoderUCNNHPosEnc
+from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -80,14 +80,16 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             EncoderCNN instance
         """
         logger.debug("GumBoltAtlasCRBMCNN::_create_encoder")
-        # return EncoderUCNN(
-        #     input_dimension=self._flat_input_size,
-        #     n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
-        #     n_latent_nodes=self.n_latent_nodes,
-        #     skip_latent_layer=False,
-        #     smoother="Gumbel",
-        #     cfg=self._config)
-        return EncoderUCNNH(encArch=self._config.model.encodertype,
+        if "cylencoding" in self._config.model and self._config.model.cylencoding:
+            return EncoderUCNNHPosEnc(encArch=self._config.model.encodertype,
+                input_dimension=self._flat_input_size,
+                n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+                n_latent_nodes=self.n_latent_nodes,
+                skip_latent_layer=False,
+                smoother="Gumbel",
+                cfg=self._config)
+        else: 
+            return EncoderUCNNH(encArch=self._config.model.encodertype,
             input_dimension=self._flat_input_size,
             n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
             n_latent_nodes=self.n_latent_nodes,
@@ -95,17 +97,43 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             smoother="Gumbel",
             cfg=self._config)
     
+#     def _create_decoder(self):
+#         """
+#         - Overrides _create_decoder in GumBoltCaloV5.py
+
+#         Returns:
+#             DecoderCNN instance
+#         """
+#         logger.debug("GumBoltAtlasCRBMCNN::_create_decoder")
+#         self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
+#                                   self._decoder_nodes[0][1])
+#         return DecoderCNN(node_sequence=self._decoder_nodes,
+#                               activation_fct=self._activation_fct, #<--- try identity
+#                               num_output_nodes = self._flat_input_size,
+#                               cfg=self._config)
     def _create_decoder(self):
         """
         - Overrides _create_decoder in GumBoltCaloV5.py
 
         Returns:
-            DecoderCNN instance
+            DecoderCNNCond instance
         """
         logger.debug("GumBoltAtlasCRBMCNN::_create_decoder")
         self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
                                   self._decoder_nodes[0][1])
-        return DecoderCNN(node_sequence=self._decoder_nodes,
+
+        if self._config.model.decodertype == "Small":
+            return DecoderCNNCondSmall(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct, #<--- try identity
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallUnconditioned":
+            return DecoderCNNUnconditioned(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct, #<--- try identity
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPosEnc":
+            return DecoderCNNPosCondSmall(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct, #<--- try identity
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)

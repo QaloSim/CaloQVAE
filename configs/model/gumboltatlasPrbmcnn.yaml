@@ -17,10 +17,11 @@ encoder_hidden_nodes:
 n_latent_hierarchy_lvls: 4
 n_latent_nodes: 512
 # n_latent_nodes: 4096
-encodertype: SmallUnconditioned
+cylencoding: 1
+encodertype: Small
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: SmallUnconditioned
-# Small, SmallUnconditioned
+decodertype: Small
+# Small, SmallUnconditioned, SmallPosEnc
 
 fullyconnected: False
 # bernoulli : 0

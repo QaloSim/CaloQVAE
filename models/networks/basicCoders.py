@@ -341,6 +341,65 @@ class DecoderCNNUnconditioned(BasicDecoderV3):
         x1 = self._layers2(x)
         x2 = self._layers3(x)
         return x1, x2
+    
+    
+class DecoderCNNPosCondSmall(BasicDecoderV3):
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
+        super(DecoderCNNPosCondSmall, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+        self.minEnergy = 256.0
+        self.n_latent_nodes = self._config.model.n_latent_nodes
+
+        self._layers =  nn.Sequential(
+                   nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+
+                   nn.ConvTranspose2d(self._node_sequence[0][0]-1, 512, 4, 2, 0),
+                   nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+                   
+
+                   nn.ConvTranspose2d(512, 256, 4, 2, 0),
+                   nn.BatchNorm2d(256),
+                   nn.PReLU(256, 0.02),
+                                   )
+        
+        self._layers2 = nn.Sequential(
+                   nn.ConvTranspose2d(256, 64, 4, 2, 0),
+                   nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+
+                   nn.ConvTranspose2d(64, 1, 3, 1, 0),
+                   nn.BatchNorm2d(1),
+                   nn.PReLU(1, 0.02),
+
+                   nn.Flatten(),
+                   nn.Linear(576,self.num_output_nodes),
+                   nn.LeakyReLU(0.02),
+                                   )
+        
+        self._layers3 = nn.Sequential(
+                   nn.ConvTranspose2d(256, 64, 4, 2, 0),
+                   nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+
+                   nn.ConvTranspose2d(64, 1, 3, 1, 0),
+                   nn.BatchNorm2d(1),
+                   nn.PReLU(1, 0.02),
+
+                   nn.Flatten(),
+                   nn.Linear(576,self.num_output_nodes),
+                   nn.LeakyReLU(0.02),
+                                   )
+        
+    def forward(self, x, x0):
+        logger.debug("Decoder::decode")
+                
+        x = self._layers(x)
+        xx0 = x0.unsqueeze(2).unsqueeze(3).repeat(1, x.size(1), x.size(2), x.size(3)).divide(1000.0) + x
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(xx0)
+        return x1, x2
 
 
 class Classifier(BasicDecoderV3):

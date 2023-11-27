@@ -14,7 +14,7 @@ from models.samplers.GibbsSampling import GS
 from models.autoencoders.gumboltAtlasCRBMCNN import GumBoltAtlasCRBMCNN
 from models.networks.EncoderCNN import EncoderCNN
 from models.networks.EncoderUCNN import EncoderUCNN
-from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned
+from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -40,10 +40,7 @@ class GumBoltAtlasCRBMCNNDCond(GumBoltAtlasCRBMCNN):
         logger.debug("GumBoltAtlasCRBMCNN::_create_decoder")
         self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
                                   self._decoder_nodes[0][1])
-        # return DecoderCNNCond(node_sequence=self._decoder_nodes,
-        #                       activation_fct=self._activation_fct, #<--- try identity
-        #                       num_output_nodes = self._flat_input_size,
-        #                       cfg=self._config)
+
         if self._config.model.decodertype == "Small":
             return DecoderCNNCondSmall(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct, #<--- try identity

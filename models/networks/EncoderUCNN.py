@@ -434,3 +434,122 @@ class EncoderBlockSmallPosEnc(nn.Module):
         x = self.seq2(x)
         
         return x
+    
+    
+    
+class EncoderUCNNHPosEnc(HierarchicalEncoder):
+    def __init__(self, encArch = 'Large', **kwargs):
+        self.encArch = encArch
+        self.cyl_enc = self._cylinder_pos_enc()
+        super(EncoderUCNNHPosEnc, self).__init__(**kwargs)
+        
+        
+    def _create_hierarchy_network(self, level: int = 0):
+        """Overrides _create_hierarchy_network in HierarchicalEncoder
+        :param level
+        """
+        # layers = [self.num_input_nodes + (level*self.n_latent_nodes)] + \
+        #     list(self._config.model.encoder_hidden_nodes) + \
+        #     [self.n_latent_nodes]
+        layers = [self.num_input_nodes + (level*self.n_latent_nodes)] + \
+            [self.n_latent_nodes]
+
+        moduleLayers = nn.ModuleList([])
+        for l in range(len(layers)-1):
+            # moduleLayers.append(nn.Linear(layers[l], layers[l+1]))
+            if self.encArch == 'Large':
+                moduleLayers.append(EncoderBlock(layers[l], layers[l+1]))
+            elif self.encArch == 'Small':
+                moduleLayers.append(EncoderBlockSmall(layers[l], layers[l+1]))
+            elif self.encArch == 'SmallUnconditioned':
+                moduleLayers.append(EncoderBlockSmallUnconditioned(layers[l], layers[l+1]))
+            elif self.encArch == 'SmallPosEnc':
+                moduleLayers.append(EncoderBlockSmallPosEnc(layers[l], layers[l+1]))
+           
+
+        # sequential = nn.Sequential(*moduleLayers)
+        sequential = sequentialMultiInput(*moduleLayers)
+        return sequential
+
+    def forward(self, x, x0, is_training=True, beta_smoothing_fct=5):
+        """ This function defines a hierarchical approximate posterior distribution. The length of the output is equal 
+            to n_latent_hierarchy_lvls and each element in the list is a DistUtil object containing posterior distribution 
+            for the group of latent nodes in each hierarchy level. 
+
+        Args:
+            input: a tensor containing input tensor.
+            is_training: A boolean indicating whether we are building a training graph or evaluation graph.
+
+        Returns:
+            posterior: a list of DistUtil objects containing posterior parameters.
+            post_samples: A list of samples from all the levels in the hierarchy, i.e. q(z_k| z_{0<i<k}, x).
+        """
+        # logger.debug("ERROR Encoder::hierarchical_posterior")
+        
+        post_samples = []
+        post_logits = []
+        
+        #loop hierarchy levels. apply previously defined network to input.
+        #input is concatenation of data and latent variables per layer.
+        for lvl in range(self.n_latent_hierarchy_lvls):
+            
+            current_net=self._networks[lvl]
+            if type(x) is tuple:
+                current_input=torch.cat([x[0] + self.cyl_enc.to(x.device)]+post_samples,dim=1)
+            else:
+                current_input=torch.cat([x + self.cyl_enc.to(x.device)]+post_samples,dim=1)
+
+            # Clamping logit values
+            logits=torch.clamp(current_net(current_input, x0), min=-88., max=88.)
+            # logits=torch.clamp(self.forward2(current_input, x0), min=-88., max=88.)
+            post_logits.append(logits)
+
+            # Scalar tensor - device doesn't matter but made explicit
+            # beta = torch.tensor(self._config.model.beta_smoothing_fct,
+            #                     dtype=torch.float, device=logits.device,
+            #                     requires_grad=False)
+            beta = torch.tensor(beta_smoothing_fct,
+                                dtype=torch.float, device=logits.device,
+                                requires_grad=False)
+
+            samples=self.smoothing_dist_mod(logits, beta, is_training)
+
+            if type(x) is tuple:
+                samples = torch.bmm(samples.unsqueeze(2), x[1].unsqueeze(2)).squeeze(2)
+
+            post_samples.append(samples)
+            
+        return beta, post_logits, post_samples
+    
+    def _positional_encoding(self, pos, d_model):
+        """
+        Computes the positional encoding for a given position and model dimension.
+        Arguments:
+        pos -- a scalar or a vector of positions
+        d_model -- the dimensionality of the model
+        Returns:
+        pe -- the positional encoding for the given position(s)
+        """
+        pe = torch.zeros((len(pos), d_model))
+        for i in range(d_model):
+            div_term = torch.exp(2*i * -torch.log(torch.tensor([10000.0])) / d_model)
+            if i % 2 == 0:
+                pe[:, i] = torch.sin(pos * div_term)
+            else:
+                pe[:, i] = torch.cos(pos * div_term)
+        return pe.detach().sum(dim=1)
+
+    def _cylinder_pos_enc(self, d_model=128):
+        """
+        In cylindrical coordinates, voxels are tagged as follows:
+        idx_list = torch.tensor(range(6480))
+
+        pos_z = idx_list // 144
+        pos_theta = (idx_list - 144*pos_z) // 9
+        pos_r = (idx_list - 144*pos_z) % 9
+        """
+        PE_z = self._positional_encoding(torch.tensor(range(45)),d_model).repeat_interleave(144)
+        PE_theta = self._positional_encoding(torch.tensor(range(16)),d_model).repeat_interleave(9).repeat(45)
+        PE_r = self._positional_encoding(torch.tensor(range(9)),d_model).repeat(16*45)
+
+        return PE_z + PE_theta + PE_r

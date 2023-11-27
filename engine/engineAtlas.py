@@ -288,7 +288,8 @@ class EngineAtlas(EngineCaloV3):
             rbm_energy_hist.append(generate_rbm_energy_hist(self, self._config.model, self.data_mgr.val_loader))
             val_loss_dict["RBM energy"] = rbm_energy_hist
             config_string = f'RBM_{epoch}_{batch_idx}'
-            # self._model_creator.save_RBM_state(config_string)
+            encoded_data_energy = self._energy_encoded_data()
+            self._model_creator.save_RBM_state(config_string, encoded_data_energy)
                     
             wandb.log(val_loss_dict)
             
@@ -484,6 +485,28 @@ class EngineAtlas(EngineCaloV3):
         weights = [[weight] for weight in prior_weights]
         weights_table = wandb.Table(data=weights, columns=["weights"])
         wandb.log({"rbm_weights": wandb.plot.histogram(weights_table, "weights", title=None)})
+        
+    def _energy_encoded_data(self):
+        partition_size=self._config.model.n_latent_nodes
+        data_loader = self.data_mgr.val_loader
+        energy_encoded_data = []
+
+        # self.model.eval()
+        with torch.no_grad():
+            for xx in data_loader:
+                in_data, true_energy, in_data_flat = self._preprocess(xx[0],xx[1])
+                if self._config.reducedata:
+                    in_data = self._reduce(in_data, true_energy, R=R)
+                # enIn = torch.cat((in_data, true_energy), dim=1)
+                # beta, post_logits, post_samples = self.model.encoder(enIn, False)
+                beta, post_logits, post_samples = self.model.encoder(in_data, true_energy, False)
+                post_samples = torch.cat(post_samples, 1)
+                post_samples_energy = self.model.stater.energy_samples(post_samples[:,0:partition_size], post_samples[:,partition_size:2*partition_size], 
+                                                         post_samples[:,2*partition_size:3*partition_size], post_samples[:,3*partition_size:4*partition_size], 1.0 )
+                energy_encoded_data.append(post_samples_energy.detach().cpu())
+
+        energy_encoded_data = torch.cat(energy_encoded_data, dim=0)
+        return energy_encoded_data
 
     def parseToLayer(self, in_data):
         bs = in_data.shape[0]
