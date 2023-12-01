@@ -82,6 +82,10 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         logger.debug("GumBoltAtlasCRBMCNN::_create_encoder")
         if "cylencoding" in self._config.model and self._config.model.cylencoding:
             return EncoderUCNNHPosEnc(encArch=self._config.model.encodertype,
+                dev = "cuda:{0}".format(self._config.gpu_list[0]),
+                lz = self._config.model.lz,
+                ltheta = self._config.model.ltheta,
+                lr = self._config.model.lr,
                 input_dimension=self._flat_input_size,
                 n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
                 n_latent_nodes=self.n_latent_nodes,
@@ -90,12 +94,12 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                 cfg=self._config)
         else: 
             return EncoderUCNNH(encArch=self._config.model.encodertype,
-            input_dimension=self._flat_input_size,
-            n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
-            n_latent_nodes=self.n_latent_nodes,
-            skip_latent_layer=False,
-            smoother="Gumbel",
-            cfg=self._config)
+                input_dimension=self._flat_input_size,
+                n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+                n_latent_nodes=self.n_latent_nodes,
+                skip_latent_layer=False,
+                smoother="Gumbel",
+                cfg=self._config)
     
 #     def _create_decoder(self):
 #         """

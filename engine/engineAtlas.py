@@ -34,7 +34,7 @@ class EngineAtlas(EngineCaloV3):
     def beta_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
         if epoch > epoch_anneal_start:
             delta_beta = self._config.engine.beta_smoothing_fct_final - self._config.engine.beta_smoothing_fct
-            delta = (self._config.engine.n_epochs * 0.7 - epoch_anneal_start)*num_batches
+            delta = (self._config.engine.n_epochs * 0.3 - epoch_anneal_start)*num_batches
             if delta_beta > 0:
                 beta = min(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
             else:
@@ -47,7 +47,7 @@ class EngineAtlas(EngineCaloV3):
     def slope_act_fct_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
         # if epoch > epoch_anneal_start:
         delta_slope = self._config.engine.slope_activation_fct_final - self._config.engine.slope_activation_fct
-        delta = (self._config.engine.n_epochs * 0.7 - epoch_anneal_start)*num_batches
+        delta = (self._config.engine.n_epochs * 0.3 - epoch_anneal_start)*num_batches
         if delta_slope < 0:
             slope = max(self._config.engine.slope_activation_fct + delta_slope/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.slope_activation_fct_final)
         else:
@@ -251,11 +251,13 @@ class EngineAtlas(EngineCaloV3):
                     
                     if "hit_loss" in valid_loss_dict.keys():
                         valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"]
+                        valid_loss_dict["loss_MEPH"] = valid_loss_dict["ae_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"] + valid_loss_dict["hit_loss"]
                     else:
                         valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"]
-                        
+                        valid_loss_dict["loss_MEPH"] = valid_loss_dict["ae_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"] + valid_loss_dict["hit_loss"]
                     # Check the loss over the validation set is 
-                    if valid_loss_dict["loss"].sum() < self._best_model_loss:
+                    # if valid_loss_dict["loss"].sum() < self._best_model_loss:
+                    if valid_loss_dict["loss_MEPH"].sum() < self._best_model_loss:
                         self._best_model_loss = valid_loss_dict["loss"].sum()
                         # Save the best model here
                         config_string = "_".join(str(i) for i in [self._config.model.model_type,

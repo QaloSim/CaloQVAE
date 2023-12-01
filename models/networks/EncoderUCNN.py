@@ -438,9 +438,13 @@ class EncoderBlockSmallPosEnc(nn.Module):
     
     
 class EncoderUCNNHPosEnc(HierarchicalEncoder):
-    def __init__(self, encArch = 'Large', **kwargs):
+    def __init__(self, encArch = 'Large', dev=None, lz=45,ltheta=16,lr=9, **kwargs):
         self.encArch = encArch
-        self.cyl_enc = self._cylinder_pos_enc()
+        if dev == None:
+            self.cyl_enc = self._cylinder_pos_enc(lz,ltheta,lr)
+        else:
+            self.cyl_enc = self._cylinder_pos_enc(lz,ltheta,lr)
+            self.cyl_enc = self.cyl_enc.to(dev)
         super(EncoderUCNNHPosEnc, self).__init__(**kwargs)
         
         
@@ -495,9 +499,9 @@ class EncoderUCNNHPosEnc(HierarchicalEncoder):
             
             current_net=self._networks[lvl]
             if type(x) is tuple:
-                current_input=torch.cat([x[0] + self.cyl_enc.to(x.device)]+post_samples,dim=1)
+                current_input=torch.cat([x[0] + self.cyl_enc]+post_samples,dim=1)
             else:
-                current_input=torch.cat([x + self.cyl_enc.to(x.device)]+post_samples,dim=1)
+                current_input=torch.cat([x + self.cyl_enc]+post_samples,dim=1)
 
             # Clamping logit values
             logits=torch.clamp(current_net(current_input, x0), min=-88., max=88.)
@@ -532,14 +536,14 @@ class EncoderUCNNHPosEnc(HierarchicalEncoder):
         """
         pe = torch.zeros((len(pos), d_model))
         for i in range(d_model):
-            div_term = torch.exp(2*i * -torch.log(torch.tensor([10000.0])) / d_model)
+            div_term = torch.exp(i * -torch.log(torch.tensor([10000.0])) / d_model)
             if i % 2 == 0:
                 pe[:, i] = torch.sin(pos * div_term)
             else:
                 pe[:, i] = torch.cos(pos * div_term)
         return pe.detach().sum(dim=1)
 
-    def _cylinder_pos_enc(self, d_model=128):
+    def _cylinder_pos_enc(self, lz=512,ltheta=512, lr=512):
         """
         In cylindrical coordinates, voxels are tagged as follows:
         idx_list = torch.tensor(range(6480))
@@ -548,8 +552,8 @@ class EncoderUCNNHPosEnc(HierarchicalEncoder):
         pos_theta = (idx_list - 144*pos_z) // 9
         pos_r = (idx_list - 144*pos_z) % 9
         """
-        PE_z = self._positional_encoding(torch.tensor(range(45)),d_model).repeat_interleave(144)
-        PE_theta = self._positional_encoding(torch.tensor(range(16)),d_model).repeat_interleave(9).repeat(45)
-        PE_r = self._positional_encoding(torch.tensor(range(9)),d_model).repeat(16*45)
+        PE_z = self._positional_encoding(torch.tensor(range(45)),lz).repeat_interleave(144)
+        PE_theta = self._positional_encoding(torch.tensor(range(16)),ltheta).repeat_interleave(9).repeat(45)
+        PE_r = self._positional_encoding(torch.tensor(range(9)),lr).repeat(16*45)
 
         return PE_z + PE_theta + PE_r
