@@ -525,7 +525,7 @@ class EncoderUCNNHPosEnc(HierarchicalEncoder):
             
         return beta, post_logits, post_samples
     
-    def _positional_encoding(self, pos, d_model):
+    def _positional_encoding(self, pos, i):
         """
         Computes the positional encoding for a given position and model dimension.
         Arguments:
@@ -534,14 +534,17 @@ class EncoderUCNNHPosEnc(HierarchicalEncoder):
         Returns:
         pe -- the positional encoding for the given position(s)
         """
-        pe = torch.zeros((len(pos), d_model))
-        for i in range(d_model):
-            div_term = torch.exp(i * -torch.log(torch.tensor([10000.0])) / d_model)
-            if i % 2 == 0:
-                pe[:, i] = torch.sin(pos * div_term)
-            else:
-                pe[:, i] = torch.cos(pos * div_term)
-        return pe.detach().sum(dim=1)
+        # pe = torch.zeros((len(pos), d_model))
+        # for i in range(d_model):
+        div_term = torch.exp(i * -torch.log(torch.tensor([10000.0])) / 3)
+        if i % 2 == 0:
+            # pe[:, i] = torch.sin(pos * div_term)
+            pe = torch.sin(pos * div_term)
+        else:
+            # pe[:, i] = torch.cos(pos * div_term)
+            pe = torch.cos(pos * div_term)
+        # return pe.detach().sum(dim=1)
+        return pe.detach()
 
     def _cylinder_pos_enc(self, lz=512,ltheta=512, lr=512):
         """
