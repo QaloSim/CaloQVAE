@@ -18,6 +18,7 @@ MNIST/
 sandbox/
 nohup.out
 runJT.sh
+llJT.sh
 figs/
 runSG.sh
 init_container.sh
