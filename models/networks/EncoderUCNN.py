@@ -438,12 +438,12 @@ class EncoderBlockSmallPosEnc(nn.Module):
     
     
 class EncoderUCNNHPosEnc(HierarchicalEncoder):
-    def __init__(self, encArch = 'Large', dev=None, lz=45,ltheta=16,lr=9, **kwargs):
+    def __init__(self, encArch = 'Large', dev=None, lz=45,ltheta=16,lr=9, pe=1, **kwargs):
         self.encArch = encArch
         if dev == None:
-            self.cyl_enc = self._cylinder_pos_enc(lz,ltheta,lr)
+            self.cyl_enc = self._cylinder_pos_enc(lz,ltheta,lr,pe)
         else:
-            self.cyl_enc = self._cylinder_pos_enc(lz,ltheta,lr)
+            self.cyl_enc = self._cylinder_pos_enc(lz,ltheta,lr,pe)
             self.cyl_enc = self.cyl_enc.to(dev)
         super(EncoderUCNNHPosEnc, self).__init__(**kwargs)
         
@@ -545,8 +545,26 @@ class EncoderUCNNHPosEnc(HierarchicalEncoder):
             pe = torch.cos(pos * div_term)
         # return pe.detach().sum(dim=1)
         return pe.detach()
+    
+    def _positional_encoding_2(self, pos, d_model):
+        """
+        Computes the positional encoding for a given position and model dimension.
+        Arguments:
+        pos -- a scalar or a vector of positions
+        d_model -- the dimensionality of the model
+        Returns:
+        pe -- the positional encoding for the given position(s)
+        """
+        pe = torch.zeros((len(pos), d_model))
+        for i in range(d_model):
+            div_term = torch.exp(i * -torch.log(torch.tensor([10000.0])) / d_model)
+            if i % 2 == 0:
+                pe[:, i] = torch.sin(pos * div_term)
+            else:
+                pe[:, i] = torch.cos(pos * div_term)
+        return pe.detach().sum(dim=1)
 
-    def _cylinder_pos_enc(self, lz=512,ltheta=512, lr=512):
+    def _cylinder_pos_enc(self, lz=512,ltheta=512, lr=512, pe=1):
         """
         In cylindrical coordinates, voxels are tagged as follows:
         idx_list = torch.tensor(range(6480))
@@ -555,8 +573,13 @@ class EncoderUCNNHPosEnc(HierarchicalEncoder):
         pos_theta = (idx_list - 144*pos_z) // 9
         pos_r = (idx_list - 144*pos_z) % 9
         """
-        PE_z = self._positional_encoding(torch.tensor(range(45)),lz).repeat_interleave(144)
-        PE_theta = self._positional_encoding(torch.tensor(range(16)),ltheta).repeat_interleave(9).repeat(45)
-        PE_r = self._positional_encoding(torch.tensor(range(9)),lr).repeat(16*45)
+        if pe == 1:
+            PE_z = self._positional_encoding(torch.tensor(range(45)),lz).repeat_interleave(144)
+            PE_theta = self._positional_encoding(torch.tensor(range(16)),ltheta).repeat_interleave(9).repeat(45)
+            PE_r = self._positional_encoding(torch.tensor(range(9)),lr).repeat(16*45)
+        else:
+            PE_z = self._positional_encoding_2(torch.tensor(range(45)),lz).repeat_interleave(144)
+            PE_theta = self._positional_encoding_2(torch.tensor(range(16)),ltheta).repeat_interleave(9).repeat(45)
+            PE_r = self._positional_encoding_2(torch.tensor(range(9)),lr).repeat(16*45)
 
         return PE_z + PE_theta + PE_r

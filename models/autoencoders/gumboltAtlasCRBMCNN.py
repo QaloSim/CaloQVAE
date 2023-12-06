@@ -85,6 +85,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                 lz = self._config.model.lz,
                 ltheta = self._config.model.ltheta,
                 lr = self._config.model.lr,
+                pe = self._config.model.pe,
                 input_dimension=self._flat_input_size,
                 n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
                 n_latent_nodes=self.n_latent_nodes,
