@@ -40,7 +40,8 @@ logger = logging.getLogger(__name__)
 
 from data.dataManager import DataManager
 from utils.plotting.plotProvider import PlotProvider
-from utils.stats.partition import get_Zs, save_plot, get_project_id
+from utils.stats.partition import get_Zs, save_plot
+from utils.helpers import get_project_id
 from engine.engine import Engine
 from models.modelCreator import ModelCreator
 
@@ -52,6 +53,7 @@ def main(cfg=None):
     # Use mode='disabled' to prevent logging
     mode = 'online' if cfg.wandb_enabled else 'disabled'
     # wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
+    os.environ["WANDB_DIR"] = cfg.run_path.split("wandb")[0]
     iden = get_project_id(cfg.run_path)
     wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode, resume='allow', id=iden)
     # run the ting

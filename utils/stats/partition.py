@@ -193,11 +193,14 @@ class Stats():
     
 
 def get_Zs(run_path, engine, dev, step = 10):
-    rbm_path = run_path.split('files')[0] + 'files/RBM/'
+    fn = create_filenames_dict(run_path)
+    # rbm_path = run_path.split('files')[0] + 'files/RBM/'
     lnZais_list = []
     lnZrais_list = []
     en_encoded_list = []
-    for i in range(1,100,step):
+    for i in range(1,fn["size"],step):
+        _right_dir = get_right_dir(i, fn)
+        rbm_path = fn["prefix"] + "/" + _right_dir + '/files/RBM/'
         engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_weights.pth', dev)
         engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_biases.pth', dev)
         en = -torch.load(rbm_path + f'RBM_{i}_9_EncEn.pth').mean()
@@ -232,9 +235,21 @@ def save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path):
     np.savez(path + 'PartitionData.npz', array1=np.array(lnZais_list), array2=np.array(lnZrais_list), array3 = np.array(en_encoded_list))
     
     
-def get_project_id(path):
-    files = os.listdir(path.split('files')[0])
-    b = [ ".wandb" in file for file in files]
-    idx = (np.array(range(len(files))) * np.array(b)).sum()
-    iden = files[idx].split("-")[1].split(".")[0]
-    return iden
+def create_filenames_dict(run_path):
+    filenames = {}
+    files = os.listdir(run_path.split("wandb")[0] + "wandb")
+    trueInd = [ "run" in file for file in files]
+    for i, file in enumerate(files):
+        if trueInd[i] and "latest" not in file:
+            filenames[file] = list(np.sort(os.listdir(run_path.split("wandb")[0] + f'wandb/{file}/files/RBM/')))
+
+    filenames["size"] = int(len(np.sum([filenames[key] for key in filenames.keys()], dtype=object))/3)
+    filenames["prefix"] = run_path.split("wandb")[0] + "wandb"
+    return filenames
+
+def get_right_dir(i, filenames):
+    for key in filenames.keys():
+        if f'RBM_{i}_9_weights.pth' in filenames[key]:
+            _right_dir = key
+            break
+    return _right_dir

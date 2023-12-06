@@ -40,8 +40,8 @@ logger = logging.getLogger(__name__)
 
 from data.dataManager import DataManager
 from utils.plotting.plotProvider import PlotProvider
-from utils.stats.partition import get_Zs, save_plot, get_project_id
-from utils.helpers import get_epochs
+from utils.stats.partition import get_Zs, save_plot
+from utils.helpers import get_epochs, get_project_id
 from engine.engine import Engine
 from models.modelCreator import ModelCreator
 

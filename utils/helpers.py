@@ -2,6 +2,7 @@
 Unsorted helper functions
 
 """
+import os
 import numpy as np
 from matplotlib import colors
 import matplotlib.pyplot as plt
@@ -57,3 +58,11 @@ def get_epochs(path):
     with open(wandb_path + 'wandb-summary.json', 'r') as file:
         data = json.load(file)
     return data["epoch"]
+
+
+def get_project_id(path):
+    files = os.listdir(path.split('files')[0])
+    b = [ ".wandb" in file for file in files]
+    idx = (np.array(range(len(files))) * np.array(b)).sum()
+    iden = files[idx].split("-")[1].split(".")[0]
+    return iden
