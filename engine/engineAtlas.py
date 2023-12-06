@@ -85,7 +85,7 @@ class EngineAtlas(EngineCaloV3):
         epoch_anneal_start = self._config.engine.epoch_annealing_start
         total_batches = num_batches*(num_epochs-epoch_anneal_start+1)
         self.R = self._config.engine.r_param
-        cl_lambda = self._config.engine.cl_lambda
+        # cl_lambda = self._config.engine.cl_lambda
         
         with torch.set_grad_enabled(is_training):
             for batch_idx, (input_data, label) in enumerate(data_loader):
@@ -96,19 +96,17 @@ class EngineAtlas(EngineCaloV3):
                 if self._config.reducedata:
                     in_data = self._reduce(in_data, true_energy, R=self.R)
 
-                # if self._config.usinglayers:
-                #     in_data = self.parseToLayer(in_data)
                     
-                if self._config.engine.beta_smoothing_fct_anneal:
+                if self._config.engine.beta_smoothing_fct_anneal and self._config.load_state == 0:
                     beta_smoothing_fct = self.beta_value(epoch_anneal_start, num_batches, batch_idx, epoch)
                 else:
-                    beta_smoothing_fct = self._config.engine.beta_smoothing_fct
+                    beta_smoothing_fct = self._config.engine.beta_smoothing_fct_final
                     
                 
-                if self._config.engine.slope_activation_fct_anneal:
+                if self._config.engine.slope_activation_fct_anneal and self._config.load_state == 0:
                     slope_act_fct = self.slope_act_fct_value(epoch_anneal_start, num_batches, batch_idx, epoch)
                 else:
-                    slope_act_fct = self._config.engine.slope_activation_fct
+                    slope_act_fct = self._config.engine.slope_activation_fct_final
                 
                 fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct, slope_act_fct)
                 # if self._config.reducedata:
@@ -116,10 +114,6 @@ class EngineAtlas(EngineCaloV3):
                 #     fwd_output.output_activations = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
                 batch_loss_dict = self._model.loss(in_data, fwd_output, true_energy)
 
-                # if self._config.usinglayers:
-                #     in_data = self.layerTo1D(in_data)
-                #     fwd_output.output_activations = self.layerTo1D(fwd_output.output_activations)
-                #     fwd_output.output_hits = self.layerTo1D(fwd_output.output_hits)
                     
                 if is_training:
                     if epoch >= epoch_anneal_start:
@@ -141,16 +135,16 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["LeakyReLUSlope"] = slope_act_fct
                     batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
-                    if "hit_loss" in batch_loss_dict.keys():
-                        if "label_loss" in batch_loss_dict.keys():
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
-                        else:
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
-                    else:
-                        if "label_loss" in batch_loss_dict.keys():
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"]
-                        else:
-                            batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] 
+                    # if "hit_loss" in batch_loss_dict.keys():
+                    #     if "label_loss" in batch_loss_dict.keys():
+                    #         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
+                    #     else:
+                    batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
+                    # else:
+                    #     if "label_loss" in batch_loss_dict.keys():
+                    #         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"]
+                    #     else:
+                    #         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] 
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].backward()
                     # batch_loss_dict["loss"].sum().backward()
@@ -161,10 +155,11 @@ class EngineAtlas(EngineCaloV3):
                 else:
                     batch_loss_dict["gamma"] = 1.0
                     batch_loss_dict["epoch"] = epoch
-                    if "hit_loss" in batch_loss_dict.keys():
-                        batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
-                    else:
-                        batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"]
+                    # if "hit_loss" in batch_loss_dict.keys():
+                    batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
+                    batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
+                    # else:
+                    #     batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"]
                     for key, value in batch_loss_dict.items():
                         try:
                             val_loss_dict[key] += value
@@ -255,6 +250,7 @@ class EngineAtlas(EngineCaloV3):
                     else:
                         valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"]
                         valid_loss_dict["ahep_loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"]
+                    # wandb.log(val_loss_dict)
                     # Check the loss over the validation set is 
                     # if valid_loss_dict["loss"].sum() < self._best_model_loss:
                     if valid_loss_dict["ahep_loss"].sum() < self._best_model_loss:
@@ -406,8 +402,8 @@ class EngineAtlas(EngineCaloV3):
                 if self._config.reducedata:
                     in_data = self._reduce(in_data, true_energy, R=self.R)
 
-                if self._config.usinglayers:
-                    in_data = self.parseToLayer(in_data)
+                # if self._config.usinglayers:
+                #     in_data = self.parseToLayer(in_data)
                 
                 fwd_output_v = self._model((in_data, true_energy), False)
                 # if self._config.reducedata:
@@ -415,10 +411,10 @@ class EngineAtlas(EngineCaloV3):
                 #     fwd_output_v.output_activations = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
                 batch_loss_dict = self._model.loss(in_data, fwd_output_v, true_energy)
 
-                if self._config.usinglayers:
-                    in_data = self.layerTo1D(in_data)
-                    fwd_output_v.output_activations = self.layerTo1D(fwd_output_v.output_activations)
-                    fwd_output_v.output_hits = self.layerTo1D(fwd_output_v.output_hits)
+                # if self._config.usinglayers:
+                #     in_data = self.layerTo1D(in_data)
+                #     fwd_output_v.output_activations = self.layerTo1D(fwd_output_v.output_activations)
+                #     fwd_output_v.output_hits = self.layerTo1D(fwd_output_v.output_hits)
             
                 # Initialize the accumulating dictionary keys and values
                 if idx == 0:
@@ -510,90 +506,90 @@ class EngineAtlas(EngineCaloV3):
         energy_encoded_data = torch.cat(energy_encoded_data, dim=0)
         return energy_encoded_data
 
-    def parseToLayer(self, in_data):
-        bs = in_data.shape[0]
-        layer = {}
-        if self._config.data.particle == 'pion':
-            layer_boundaries = np.unique(HLF_1_pions.bin_edges)
-            for idx in range(len(np.unique(HLF_1_pions.bin_edges))-1):
-                layer[f'{idx}'] = in_data[:, layer_boundaries[idx]:layer_boundaries[idx+1]].reshape(
-                                bs, int(HLF_1_pions.num_alpha[idx]), -1)
-                if idx == 0:
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
-                    layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-                elif idx in [1,2]:
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
-                elif idx == 3:
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 4, dim=2)
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-                elif idx == 4:
-                    layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:15], layer[f'{idx}'][:, :, 14:15]), dim=2)
-                    layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :], layer[f'{idx}'][:, :, 18:19]), dim=2)
-                elif idx == 5:
-                    layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
-                elif idx == 6:
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-                layer[f'{idx}'] = layer[f'{idx}'].unsqueeze(1)
-        elif self._config.data.particle == 'photon':
-            layer_boundaries = np.unique(HLF_1_photons.bin_edges)
-            for idx in range(len(np.unique(HLF_1_photons.bin_edges))-1):
-                layer[f'{idx}'] = in_data[:, layer_boundaries[idx]:layer_boundaries[idx+1]].reshape(
-                                bs, int(HLF_1_photons.num_alpha[idx]), -1)
-                if idx == 0:
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
-                    layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-                elif idx == 1:
-                    layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
-                elif idx == 2:
-                    layer[f'{idx}'] = torch.cat((layer[f'{idx}'], layer[f'{idx}'][:, :, -1:]), dim=2)
-                elif idx == 3:
-                        layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 4, dim=2)
-                        layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-                elif idx == 4:
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 4, dim=2)
-                    layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-                layer[f'{idx}'] = layer[f'{idx}'].unsqueeze(1)
+#     def parseToLayer(self, in_data):
+#         bs = in_data.shape[0]
+#         layer = {}
+#         if self._config.data.particle == 'pion':
+#             layer_boundaries = np.unique(HLF_1_pions.bin_edges)
+#             for idx in range(len(np.unique(HLF_1_pions.bin_edges))-1):
+#                 layer[f'{idx}'] = in_data[:, layer_boundaries[idx]:layer_boundaries[idx+1]].reshape(
+#                                 bs, int(HLF_1_pions.num_alpha[idx]), -1)
+#                 if idx == 0:
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
+#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
+#                 elif idx in [1,2]:
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
+#                 elif idx == 3:
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 4, dim=2)
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
+#                 elif idx == 4:
+#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:15], layer[f'{idx}'][:, :, 14:15]), dim=2)
+#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :], layer[f'{idx}'][:, :, 18:19]), dim=2)
+#                 elif idx == 5:
+#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
+#                 elif idx == 6:
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
+#                 layer[f'{idx}'] = layer[f'{idx}'].unsqueeze(1)
+#         elif self._config.data.particle == 'photon':
+#             layer_boundaries = np.unique(HLF_1_photons.bin_edges)
+#             for idx in range(len(np.unique(HLF_1_photons.bin_edges))-1):
+#                 layer[f'{idx}'] = in_data[:, layer_boundaries[idx]:layer_boundaries[idx+1]].reshape(
+#                                 bs, int(HLF_1_photons.num_alpha[idx]), -1)
+#                 if idx == 0:
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
+#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
+#                 elif idx == 1:
+#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
+#                 elif idx == 2:
+#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'], layer[f'{idx}'][:, :, -1:]), dim=2)
+#                 elif idx == 3:
+#                         layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 4, dim=2)
+#                         layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
+#                 elif idx == 4:
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 4, dim=2)
+#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
+#                 layer[f'{idx}'] = layer[f'{idx}'].unsqueeze(1)
 
-        return torch.cat([layer[f'{i}'] for i in layer.keys()], dim=1)
+#         return torch.cat([layer[f'{i}'] for i in layer.keys()], dim=1)
 
-    def layerTo1D(self, in_data):
-        bs = in_data.shape[0]
-        lim = in_data.shape[1]
-        layer = {}
-        if self._config.data.particle == 'pion':
-            layer_boundaries = np.unique(HLF_1_pions.bin_edges)
-            for idx in range(lim):
-                if idx == 0:
-                    layer[f'{idx}'] = in_data[:,idx,0,[0,4,5,9,10,14,15,19]]
-                elif idx == 1:
-                    layer[f'{idx}'] = in_data[:,idx,:,[0,2,4,6,8,10,12,14,16,18]].reshape( bs, -1)
-                if idx == 2:
-                    layer[f'{idx}'] = in_data[:,idx,:,[0,2,4,6,8,10,12,14,16,18]].reshape( bs, -1)
-                elif idx == 3:
-                    layer[f'{idx}'] = in_data[:,idx,0,[0,4,8,12,16]]
-                elif idx == 4:
-                    layer[f'{idx}'] = in_data[:,idx,:,[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17]].reshape( bs, -1)
-                elif idx == 5:
-                    layer[f'{idx}'] = in_data[:,idx,:,[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17,18]].reshape( bs, -1)
-                elif idx == 6:
-                    layer[f'{idx}'] = in_data[:,idx,0,[0,2,4,6,8,10,12,14,16,18]]
-        if self._config.data.particle == 'photon':
-            layer_boundaries = np.unique(HLF_1_photons.bin_edges)
-            for idx in range(lim):
-                if idx == 0:
-                    layer[f'{idx}'] = in_data[:,idx,0,[0,4,5,9,10,14,15,19]]
-                elif idx == 1:
-                    layer[f'{idx}'] = in_data[:,idx,:,[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17,18]].reshape( bs, -1)
-                if idx == 2:
-                    layer[f'{idx}'] = in_data[:,idx,:,:-1].reshape( bs, -1)
-                elif idx == 3:
-                    layer[f'{idx}'] = in_data[:,idx,0,[0,4,8,12,16]]
-                elif idx == 4:
-                    layer[f'{idx}'] = in_data[:,idx,0,[0,4,8,12,16]]
-        return torch.cat([layer[f'{i}'] for i in layer.keys()], dim=1)
+#     def layerTo1D(self, in_data):
+#         bs = in_data.shape[0]
+#         lim = in_data.shape[1]
+#         layer = {}
+#         if self._config.data.particle == 'pion':
+#             layer_boundaries = np.unique(HLF_1_pions.bin_edges)
+#             for idx in range(lim):
+#                 if idx == 0:
+#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,5,9,10,14,15,19]]
+#                 elif idx == 1:
+#                     layer[f'{idx}'] = in_data[:,idx,:,[0,2,4,6,8,10,12,14,16,18]].reshape( bs, -1)
+#                 if idx == 2:
+#                     layer[f'{idx}'] = in_data[:,idx,:,[0,2,4,6,8,10,12,14,16,18]].reshape( bs, -1)
+#                 elif idx == 3:
+#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,8,12,16]]
+#                 elif idx == 4:
+#                     layer[f'{idx}'] = in_data[:,idx,:,[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17]].reshape( bs, -1)
+#                 elif idx == 5:
+#                     layer[f'{idx}'] = in_data[:,idx,:,[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17,18]].reshape( bs, -1)
+#                 elif idx == 6:
+#                     layer[f'{idx}'] = in_data[:,idx,0,[0,2,4,6,8,10,12,14,16,18]]
+#         if self._config.data.particle == 'photon':
+#             layer_boundaries = np.unique(HLF_1_photons.bin_edges)
+#             for idx in range(lim):
+#                 if idx == 0:
+#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,5,9,10,14,15,19]]
+#                 elif idx == 1:
+#                     layer[f'{idx}'] = in_data[:,idx,:,[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17,18]].reshape( bs, -1)
+#                 if idx == 2:
+#                     layer[f'{idx}'] = in_data[:,idx,:,:-1].reshape( bs, -1)
+#                 elif idx == 3:
+#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,8,12,16]]
+#                 elif idx == 4:
+#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,8,12,16]]
+#         return torch.cat([layer[f'{i}'] for i in layer.keys()], dim=1)
         
 if __name__=="__main__":
     logger.info("Willkommen!")

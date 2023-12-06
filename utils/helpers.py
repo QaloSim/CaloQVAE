@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import pandas as pd
 import gif
+import json
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
@@ -49,3 +50,10 @@ class OutputContainer(SimpleNamespace):
         out=[str(key) for key,_ in self.__dict__.items()]
         logger.info("OutputContainer keys: {0}".format(out))
 
+
+
+def get_epochs(path):
+    wandb_path = path.split('files')[0] + 'files/'
+    with open(wandb_path + 'wandb-summary.json', 'r') as file:
+        data = json.load(file)
+    return data["epoch"]

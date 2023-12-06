@@ -1,5 +1,7 @@
 import torch
 import numpy as np
+import os
+import matplotlib.pyplot as plt
 
 class Stats():
     """
@@ -187,3 +189,52 @@ class Stats():
         # The final estimate for logZa (partition function of the base distribution)
         logZa = - FreeEnergy_ratios + self.lnZb
         return logZa
+    
+    
+
+def get_Zs(run_path, engine, dev, step = 10):
+    rbm_path = run_path.split('files')[0] + 'files/RBM/'
+    lnZais_list = []
+    lnZrais_list = []
+    en_encoded_list = []
+    for i in range(1,100,step):
+        engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_weights.pth', dev)
+        engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_biases.pth', dev)
+        en = -torch.load(rbm_path + f'RBM_{i}_9_EncEn.pth').mean()
+        lnZais_list.append(engine.model.stater.AIS(30).detach().cpu().item())
+        lnZrais_list.append(engine.model.stater.RAIS(30).detach().cpu().item())
+        en_encoded_list.append(en)
+        
+    return lnZais_list, lnZrais_list, en_encoded_list
+
+
+def save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path):
+    path = run_path.split('files')[0] + 'files/'
+    fig, axes = plt.subplots(2,2, figsize=(8,8), tight_layout=True)
+
+    axes[0,0].plot(-np.array(lnZais_list), c='red', lw=4.5, label='- ln Z_ais')
+    axes[0,0].plot(-np.array(lnZrais_list), c='blue', lw=2.5, label='- ln Z_rais')
+    axes[0,0].set_xlabel("epochs (x10)")
+    axes[0,0].legend()
+    axes[0,0].grid("True")
+
+    axes[0,1].plot(np.array(en_encoded_list) - np.array(lnZais_list), c='green', lw=2.5)
+    axes[0,1].set_ylabel("LL")
+    axes[0,1].set_xlabel("epochs (x10)")
+    axes[0,1].grid("True")
+
+    axes[1,1].plot(np.array(en_encoded_list), c='orange', lw=2.5)
+    axes[1,1].grid("True")
+    axes[1,1].set_ylabel("LL + ln Z")
+    axes[1,1].set_xlabel("epochs (x10)")
+    plt.savefig(path + f'LL.png')
+    
+    np.savez(path + 'PartitionData.npz', array1=np.array(lnZais_list), array2=np.array(lnZrais_list), array3 = np.array(en_encoded_list))
+    
+    
+def get_project_id(path):
+    files = os.listdir(path.split('files')[0])
+    b = [ ".wandb" in file for file in files]
+    idx = (np.array(range(len(files))) * np.array(b)).sum()
+    iden = files[idx].split("-")[1].split(".")[0]
+    return iden

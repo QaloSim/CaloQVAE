@@ -48,7 +48,6 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         self.encoder=self._create_encoder()
         self.prior=self._create_prior()
         self.decoder=self._create_decoder()
-        # self.classifier=self._create_classifier()
         self.sampler = self._create_sampler(rbm=self.prior)
         
     def _create_prior(self):
@@ -101,20 +100,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                 smoother="Gumbel",
                 cfg=self._config)
     
-#     def _create_decoder(self):
-#         """
-#         - Overrides _create_decoder in GumBoltCaloV5.py
 
-#         Returns:
-#             DecoderCNN instance
-#         """
-#         logger.debug("GumBoltAtlasCRBMCNN::_create_decoder")
-#         self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
-#                                   self._decoder_nodes[0][1])
-#         return DecoderCNN(node_sequence=self._decoder_nodes,
-#                               activation_fct=self._activation_fct, #<--- try identity
-#                               num_output_nodes = self._flat_input_size,
-#                               cfg=self._config)
     def _create_decoder(self):
         """
         - Overrides _create_decoder in GumBoltCaloV5.py
@@ -142,18 +128,6 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
 
-    # def _create_classifier(self):
-    #     """
-    #     Returns:
-    #         Classifier instance
-    #     """
-    #     logger.debug("GumBoltAtlasCRBMCNN::_create_classifier")
-    #     self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
-    #                               self._decoder_nodes[0][1])
-    #     return Classifier(node_sequence=self._decoder_nodes,
-    #                           activation_fct=self._activation_fct, #<--- try identity
-    #                           num_output_nodes = self._flat_input_size,
-    #                           cfg=self._config)
     
     def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
         """
@@ -183,21 +157,21 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         out.output_hits = output_hits
 
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        if self._config.engine.modelhits:
-            if is_training:
-                # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-                out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-            else:
-                out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        # if self._config.engine.modelhits:
+        if self.training:
+            # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+            out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         else:
-            if is_training:
-                # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
-                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-                out.output_activations = activation_fct_annealed(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
-            else:
-                out.output_activations = self._inference_energy_activation_fct(output_activations) *torch.ones(output_hits.size(), device=output_hits.device)
-            # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+            out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        # else:
+        #     if is_training:
+        #         # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+        #         activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+        #         out.output_activations = activation_fct_annealed(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+        #     else:
+        #         out.output_activations = self._inference_energy_activation_fct(output_activations) *torch.ones(output_hits.size(), device=output_hits.device)
+        #     # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
         return out
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):
@@ -386,16 +360,16 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             beta = torch.tensor(self._config.model.beta_smoothing_fct,
                                 dtype=torch.float, device=output_hits.device,
                                 requires_grad=False)
-            if self._config.engine.modelhits:
-                sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
-            else:
-                sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
+            # if self._config.engine.modelhits:
+            sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
+            # else:
+            #     sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
             
-            if self._config.engine.cl_lambda != 0:
-                labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
-                true_energies.append((torch.pow(2,labels)*256).unsqueeze(dim=1)) 
-            else:
-                true_energies.append(true_e) 
+            # if self._config.engine.cl_lambda != 0:
+            #     labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
+            #     true_energies.append((torch.pow(2,labels)*256).unsqueeze(dim=1)) 
+            # else:
+            true_energies.append(true_e) 
             samples.append(sample)
             
         return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
@@ -424,15 +398,12 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
         
         
-        if self._config.engine.modelhits:
-            return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+        # if self._config.engine.modelhits:
+        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        else:
-            return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        
-        # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
+        # else:
+        #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
+        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         
         
     def batch_dwave_samples(self, response, qubit_idxs):

@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 from data.dataManager import DataManager
 from utils.plotting.plotProvider import PlotProvider
+from utils.stats.partition import get_Zs, save_plot, get_project_id
 from engine.engine import Engine
 from models.modelCreator import ModelCreator
 
@@ -51,7 +52,8 @@ def main(cfg=None):
     # Use mode='disabled' to prevent logging
     mode = 'online' if cfg.wandb_enabled else 'disabled'
     # wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
-    wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
+    iden = get_project_id(cfg.run_path)
+    wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode, resume='allow', id=iden)
     # run the ting
     run(config=cfg)
 
@@ -134,55 +136,16 @@ def run(config=None):
     # add the modelCreator instance to engine namespace
     engine.model_creator = modelCreator
 
-    if config.load_state:
-        assert config.run_path != 0
-        config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
-        modelCreator.load_state(config.run_path, dev)
+    # if config.load_state:
+    assert config.run_path != 0
+    config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
+    modelCreator.load_state(config.run_path, dev)
 
-    lnZais_list, lnZrais_list, en_encoded_list = get_Zs(config.run_path, engine, dev, 1)
+    lnZais_list, lnZrais_list, en_encoded_list = get_Zs(config.run_path, engine, dev, 10)
     save_plot(lnZais_list, lnZrais_list, en_encoded_list, config.run_path)
 
     logger.info("run() finished successfully.")
     
-    
-    
-def get_Zs(run_path, engine, dev, step = 10):
-    rbm_path = run_path.split('files')[0] + 'files/RBM/'
-    lnZais_list = []
-    lnZrais_list = []
-    en_encoded_list = []
-    for i in range(1,100,step):
-        engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_weights.pth', dev)
-        engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_biases.pth', dev)
-        en = -torch.load(rbm_path + f'RBM_{i}_9_EncEn.pth').mean()
-        lnZais_list.append(engine.model.stater.AIS(30).detach().cpu().item())
-        lnZrais_list.append(engine.model.stater.RAIS(30).detach().cpu().item())
-        en_encoded_list.append(en)
-        
-    return lnZais_list, lnZrais_list, en_encoded_list
-
-
-def save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path):
-    path = run_path.split('files')[0] + 'files/'
-    fig, axes = plt.subplots(2,2, figsize=(8,8), tight_layout=True)
-
-    axes[0,0].plot(-np.array(lnZais_list), c='red', lw=4.5, label='- ln Z_ais')
-    axes[0,0].plot(-np.array(lnZrais_list), c='blue', lw=2.5, label='- ln Z_rais')
-    axes[0,0].set_xlabel("epochs (x10)")
-    axes[0,0].legend()
-    axes[0,0].grid("True")
-
-    axes[0,1].plot(np.array(en_encoded_list) - np.array(lnZais_list), c='green', lw=2.5)
-    axes[0,1].set_ylabel("LL")
-    axes[0,1].set_xlabel("epochs (x10)")
-    axes[0,1].grid("True")
-
-    axes[1,1].plot(np.array(en_encoded_list), c='orange', lw=2.5)
-    axes[1,1].grid("True")
-    axes[1,1].set_ylabel("LL + ln Z")
-    axes[1,1].set_xlabel("epochs (x10)")
-    plt.savefig(path + f'LL.png')
-    # plt.show()
 
 
 if __name__=="__main__":

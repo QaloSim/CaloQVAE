@@ -11,11 +11,13 @@ epoch_annealing_start: 1
 # r_param : 0.0020
 r_param : 0.001
 # r_param : 0.00004
-cl_lambda: 0
+
 beta_smoothing_fct: 5
 beta_smoothing_fct_final: 500
 beta_smoothing_fct_anneal: 1
-modelhits: 1
+
+# modelhits: 1
+# cl_lambda: 0
 
 slope_activation_fct: 0.05
 slope_activation_fct_final: 0.
