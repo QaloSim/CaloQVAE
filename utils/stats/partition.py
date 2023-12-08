@@ -2,6 +2,8 @@ import torch
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+from CaloQVAE import logging
+logger = logging.getLogger(__name__)
 
 class Stats():
     """
@@ -241,7 +243,11 @@ def create_filenames_dict(run_path):
     trueInd = [ "run" in file for file in files]
     for i, file in enumerate(files):
         if trueInd[i] and "latest" not in file:
-            filenames[file] = list(np.sort(os.listdir(run_path.split("wandb")[0] + f'wandb/{file}/files/RBM/')))
+            try:
+                filenames[file] = list(np.sort(os.listdir(run_path.split("wandb")[0] + f'wandb/{file}/files/RBM/')))
+            except:
+                logger.warning(f'Directory {run_path.split("wandb")[0]}' + f'wandb/{file}/files/RBM/ might not exist.')
+                
 
     filenames["size"] = int(len(np.sum([filenames[key] for key in filenames.keys()], dtype=object))/3)
     filenames["prefix"] = run_path.split("wandb")[0] + "wandb"

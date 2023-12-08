@@ -18,14 +18,14 @@ n_latent_hierarchy_lvls: 4
 n_latent_nodes: 512
 # n_latent_nodes: 4096
 cylencoding: 1
-# lz: 1
-# ltheta: 2
-# lr: 3
-# pe: 1
-lz: 45
-ltheta: 16
-lr: 9
-pe: 2
+lz: 1
+ltheta: 2
+lr: 3
+pe: 1
+# lz: 45
+# ltheta: 16
+# lr: 9
+# pe: 2
 encodertype: Small
 #Large, Small, SmallUnconditioned, SmallPosEnc
 decodertype: Small

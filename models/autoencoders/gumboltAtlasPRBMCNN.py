@@ -325,10 +325,10 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         # output_hits, output_activations = self.decoder(prior_samples)
         output_hits, output_activations = self.decoder(prior_samples, true_e)
         beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        if self._config.engine.modelhits:
-            sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
-        else:
-            sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
+        # if self._config.engine.modelhits:
+        sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
+        # else:
+        #     sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
         # samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False) 
         true_energies.append(true_e)
         samples.append(sample) 
