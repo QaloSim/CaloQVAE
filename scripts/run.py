@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 from data.dataManager import DataManager
 from utils.plotting.plotProvider import PlotProvider
-from utils.stats.partition import get_Zs, save_plot
+from utils.stats.partition import get_Zs, save_plot, create_filenames_dict
 from utils.helpers import get_epochs, get_project_id
 from engine.engine import Engine
 from models.modelCreator import ModelCreator
@@ -147,7 +147,10 @@ def run(config=None):
         assert config.run_path != 0
         config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
         modelCreator.load_state(config.run_path, dev)
-        _epoch = get_epochs(config.run_path)
+        # _epoch = get_epochs(config.run_path)
+        # temp solution to get total number of epochs this model has been trained on
+        fn = create_filenames_dict(config.run_path)
+        _epoch = fn["size"]
 
     for epoch in range(1+_epoch, _epoch+config.engine.n_epochs+1):
         if "train" in config.task:

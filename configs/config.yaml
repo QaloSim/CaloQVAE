@@ -3,27 +3,29 @@ debug: False
 load_data_from_pkl: 0
 
 save_state: 1
-load_state: 0
+load_state: 1
 save_hists: 1
 save_partition: 1
 
 wandb_enabled: 1
 
-run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231201_203858-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth
-run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231205_212517-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
+# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231201_203858-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth
+# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231205_202810-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
 
 # run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231201_172405-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231205_212517-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
+run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231205_212517-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
 
 # run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-37-11/wandb/run-20231201_173712-ti1793rl/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
+# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-37-11/wandb/run-20231206_172404-ti1793rl/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
 
 # run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231201_173928-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
+# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231206_173410-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
 device: gpu
 gpu_list:
-  - 4
+  - 1
 
 task:
   - train

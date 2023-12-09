@@ -248,8 +248,11 @@ def create_filenames_dict(run_path):
             except:
                 logger.warning(f'Directory {run_path.split("wandb")[0]}' + f'wandb/{file}/files/RBM/ might not exist.')
                 
-
-    filenames["size"] = int(len(np.sum([filenames[key] for key in filenames.keys()], dtype=object))/3)
+    
+    list_of_files = []
+    for key in filenames.keys():
+        list_of_files = list_of_files + filenames[key]
+    filenames["size"] = int(len(list_of_files)/3)
     filenames["prefix"] = run_path.split("wandb")[0] + "wandb"
     return filenames
 
