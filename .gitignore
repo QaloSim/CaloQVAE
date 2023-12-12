@@ -18,10 +18,16 @@ MNIST/
 sandbox/
 nohup.out
 runJT.sh
+llJT.sh
 figs/
 runSG.sh
 init_container.sh
+<<<<<<< HEAD
 seb2000-dev
+=======
+fast_stern_test.ipynb
+stein/
+>>>>>>> jqtm_atlas
 ##############################################
 #### Automatically created
 ##############################################

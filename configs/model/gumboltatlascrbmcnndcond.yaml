@@ -16,6 +16,10 @@ encoder_hidden_nodes:
   - 300
 n_latent_hierarchy_lvls: 2
 n_latent_nodes: 1000
+encodertype: SmallPosEnc
+#Large, Small, SmallUnconditioned, SmallPosEnc
+decodertype: Small
+# Small, SmallUnconditioned
 
 # mapping: bipartite
 mapping: chains

@@ -15,7 +15,8 @@ from models.samplers.GibbsSampling import GS
 from utils.stats.partition import Stats
 
 # DiVAE.models imports
-from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
+# from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
+from models.autoencoders.gumboltAtlasCRBMCNN import GumBoltAtlasCRBMCNN
 from CaloQVAE.models.rbm import pegasusRBM
 from CaloQVAE.models.samplers import pgbs
 # from models.networks.EncoderCNN import EncoderCNN
@@ -27,7 +28,7 @@ import time
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
-class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
+class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
     """
     GumBolt
     """
@@ -137,7 +138,10 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
         # Compute gradient computation of the logZ term
         p0_state, p1_state, p2_state, p3_state \
-            = self.sampler.block_gibbs_sampling()
+            = self.sampler.block_gibbs_sampling(post_zetas[:, :n_nodes_p],
+                                     post_zetas[:, n_nodes_p:2*n_nodes_p],
+                                     post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
+                                     post_zetas[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
         neg_energy = - self.energy_exp(p0_state, p1_state, p2_state, p3_state)
 
         # Estimate of the kl-divergence
@@ -321,10 +325,10 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
         # output_hits, output_activations = self.decoder(prior_samples)
         output_hits, output_activations = self.decoder(prior_samples, true_e)
         beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        if self._config.engine.modelhits:
-            sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
-        else:
-            sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
+        # if self._config.engine.modelhits:
+        sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
+        # else:
+        #     sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
         # samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False) 
         true_energies.append(true_e)
         samples.append(sample) 
@@ -537,6 +541,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
         for epoch in range(num_epochs+1):
             _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0 / 10.0)
+            # _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
             h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model(1.0 / beta)
             if epoch == 0:
                 # prbm_sampler = PGBS(self.prior, 512, 3000)
@@ -570,5 +575,5 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
             print (f'Epoch {epoch}: beta = {beta}')
             beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
         beta = beta_list[-1]
-        return beta, beta_list
+        return beta, beta_list, rbm_energy_list, dwave_energies_list
     

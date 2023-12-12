@@ -17,9 +17,8 @@ from models.samplers.GibbsSampling import GS
 from models.rbm.chimerav2 import QimeraRBM
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 # from models.networks.EncoderCNN import EncoderCNN
-from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH
-from models.networks.basicCoders import DecoderCNN, Classifier
-from utils.stats.crbm_partition import Stats
+from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH, EncoderUCNNHPosEnc
+from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -50,7 +49,6 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         self.prior=self._create_prior()
         self.decoder=self._create_decoder()
         self.sampler = self._create_sampler(rbm=self.prior)
-        self.stater = self._create_stat()
         
     def _create_prior(self):
         """
@@ -81,43 +79,56 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             EncoderCNN instance
         """
         logger.debug("GumBoltAtlasCRBMCNN::_create_encoder")
-        # return EncoderUCNN(
-        #     input_dimension=self._flat_input_size,
-        #     n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
-        #     n_latent_nodes=self.n_latent_nodes,
-        #     skip_latent_layer=False,
-        #     smoother="Gumbel",
-        #     cfg=self._config)
-        return EncoderUCNNH(encArch='Small',
-            input_dimension=self._flat_input_size,
-            n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
-            n_latent_nodes=self.n_latent_nodes,
-            skip_latent_layer=False,
-            smoother="Gumbel",
-            cfg=self._config)
+        if "cylencoding" in self._config.model and self._config.model.cylencoding:
+            return EncoderUCNNHPosEnc(encArch=self._config.model.encodertype,
+                dev = "cuda:{0}".format(self._config.gpu_list[0]),
+                lz = self._config.model.lz,
+                ltheta = self._config.model.ltheta,
+                lr = self._config.model.lr,
+                pe = self._config.model.pe,
+                input_dimension=self._flat_input_size,
+                n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+                n_latent_nodes=self.n_latent_nodes,
+                skip_latent_layer=False,
+                smoother="Gumbel",
+                cfg=self._config)
+        else: 
+            return EncoderUCNNH(encArch=self._config.model.encodertype,
+                input_dimension=self._flat_input_size,
+                n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+                n_latent_nodes=self.n_latent_nodes,
+                skip_latent_layer=False,
+                smoother="Gumbel",
+                cfg=self._config)
     
+
     def _create_decoder(self):
         """
         - Overrides _create_decoder in GumBoltCaloV5.py
 
         Returns:
-            DecoderCNN instance
+            DecoderCNNCond instance
         """
         logger.debug("GumBoltAtlasCRBMCNN::_create_decoder")
         self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
                                   self._decoder_nodes[0][1])
-        return DecoderCNN(node_sequence=self._decoder_nodes,
+
+        if self._config.model.decodertype == "Small":
+            return DecoderCNNCondSmall(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct, #<--- try identity
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallUnconditioned":
+            return DecoderCNNUnconditioned(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct, #<--- try identity
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPosEnc":
+            return DecoderCNNPosCondSmall(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct, #<--- try identity
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
 
-    def _create_stat(self):
-        """This object contains methods to compute Stat Mech stuff.
-
-        :return: Instance of a utils.stats.crbm_partition.Stats
-        """
-        logger.debug("GumBoltAtlasCRBMCNN::_create_stat")
-        return Stats(self.sampler)
     
     def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
         """
@@ -147,21 +158,21 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         out.output_hits = output_hits
 
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        if self._config.engine.modelhits:
-            if is_training:
-                # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-                out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-            else:
-                out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        # if self._config.engine.modelhits:
+        if self.training:
+            # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+            out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         else:
-            if is_training:
-                # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
-                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-                out.output_activations = activation_fct_annealed(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
-            else:
-                out.output_activations = self._inference_energy_activation_fct(output_activations) *torch.ones(output_hits.size(), device=output_hits.device)
-            # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+            out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        # else:
+        #     if is_training:
+        #         # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+        #         activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+        #         out.output_activations = activation_fct_annealed(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+        #     else:
+        #         out.output_activations = self._inference_energy_activation_fct(output_activations) *torch.ones(output_hits.size(), device=output_hits.device)
+        #     # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
         return out
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):
@@ -221,7 +232,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             pos_energy = self.energy_exp(post_zetas_vis, post_zetas_hid)
         
         # Compute gradient contribution of the logZ term
-        rbm_vis, rbm_hid = self.sampler.block_gibbs_sampling(post_zetas_vis, method=self._config.model.rbmMethod)
+        rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling(post_zetas_vis, method=self._config.model.rbmMethod)
+        rbm_vis, rbm_hid = rbm_visible_samples.detach(), rbm_hidden_samples.detach()
         neg_energy = - self.energy_exp(rbm_vis, rbm_hid)
         
         kl_loss = entropy + pos_energy + neg_energy
@@ -334,7 +346,9 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
         samples = []
         for i in range(num_iterations):
-            rbm_vis, rbm_hid = self.sampler.block_gibbs_sampling()
+            rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling()
+            rbm_vis = rbm_visible_samples.detach()
+            rbm_hid = rbm_hidden_samples.detach()
             
             if true_energy is None:
                 true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.
@@ -347,16 +361,16 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             beta = torch.tensor(self._config.model.beta_smoothing_fct,
                                 dtype=torch.float, device=output_hits.device,
                                 requires_grad=False)
-            if self._config.engine.modelhits:
-                sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
-            else:
-                sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
+            # if self._config.engine.modelhits:
+            sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
+            # else:
+            #     sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
             
-            if self._config.engine.cl_lambda != 0:
-                labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
-                true_energies.append((torch.pow(2,labels)*256).unsqueeze(dim=1)) 
-            else:
-                true_energies.append(true_e) 
+            # if self._config.engine.cl_lambda != 0:
+            #     labels = torch.argmax(nn.Sigmoid()(self.classifier(output_hits)), dim=1)
+            #     true_energies.append((torch.pow(2,labels)*256).unsqueeze(dim=1)) 
+            # else:
+            true_energies.append(true_e) 
             samples.append(sample)
             
         return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
@@ -385,15 +399,12 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
         
         
-        if self._config.engine.modelhits:
-            return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+        # if self._config.engine.modelhits:
+        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        else:
-            return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        
-        # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
+        # else:
+        #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
+        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         
         
     def batch_dwave_samples(self, response, qubit_idxs):

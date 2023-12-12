@@ -1,5 +1,9 @@
 import torch
 import numpy as np
+import os
+import matplotlib.pyplot as plt
+from CaloQVAE import logging
+logger = logging.getLogger(__name__)
 
 class Stats():
     """
@@ -30,7 +34,7 @@ class Stats():
         p_activations = (torch.matmul(pa_state, weights_ax * beta) +
                          torch.matmul(pb_state, weights_bx * beta) +
                          torch.matmul(pc_state, weights_cx * beta) + bias_x)
-        return torch.bernoulli(torch.sigmoid(p_activations))
+        return torch.bernoulli(torch.sigmoid(p_activations)).detach()
     
     
     def block_gibbs_sampling_ais(self, beta, p0_state=None, p1_state=None, p2_state=None, p3_state=None):
@@ -71,22 +75,22 @@ class Stats():
                                      p_weight['02'].T,
                                      p_weight['03'].T,
                                      p1_state, p2_state, p3_state,
-                                     p0_bias, beta)
+                                     p0_bias, beta).detach()
             p1_state = self._p_state_ais(p_weight['01'],
                                      p_weight['12'].T,
                                      p_weight['13'].T,
                                      p0_state, p2_state, p3_state,
-                                     p1_bias, beta)
+                                     p1_bias, beta).detach()
             p2_state = self._p_state_ais(p_weight['02'],
                                      p_weight['12'],
                                      p_weight['23'].T,
                                      p0_state, p1_state, p3_state,
-                                     p2_bias, beta)
+                                     p2_bias, beta).detach()
             p3_state = self._p_state_ais(p_weight['03'],
                                      p_weight['13'],
                                      p_weight['23'],
                                      p0_state, p1_state, p2_state,
-                                     p3_bias, beta)
+                                     p3_bias, beta).detach()
 
         return p0_state.detach(), p1_state.detach(), p2_state.detach(), p3_state.detach()
     
@@ -145,7 +149,7 @@ class Stats():
             torch.bmm(p2_state_t,
                       torch.bmm(beta * w_dict_cp['23'], p3_state_i)).reshape(-1)
 
-        return batch_energy
+        return batch_energy.detach()
     
     
     def AIS(self, nbeta=20.0):
@@ -163,3 +167,98 @@ class Stats():
             FreeEnergy_ratios = FreeEnergy_ratios + torch.log(torch.exp(energy_samples_i - energy_samples_i_plus).mean())
         logZb = FreeEnergy_ratios + self.lnZa
         return logZb
+    
+    def RAIS(self, nbeta=20.0):
+        self.lnZb = np.sum([torch.log(1 + torch.exp(-self._prbm.bias_dict[i])).sum().item() for i in ['0','1','2','3']])
+        FreeEnergy_ratios = 0.0
+        Δbeta = 1/nbeta
+
+        # Reverse AIS: Start from the target distribution (beta = 1)
+        for beta in np.arange(1.0, 0.0, -Δbeta):
+            if beta == 1:
+                p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_ais(beta)
+            else:
+                # When beta is not 1, continue the sampling from the current state
+                p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_ais(beta, p0_state, p1_state, p2_state, p3_state)
+
+            # Calculate energies for the current beta and the next beta (which is beta - Δbeta)
+            energy_samples_i = self.energy_samples(p0_state, p1_state, p2_state, p3_state, beta)
+            energy_samples_i_minus = self.energy_samples(p0_state, p1_state, p2_state, p3_state, beta - Δbeta)
+
+            # Accumulate the free energy differences
+            FreeEnergy_ratios += torch.log(torch.exp(- energy_samples_i_minus + energy_samples_i).mean())
+
+        # The final estimate for logZa (partition function of the base distribution)
+        logZa = - FreeEnergy_ratios + self.lnZb
+        return logZa
+    
+    
+
+def get_Zs(run_path, engine, dev, step = 10):
+    fn = create_filenames_dict(run_path)
+    # rbm_path = run_path.split('files')[0] + 'files/RBM/'
+    lnZais_list = []
+    lnZrais_list = []
+    en_encoded_list = []
+    for i in range(1,fn["size"],step):
+        _right_dir = get_right_dir(i, fn)
+        rbm_path = fn["prefix"] + "/" + _right_dir + '/files/RBM/'
+        engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_weights.pth', dev)
+        engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_biases.pth', dev)
+        en = -torch.load(rbm_path + f'RBM_{i}_9_EncEn.pth').mean()
+        lnZais_list.append(engine.model.stater.AIS(30).detach().cpu().item())
+        lnZrais_list.append(engine.model.stater.RAIS(30).detach().cpu().item())
+        en_encoded_list.append(en)
+        
+    return lnZais_list, lnZrais_list, en_encoded_list
+
+
+def save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path):
+    path = run_path.split('files')[0] + 'files/'
+    fig, axes = plt.subplots(2,2, figsize=(8,8), tight_layout=True)
+
+    axes[0,0].plot(-np.array(lnZais_list), c='red', lw=4.5, label='- ln Z_ais')
+    axes[0,0].plot(-np.array(lnZrais_list), c='blue', lw=2.5, label='- ln Z_rais')
+    axes[0,0].set_xlabel("epochs (x10)")
+    axes[0,0].legend()
+    axes[0,0].grid("True")
+
+    axes[0,1].plot(np.array(en_encoded_list) - np.array(lnZais_list), c='green', lw=2.5)
+    axes[0,1].set_ylabel("LL")
+    axes[0,1].set_xlabel("epochs (x10)")
+    axes[0,1].grid("True")
+
+    axes[1,1].plot(np.array(en_encoded_list), c='orange', lw=2.5)
+    axes[1,1].grid("True")
+    axes[1,1].set_ylabel("LL + ln Z")
+    axes[1,1].set_xlabel("epochs (x10)")
+    plt.savefig(path + f'LL.png')
+    
+    np.savez(path + 'PartitionData.npz', array1=np.array(lnZais_list), array2=np.array(lnZrais_list), array3 = np.array(en_encoded_list))
+    
+    
+def create_filenames_dict(run_path):
+    filenames = {}
+    files = os.listdir(run_path.split("wandb")[0] + "wandb")
+    trueInd = [ "run" in file for file in files]
+    for i, file in enumerate(files):
+        if trueInd[i] and "latest" not in file:
+            try:
+                filenames[file] = list(np.sort(os.listdir(run_path.split("wandb")[0] + f'wandb/{file}/files/RBM/')))
+            except:
+                logger.warning(f'Directory {run_path.split("wandb")[0]}' + f'wandb/{file}/files/RBM/ might not exist.')
+                
+    
+    list_of_files = []
+    for key in filenames.keys():
+        list_of_files = list_of_files + filenames[key]
+    filenames["size"] = int(len(list_of_files)/3)
+    filenames["prefix"] = run_path.split("wandb")[0] + "wandb"
+    return filenames
+
+def get_right_dir(i, filenames):
+    for key in filenames.keys():
+        if f'RBM_{i}_9_weights.pth' in filenames[key]:
+            _right_dir = key
+            break
+    return _right_dir
