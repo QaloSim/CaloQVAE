@@ -20,7 +20,7 @@ task:
   - test
 
 defaults:
-  - model: gumboltatlascrbmcnndcond #gumboltcalocrbmuncond #gumboltatlascrbmcnnuncond #gumboltatlascrbmcencudec #gumboltcalocrbm
+  - model: gumboltatlascrbmcnnuncond #gumboltcalocrbm #gumboltatlascrbmcnndcond #gumboltcalocrbmuncond #gumboltatlascrbmcencudec
   - data: atlasDGX
   - engine: dvaeatlas_training
 

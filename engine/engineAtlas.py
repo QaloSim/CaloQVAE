@@ -16,6 +16,7 @@ import numpy as np
 from engine.engineCaloV3 import EngineCaloV3
 from utils.histHandler import HistHandler
 from utils.plotting.plotCalo import plot_calo_images
+from utils.hists.CRBMenergyHist import generate_rbm_energy_hist
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -299,6 +300,12 @@ class EngineAtlas(EngineCaloV3):
                 except TypeError:
                     val_loss_dict['val_' + str(key)] = val_loss_dict[key]
                     val_loss_dict.pop(key)
+                    
+            rbm_energy_hist = []
+            rbm_energy_hist.append(generate_rbm_energy_hist(self, self._config.model, self.data_mgr.val_loader))
+            val_loss_dict["RBM energy"] = rbm_energy_hist
+            config_string = f'RBM_{epoch}_{batch_idx}'
+            #self._model_creator.save_RBM_state(config_string)
                     
             wandb.log(val_loss_dict)
             
