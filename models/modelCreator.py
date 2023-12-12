@@ -39,6 +39,9 @@ from models.autoencoders.gumboltAtlasPRBMCNN import GumBoltAtlasPRBMCNN
 from models.autoencoders.gumboltAtlasPRBMFCN import GumBoltAtlasPRBMFCN
 from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
 from models.autoencoders.gumboltAtlasCRBMCNNV2 import GumBoltAtlasCRBMCNNV2
+from models.autoencoders.gumboltAtlasCRBMCNNUnCond import GumBoltAtlasCRBMCNNUnCond
+from models.autoencoders.gumboltAtlasCRBMCEncUDec import GumBoltAtlasCRBMCEncUDec
+from models.autoencoders.gumboltCaloCRBMUnCond import GumBoltCaloCRBMUnCond
 
 _MODEL_DICT={
     "AE": AutoEncoder, 
@@ -66,6 +69,9 @@ _MODEL_DICT={
     "GumBoltAtlasPRBMFCN": GumBoltAtlasPRBMFCN,
     "GumBoltAtlasCRBMCNNDCond": GumBoltAtlasCRBMCNNDCond,
     "GumBoltAtlasCRBMCNNV2": GumBoltAtlasCRBMCNNV2,
+    "GumBoltAtlasCRBMCNNUnCond": GumBoltAtlasCRBMCNNUnCond,
+    "GumBoltAtlasCRBMCEncUDec": GumBoltAtlasCRBMCEncUDec,
+    "GumBoltCaloCRBMUnCond": GumBoltCaloCRBMUnCond
 }
 
 class ModelCreator(object):
@@ -121,6 +127,18 @@ class ModelCreator(object):
         
         # Save the model parameter dict
         torch.save(state_dict, path)
+        
+    def save_RBM_state(self, cfg_string='test'):
+        logger.info("Saving RBM state")
+        if not os.path.exists(os.path.join(wandb.run.dir, "RBM")):
+            # Create the directory
+            os.makedirs(os.path.join(wandb.run.dir, "RBM"))
+        pathW = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_weights'))
+        pathB = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_biases'))
+        
+        # Save the dictionary to a file
+        torch.save(self._model.prior._weight_dict, pathW)
+        torch.save(self._model.prior._bias_dict, pathB)
         
     def load_state(self, run_path, device):
         logger.info("Loading state")

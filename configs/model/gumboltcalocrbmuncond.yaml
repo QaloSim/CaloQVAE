@@ -1,4 +1,4 @@
-model_type: GumBoltCaloCRBM
+model_type: GumBoltCaloCRBMUnCond
 activation_fct: relu
 beta_smoothing_fct: 5
 output_smoothing_fct: 6
@@ -19,4 +19,4 @@ n_latent_nodes: 1000
 
 mapping: bipartite
 bernoulli : 0
-fullyconnected: false
+fullyconnected: True #false

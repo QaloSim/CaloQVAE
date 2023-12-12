@@ -19,6 +19,7 @@ from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 # from models.networks.EncoderCNN import EncoderCNN
 from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH
 from models.networks.basicCoders import DecoderCNN, Classifier
+from utils.stats.crbm_partition import Stats
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -48,8 +49,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         self.encoder=self._create_encoder()
         self.prior=self._create_prior()
         self.decoder=self._create_decoder()
-        # self.classifier=self._create_classifier()
         self.sampler = self._create_sampler(rbm=self.prior)
+        self.stater = self._create_stat()
         
     def _create_prior(self):
         """
@@ -110,18 +111,13 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
 
-    # def _create_classifier(self):
-    #     """
-    #     Returns:
-    #         Classifier instance
-    #     """
-    #     logger.debug("GumBoltAtlasCRBMCNN::_create_classifier")
-    #     self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
-    #                               self._decoder_nodes[0][1])
-    #     return Classifier(node_sequence=self._decoder_nodes,
-    #                           activation_fct=self._activation_fct, #<--- try identity
-    #                           num_output_nodes = self._flat_input_size,
-    #                           cfg=self._config)
+    def _create_stat(self):
+        """This object contains methods to compute Stat Mech stuff.
+
+        :return: Instance of a utils.stats.crbm_partition.Stats
+        """
+        logger.debug("GumBoltAtlasCRBMCNN::_create_stat")
+        return Stats(self.sampler)
     
     def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
         """
@@ -225,8 +221,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             pos_energy = self.energy_exp(post_zetas_vis, post_zetas_hid)
         
         # Compute gradient contribution of the logZ term
-        rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling(post_zetas_vis, method=self._config.model.rbmMethod)
-        rbm_vis, rbm_hid = rbm_visible_samples.detach(), rbm_hidden_samples.detach()
+        rbm_vis, rbm_hid = self.sampler.block_gibbs_sampling(post_zetas_vis, method=self._config.model.rbmMethod)
         neg_energy = - self.energy_exp(rbm_vis, rbm_hid)
         
         kl_loss = entropy + pos_energy + neg_energy
@@ -339,9 +334,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
         samples = []
         for i in range(num_iterations):
-            rbm_visible_samples, rbm_hidden_samples = self.sampler.block_gibbs_sampling()
-            rbm_vis = rbm_visible_samples.detach()
-            rbm_hid = rbm_hidden_samples.detach()
+            rbm_vis, rbm_hid = self.sampler.block_gibbs_sampling()
             
             if true_energy is None:
                 true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.

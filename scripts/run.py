@@ -59,7 +59,6 @@ def run(config=None):
     """
     Run m
     """
-
     #create model handling object
     modelCreator = ModelCreator(cfg=config)
 
