@@ -151,6 +151,12 @@ def run(config=None):
         # temp solution to get total number of epochs this model has been trained on
         fn = create_filenames_dict(config.run_path)
         _epoch = fn["size"]
+        if config.freeze_vae:
+            for name, param in engine.model.named_parameters():
+                if 'decoder' in name or 'encoder' in name:
+                    param.requires_grad = False
+                print(name, param.requires_grad)
+            engine.optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, engine.model.parameters()), lr=config.engine.learning_rate)
 
     for epoch in range(1+_epoch, _epoch+config.engine.n_epochs+1):
         if "train" in config.task:

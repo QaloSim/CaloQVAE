@@ -16,7 +16,7 @@ encoder_hidden_nodes:
   - 300
 n_latent_hierarchy_lvls: 4
 n_latent_nodes: 512
-# n_latent_nodes: 4096
+
 cylencoding: 0
 lz: 1
 ltheta: 2
