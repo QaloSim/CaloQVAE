@@ -13,7 +13,7 @@ class DiffEnergyHist(object):
                                      hist.Bin("diff_E", "Diff Energy (Input-Recon) (GeV)", n_bins, -edge_bin, edge_bin)))
         self._scale = "linear"
         
-    def update(self, in_data, recon_data, sample_data):
+    def update(self, in_data, recon_data, sample_data, sample_dwave_data):
         datasets = [in_data, recon_data]
         datasets = [data.sum(axis=1) for data in datasets]
         self._hist.fill(dataset="calo", diff_E=(datasets[0]-datasets[1]))
