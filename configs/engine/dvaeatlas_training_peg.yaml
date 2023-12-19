@@ -1,6 +1,6 @@
 _target_: engine.engineAtlas.EngineAtlas
-learning_rate: 0.0001
-n_epochs: 100
+learning_rate: 0.0005
+n_epochs: 300
 
 kl_enabled: 1
 ae_enabled: 1
@@ -26,7 +26,7 @@ slope_activation_fct_anneal: 1
 n_train_batch_size: 256
 n_test_batch_size: 1024
 n_valid_batch_size: 1024
-rbm_batch_size: 128
+rbm_batch_size: 256
 
 n_gibbs_sampling_steps: 3000
 
