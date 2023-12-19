@@ -334,9 +334,12 @@ class EngineAtlas(EngineCaloV3):
         
         sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
         
-        #beta, _, _, _ = self._model.find_beta(num_epochs = 0)
-        beta = 7.5
-        sample_dwave_energies, sample_dwave_data = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/beta)
+        if self._config.engine.sample_qpu:
+            #beta, _, _, _ = self._model.find_beta(num_epochs = 0)
+            beta = 7.5
+            sample_dwave_energies, sample_dwave_data = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/beta)
+        else:
+            sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
         
         self._model.sampler._batch_size = self._config.engine.rbm_batch_size
         if self._config.usinglayers:

@@ -18,6 +18,7 @@ beta_smoothing_fct_anneal: 1
 
 # modelhits: 1
 # cl_lambda: 0
+sample_qpu: False
 
 slope_activation_fct: 0.05
 slope_activation_fct_final: 0.
