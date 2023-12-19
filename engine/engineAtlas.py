@@ -135,19 +135,12 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["LeakyReLUSlope"] = slope_act_fct
                     batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
-                    # if "hit_loss" in batch_loss_dict.keys():
-                    #     if "label_loss" in batch_loss_dict.keys():
-                    #         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"] + batch_loss_dict["hit_loss"] 
-                    #     else:
+                    
                     batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
-                    # else:
-                    #     if "label_loss" in batch_loss_dict.keys():
-                    #         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + cl_lambda * batch_loss_dict["label_loss"]
-                    #     else:
-                    #         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] 
+                    
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].backward()
-                    # batch_loss_dict["loss"].sum().backward()
+                    
                     self._optimiser.step()
                     # Trying this to free up memory on the GPU and run validation during a training epoch
                     # - hopefully backprop will work with the code above - didn't work
@@ -155,11 +148,15 @@ class EngineAtlas(EngineCaloV3):
                 else:
                     batch_loss_dict["gamma"] = 1.0
                     batch_loss_dict["epoch"] = epoch
-                    # if "hit_loss" in batch_loss_dict.keys():
+                    
                     batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
                     batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
-                    # else:
-                    #     batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"]
+                    
+                    if self._config.val_w_qpu:
+                        _, _, rbm_energy_list, dwave_energies_list = self._model.find_beta(num_epochs = 0)
+                        mean_rbm_energy, mean_dwave_energy = np.mean(rbm_energy_list[-1]), np.mean(dwave_energies_list[-1])
+                        batch_loss_dict["rel_energy_error"] = (mean_dwave_energy - mean_rbm_energy) / mean_rbm_energy
+                    
                     for key, value in batch_loss_dict.items():
                         try:
                             val_loss_dict[key] += value
@@ -183,6 +180,14 @@ class EngineAtlas(EngineCaloV3):
                             recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
                             self._model.sampler._batch_size = true_energy.shape[0]
                             sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            
+                            # if self._config.val_w_qpu:
+                                #beta, _, _, _ = self._model.find_beta()
+                                #beta = 7.5
+                                #sample_energies_qpu, sample_data_qpu = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/beta)
+                            else:
+                                # sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
+
                             self._model.sampler._batch_size = self._config.engine.rbm_batch_size
                             # sample_energies, sample_data = self._model.generate_samples()
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
@@ -336,8 +341,16 @@ class EngineAtlas(EngineCaloV3):
         # Samples with uniformly distributed energies - [0, 100]
         self._model.sampler._batch_size = true_energy.shape[0]
         sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+        
+        if self._config.val_w_qpu:
+            beta, _, _, _ = self._model.find_beta(num_epochs = 0)
+            # beta = 7.5
+            sample_dwave_energies, sample_dwave_data = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/beta)
+        else:
+            sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
+        
         self._model.sampler._batch_size = self._config.engine.rbm_batch_size
-        # sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size)
+
         if self._config.usinglayers:
             sample_data = self.layerTo1D(sample_data)
         
@@ -347,7 +360,10 @@ class EngineAtlas(EngineCaloV3):
             in_data_t = self._data_mgr.inv_transform(in_data.detach().cpu().numpy())/1000.
             recon_data_t = self._data_mgr.inv_transform(output_activations.detach().cpu().numpy())/1000.
             sample_data_t = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000.
-            self._hist_handler.update(in_data_t, recon_data_t, sample_data_t)  
+            # self._hist_handler.update(in_data_t, recon_data_t, sample_data_t)
+            sample_dwave_data_t = self._data_mgr.inv_transform(sample_dwave_data.detach().cpu().numpy())/1000.
+
+            self._hist_handler.update(in_data_t, recon_data_t, sample_data_t, sample_dwave_data_t)  
         elif self._config.reducedata:
             in_data_t = self._reduceinv(in_data, true_energy, R=self.R)/1000
             recon_data_t = self._reduceinv(output_activations, true_energy, R=self.R)/1000
@@ -364,10 +380,9 @@ class EngineAtlas(EngineCaloV3):
         conditioning_energies = self._config.engine.sample_energies
         conditioned_samples = []
         for energy in conditioning_energies:
-            sample_energies, sample_data = self._model.generate_samples(self._config.engine.n_valid_batch_size, energy)
-            # sample_data = sample_data.detach().cpu()
-            # if self._config.usinglayers:
-            #     sample_data = self.layerTo1D(sample_data)
+            #Note: Should we recompute beta before every sample run?
+            sample_energies, sample_data = self._model.generate_samples(num_samples=self._config.engine.n_valid_batch_size, true_energy=energy)
+
             if self._config.data.scaled:
                 sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. 
             elif self._config.reducedata:
@@ -505,91 +520,6 @@ class EngineAtlas(EngineCaloV3):
 
         energy_encoded_data = torch.cat(energy_encoded_data, dim=0)
         return energy_encoded_data
-
-#     def parseToLayer(self, in_data):
-#         bs = in_data.shape[0]
-#         layer = {}
-#         if self._config.data.particle == 'pion':
-#             layer_boundaries = np.unique(HLF_1_pions.bin_edges)
-#             for idx in range(len(np.unique(HLF_1_pions.bin_edges))-1):
-#                 layer[f'{idx}'] = in_data[:, layer_boundaries[idx]:layer_boundaries[idx+1]].reshape(
-#                                 bs, int(HLF_1_pions.num_alpha[idx]), -1)
-#                 if idx == 0:
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
-#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-#                 elif idx in [1,2]:
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
-#                 elif idx == 3:
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 4, dim=2)
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-#                 elif idx == 4:
-#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:15], layer[f'{idx}'][:, :, 14:15]), dim=2)
-#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :], layer[f'{idx}'][:, :, 18:19]), dim=2)
-#                 elif idx == 5:
-#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
-#                 elif idx == 6:
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-#                 layer[f'{idx}'] = layer[f'{idx}'].unsqueeze(1)
-#         elif self._config.data.particle == 'photon':
-#             layer_boundaries = np.unique(HLF_1_photons.bin_edges)
-#             for idx in range(len(np.unique(HLF_1_photons.bin_edges))-1):
-#                 layer[f'{idx}'] = in_data[:, layer_boundaries[idx]:layer_boundaries[idx+1]].reshape(
-#                                 bs, int(HLF_1_photons.num_alpha[idx]), -1)
-#                 if idx == 0:
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 2, dim=2)
-#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-#                 elif idx == 1:
-#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'][:, :, :4], layer[f'{idx}'][:, :, 3:4], layer[f'{idx}'][:, :, 4:8], layer[f'{idx}'][:, :, 7:8], layer[f'{idx}'][:, :, 8:12], layer[f'{idx}'][:, :, 11:12], layer[f'{idx}'][:, :, 12:16], layer[f'{idx}'][:, :, 15:16]), dim=2)
-#                 elif idx == 2:
-#                     layer[f'{idx}'] = torch.cat((layer[f'{idx}'], layer[f'{idx}'][:, :, -1:]), dim=2)
-#                 elif idx == 3:
-#                         layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 4, dim=2)
-#                         layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-#                 elif idx == 4:
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 4, dim=2)
-#                     layer[f'{idx}'] = torch.repeat_interleave(layer[f'{idx}'], 10, dim=1)
-#                 layer[f'{idx}'] = layer[f'{idx}'].unsqueeze(1)
-
-#         return torch.cat([layer[f'{i}'] for i in layer.keys()], dim=1)
-
-#     def layerTo1D(self, in_data):
-#         bs = in_data.shape[0]
-#         lim = in_data.shape[1]
-#         layer = {}
-#         if self._config.data.particle == 'pion':
-#             layer_boundaries = np.unique(HLF_1_pions.bin_edges)
-#             for idx in range(lim):
-#                 if idx == 0:
-#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,5,9,10,14,15,19]]
-#                 elif idx == 1:
-#                     layer[f'{idx}'] = in_data[:,idx,:,[0,2,4,6,8,10,12,14,16,18]].reshape( bs, -1)
-#                 if idx == 2:
-#                     layer[f'{idx}'] = in_data[:,idx,:,[0,2,4,6,8,10,12,14,16,18]].reshape( bs, -1)
-#                 elif idx == 3:
-#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,8,12,16]]
-#                 elif idx == 4:
-#                     layer[f'{idx}'] = in_data[:,idx,:,[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17]].reshape( bs, -1)
-#                 elif idx == 5:
-#                     layer[f'{idx}'] = in_data[:,idx,:,[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17,18]].reshape( bs, -1)
-#                 elif idx == 6:
-#                     layer[f'{idx}'] = in_data[:,idx,0,[0,2,4,6,8,10,12,14,16,18]]
-#         if self._config.data.particle == 'photon':
-#             layer_boundaries = np.unique(HLF_1_photons.bin_edges)
-#             for idx in range(lim):
-#                 if idx == 0:
-#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,5,9,10,14,15,19]]
-#                 elif idx == 1:
-#                     layer[f'{idx}'] = in_data[:,idx,:,[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17,18]].reshape( bs, -1)
-#                 if idx == 2:
-#                     layer[f'{idx}'] = in_data[:,idx,:,:-1].reshape( bs, -1)
-#                 elif idx == 3:
-#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,8,12,16]]
-#                 elif idx == 4:
-#                     layer[f'{idx}'] = in_data[:,idx,0,[0,4,8,12,16]]
-#         return torch.cat([layer[f'{i}'] for i in layer.keys()], dim=1)
         
 if __name__=="__main__":
     logger.info("Willkommen!")

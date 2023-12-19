@@ -7,7 +7,7 @@ from coffea import hist
 import numpy as np
 
 # Dataset labels
-_LABELS = ["input", "recon", "samples"]
+_LABELS = ["input", "recon", "samples", "sample_dwave"]
 
 class DWTotalEnergyHist(object):
     def __init__(self, layer_dict, n_bins=50):
@@ -18,9 +18,9 @@ class DWTotalEnergyHist(object):
                                               np.logspace(np.log10(1e-2), np.log10(10**2), n_bins))))
         self._scale = "log"
         
-    def update(self, in_data, recon_data, sample_data):
-        labels = ["input", "recon", "samples"]
-        datasets = [in_data, recon_data, sample_data]
+    def update(self, in_data, recon_data, sample_data, sample_dwave_data):
+        labels = ["input", "recon", "samples", "sample_dwave"]
+        datasets = [in_data, recon_data, sample_data, sample_dwave_data]
         
         layer_energies = {}
         for layer, layer_idxs in self._layer_dict.items():

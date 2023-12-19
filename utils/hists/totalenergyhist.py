@@ -7,7 +7,7 @@ from coffea import hist
 import numpy as np
 
 # Dataset labels
-_LABELS = ["input", "recon", "samples"]
+_LABELS = ["input", "recon", "samples", "sample_dwave_data"]
 
 class TotalEnergyHist(object):
     def __init__(self, min_bin=0, max_bin=100, n_bins=100):
@@ -18,8 +18,8 @@ class TotalEnergyHist(object):
         self._scale = "linear"
         self._data_dict = {key:[] for key in _LABELS}
         
-    def update(self, in_data, recon_data, sample_data):
-        datasets = [in_data, recon_data, sample_data]
+    def update(self, in_data, recon_data, sample_data, sample_dwave_data):
+        datasets = [in_data, recon_data, sample_data, sample_dwave_data]
         datasets = [data.sum(axis=1) for data in datasets]
         
         for label, dataset in zip(_LABELS, datasets):

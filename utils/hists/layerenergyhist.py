@@ -11,9 +11,9 @@ class LayerEnergyHist(TotalEnergyHist):
         self._start_idx = start_idx
         self._end_idx = end_idx
         
-    def update(self, in_data, recon_data, sample_data):
-        labels = ["input", "recon", "samples"]
-        datasets = [in_data, recon_data, sample_data]
+    def update(self, in_data, recon_data, sample_data, sample_dwave_data):
+        labels = ["input", "recon", "samples", "sample_dwave"]
+        datasets = [in_data, recon_data, sample_data, sample_dwave_data]
         datasets = [dataset[:, self._start_idx:self._end_idx] for dataset in datasets]
         datasets = [data.sum(axis=1) for data in datasets]
         

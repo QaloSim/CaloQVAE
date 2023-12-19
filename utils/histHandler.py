@@ -52,9 +52,9 @@ class HistHandler(object):
         
         self._samplehdict = {"sampleEnergyHist":SampleEnergyHist()}
         
-    def update(self, in_data, recon_data, sample_data):
+    def update(self, in_data, recon_data, sample_data, sample_dwave_data):
         for hkey in self._hdict.keys():
-            self._hdict[hkey].update(in_data, recon_data, sample_data)
+            self._hdict[hkey].update(in_data, recon_data, sample_data, sample_dwave_data)
             
     def update_samples(self, sample_data):
         for hkey in self._samplehdict.keys():

@@ -36,6 +36,8 @@ n_valid_per_epoch: 5
 n_plot_samples: 5
 n_batches_log_train: 10
 
+val_w_qpu: 0
+
 sample_energies:
   - 1
   - 25
