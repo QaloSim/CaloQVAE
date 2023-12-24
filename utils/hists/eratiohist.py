@@ -16,7 +16,7 @@ class ERatioHist(object):
         self._scale = "linear"
         
     def update(self, in_data, recon_data, sample_data, sample_dwave_data):
-        labels = ["input", "recon", "samples", "sample_dwave"]
+        labels = ["input", "recon", "samples", "samples_dwave"]
         datasets = [in_data, recon_data, sample_data, sample_dwave_data]
         
         layer_datasets = [dataset[:, self._start_idx:self._end_idx] for dataset in datasets]

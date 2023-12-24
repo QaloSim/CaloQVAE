@@ -185,7 +185,7 @@ class EngineAtlas(EngineCaloV3):
                                 #beta, _, _, _ = self._model.find_beta()
                                 #beta = 7.5
                                 #sample_energies_qpu, sample_data_qpu = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/beta)
-                            else:
+                            # else:
                                 # sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
 
                             self._model.sampler._batch_size = self._config.engine.rbm_batch_size
@@ -374,7 +374,7 @@ class EngineAtlas(EngineCaloV3):
         else:
             self._hist_handler.update(in_data.detach().cpu().numpy(),
                                       output_activations.detach().cpu().numpy(),
-                                      sample_data.detach().cpu().numpy())
+                                      sample_data.detach().cpu().numpy(), sample_dwave_data.detach().cpu().numpy())
                         
         # Samples with specific energies
         conditioning_energies = self._config.engine.sample_energies

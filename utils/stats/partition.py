@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+# import re
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
@@ -202,10 +203,14 @@ def get_Zs(run_path, engine, dev, step = 10):
     en_encoded_list = []
     for i in range(1,fn["size"],step):
         _right_dir = get_right_dir(i, fn)
+        # _pattern = get_right_pattern(i, fn)
         rbm_path = fn["prefix"] + "/" + _right_dir + '/files/RBM/'
-        engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_weights.pth', dev)
-        engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_biases.pth', dev)
-        en = -torch.load(rbm_path + f'RBM_{i}_9_EncEn.pth').mean()
+        # engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_weights.pth', dev)
+        # engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_biases.pth', dev)
+        # en = -torch.load(rbm_path + f'RBM_{i}_9_EncEn.pth').mean()
+        engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + get_right_pattern(i, fn), dev)
+        engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + get_right_pattern(i, fn, 'biases'), dev)
+        en = -torch.load(rbm_path + get_right_pattern(i, fn, 'EncEn')).mean()
         lnZais_list.append(engine.model.stater.AIS(30).detach().cpu().item())
         lnZrais_list.append(engine.model.stater.RAIS(30).detach().cpu().item())
         en_encoded_list.append(en)
@@ -257,8 +262,20 @@ def create_filenames_dict(run_path):
     return filenames
 
 def get_right_dir(i, filenames):
+    # first_key = list(filenames)[0]
+    # _pattern_like = filenames[first_key][-1]
+    # pattern = f'RBM_{i}_' + _pattern_like.split('_')[-2] + '_weights.pth'
+    pattern = get_right_pattern(i, filenames)
+    
     for key in filenames.keys():
-        if f'RBM_{i}_9_weights.pth' in filenames[key]:
+        # if f'RBM_{i}_9_weights.pth' in filenames[key]:
+        if pattern in filenames[key]:
             _right_dir = key
             break
     return _right_dir
+
+def get_right_pattern(i, filenames, keyword='weights'):
+    first_key = list(filenames)[0]
+    _pattern_like = filenames[first_key][-1]
+    pattern = f'RBM_{i}_' + _pattern_like.split('_')[-2] + f'_{keyword}.pth'
+    return pattern

@@ -7,7 +7,7 @@ from coffea import hist
 import numpy as np
 
 # Dataset labels
-_LABELS = ["input", "recon", "samples", "sample_dwave"]
+_LABELS = ["input", "recon", "samples", "samples_dwave"]
 
 class ShowerDepthHist(object):
     def __init__(self, layer_dict, n_bins=100):
@@ -18,7 +18,7 @@ class ShowerDepthHist(object):
         self._scale = "linear"
         
     def update(self, in_data, recon_data, sample_data, sample_dwave_data):
-        labels = ["input", "recon", "samples", "sample_dwave"]
+        labels = ["input", "recon", "samples", "samples_dwave"]
         datasets = [in_data, recon_data, sample_data, sample_dwave_data]
         
         layer_energies = {}

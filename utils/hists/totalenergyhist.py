@@ -7,7 +7,7 @@ from coffea import hist
 import numpy as np
 
 # Dataset labels
-_LABELS = ["input", "recon", "samples", "sample_dwave_data"]
+_LABELS = ["input", "recon", "samples", "samples_dwave"]
 
 class TotalEnergyHist(object):
     def __init__(self, min_bin=0, max_bin=100, n_bins=100):
