@@ -406,7 +406,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         
-        
+        # MSE =. sum (x_hat_i - x_i)^2 -------> sum (x_hat_i - x_i) C_ij (x_hat_j - x_j)
     def batch_dwave_samples(self, response, qubit_idxs):
         """
         sampler.sample_ising() method returns a nested SampleSet structure

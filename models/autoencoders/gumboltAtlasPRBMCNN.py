@@ -598,7 +598,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
                 J[edge] = dwave_weights_np[wKey][idx_map[partition_edge_1][edge[1]]][idx_map[partition_edge_0][edge[0]]]
         return h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias
         
-    def find_beta(self, beta_init=10.0, lr=0.01, num_epochs = 20):
+    def find_beta(self, beta_init=10.0, lr=0.01, num_epochs = 20, delta = 2.0, method = 'KL'):
         # beta_init = 10.0
         # lr = 0.01
         # num_epochs = 20
@@ -611,7 +611,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         training_results = {}
 
         for epoch in range(num_epochs+1):
-            _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0 / 10.0)
+            _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
             # _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
             h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model(1.0 / beta)
             if epoch == 0:
@@ -633,7 +633,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
             dwave_2_t = torch.tensor(dwave_2).to(p0_ising.device).float()
             dwave_3_t = torch.tensor(dwave_3).to(p0_ising.device).float()
             dwave_4_t = torch.tensor(dwave_4).to(p0_ising.device).float()
-            dwave_energies = self.ising_energy(dwave_1_t, dwave_2_t, dwave_3_t, dwave_4_t, dwave_weights, dwave_bias)
+            dwave_energies = self.ising_energy(dwave_1_t, dwave_2_t, dwave_3_t, dwave_4_t, dwave_weights_rbm, dwave_bias_rbm)
             dwave_energies = dwave_energies.detach().cpu().numpy()
             mean_rbm_energy = np.mean(rbm_energies)
             mean_dwave_energy = np.mean(dwave_energies)
@@ -644,7 +644,10 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
             mean_dwave_energy_list.append(mean_dwave_energy)
             beta_list.append(beta)
             print (f'Epoch {epoch}: beta = {beta}')
-            beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
+            if method == 'KL':
+                beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
+            else:
+                beta = beta * np.power(mean_dwave_energy/mean_rbm_energy, delta)
         beta = beta_list[-1]
         return beta, beta_list, rbm_energy_list, dwave_energies_list
     

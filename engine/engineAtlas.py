@@ -34,7 +34,7 @@ class EngineAtlas(EngineCaloV3):
     def beta_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
         if epoch > epoch_anneal_start:
             delta_beta = self._config.engine.beta_smoothing_fct_final - self._config.engine.beta_smoothing_fct
-            delta = (self._config.engine.n_epochs * 0.3 - epoch_anneal_start)*num_batches
+            delta = (self._config.engine.n_epochs * self._config.engine.annealing_percentage - epoch_anneal_start)*num_batches
             if delta_beta > 0:
                 beta = min(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
             else:
@@ -47,7 +47,7 @@ class EngineAtlas(EngineCaloV3):
     def slope_act_fct_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
         # if epoch > epoch_anneal_start:
         delta_slope = self._config.engine.slope_activation_fct_final - self._config.engine.slope_activation_fct
-        delta = (self._config.engine.n_epochs * 0.3 - epoch_anneal_start)*num_batches
+        delta = (self._config.engine.n_epochs * self._config.engine.annealing_percentage - epoch_anneal_start)*num_batches
         if delta_slope < 0:
             slope = max(self._config.engine.slope_activation_fct + delta_slope/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.slope_activation_fct_final)
         else:
