@@ -598,7 +598,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
                 J[edge] = dwave_weights_np[wKey][idx_map[partition_edge_1][edge[1]]][idx_map[partition_edge_0][edge[0]]]
         return h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias
         
-    def find_beta(self, beta_init=10.0, lr=0.01, num_epochs = 20, delta = 2.0, method = 'KL'):
+    def find_beta(self, beta_init=10.0, lr=0.01, num_epochs = 20, delta = 2.0, method = 'KL', TOL=True):
         # beta_init = 10.0
         # lr = 0.01
         # num_epochs = 20
@@ -609,11 +609,11 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         mean_rbm_energy_list = []
         mean_dwave_energy_list = []
         training_results = {}
+        sample_size = self.sampler._batch_size
 
         for epoch in range(num_epochs+1):
             _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
-            # _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
-            h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model(1.0 / beta)
+            h, J, qubit_idxs, idx_dict, _, _ = self.ising_model(1.0 / beta)
             if epoch == 0:
                 # prbm_sampler = PGBS(self.prior, 512, 3000)
                 p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
@@ -648,6 +648,9 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
                 beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
             else:
                 beta = beta * np.power(mean_dwave_energy/mean_rbm_energy, delta)
+            
+            if TOL and np.abs(mean_rbm_energy - mean_dwave_energy) < 2.0 * np.std(dwave_energies) * np.std(rbm_energies) / ( np.sqrt(sample_size) * (np.std(dwave_energies) + np.std(rbm_energies))):
+                break
         beta = beta_list[-1]
         return beta, beta_list, rbm_energy_list, dwave_energies_list
     
