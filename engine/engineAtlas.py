@@ -150,9 +150,10 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
                     batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
                     
-                    _, _, rbm_energy_list, dwave_energies_list = self._model.find_beta(num_epochs = 0)
-                    mean_rbm_energy, mean_dwave_energy = np.mean(rbm_energy_list[-1]), np.mean(dwave_energies_list[-1])
-                    batch_loss_dict["rel_energy_error"] = (mean_dwave_energy - mean_rbm_energy) / mean_rbm_energy
+                    if self._config.engine.sample_qpu:
+                        _, _, rbm_energy_list, dwave_energies_list = self._model.find_beta(num_epochs = 0)
+                        mean_rbm_energy, mean_dwave_energy = np.mean(rbm_energy_list[-1]), np.mean(dwave_energies_list[-1])
+                        batch_loss_dict["rel_energy_error"] = (mean_dwave_energy - mean_rbm_energy) / mean_rbm_energy
                     
                     for key, value in batch_loss_dict.items():
                         try:
