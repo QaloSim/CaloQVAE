@@ -30,6 +30,11 @@ class EngineAtlas(EngineCaloV3):
     def __init__(self, cfg, **kwargs):
         logger.info("Setting up engine Atlas.")
         super(EngineAtlas, self).__init__(cfg, **kwargs)
+        self.init_beta_QA()
+        
+    def init_beta_QA(self):
+        self.beta_QA = self._config.qpu.init_beta_qa # 4.5
+        self.thrsh_met = 0
         
     def beta_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
         if epoch > epoch_anneal_start:
@@ -152,16 +157,26 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
                     batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
                     
-                    if self._config.val_w_qpu:
-                        _, _, rbm_energy_list, dwave_energies_list = self._model.find_beta(num_epochs = 0)
-                        mean_rbm_energy, mean_dwave_energy = np.mean(rbm_energy_list[-1]), np.mean(dwave_energies_list[-1])
-                        batch_loss_dict["rel_energy_error"] = (mean_dwave_energy - mean_rbm_energy) / mean_rbm_energy
-                    
                     for key, value in batch_loss_dict.items():
                         try:
                             val_loss_dict[key] += value
                         except KeyError:
                             val_loss_dict[key] = value
+                            
+                    if self._config.qpu.val_w_qpu and batch_idx == 0 and mode == "validate":
+                        try:
+                            self.beta_QA, _, _, _, self.thrsh_met = self._model.find_beta(self.beta_QA, self._config.qpu.qpu_lr, self._config.qpu.qpu_iterations, 
+                                                                                                              self._config.qpu.power, self._config.qpu.method, True, self._config.qpu.thrs_const)
+                            # if self.thrsh_met == 0:
+                            #     logger.warn("We regret to inform you that the threshold was not met. The samples will be classically generated.")
+                            #     sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
+                            # else:
+                            #     sample_dwave_energies, sample_dwave_data = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/self.beta_QA)
+                        except:
+                            logger.warn("Unable to use QPU :'( . You probably ran outta $$. We'll use classical sampling instead")
+                            # sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
+                    # else:
+                    #     sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
                         
                     self._update_histograms(in_data, fwd_output.output_activations, true_energy)
                     # self._update_histograms(input_data[0]/1000, fwd_output.output_activations)
@@ -181,12 +196,20 @@ class EngineAtlas(EngineCaloV3):
                             self._model.sampler._batch_size = true_energy.shape[0]
                             sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
                             
-                            # if self._config.val_w_qpu:
-                                #beta, _, _, _ = self._model.find_beta()
-                                #beta = 7.5
-                                #sample_energies_qpu, sample_data_qpu = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/beta)
-                            # else:
-                                # sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
+                            if self._config.qpu.val_w_qpu and batch_idx == 0 and mode == "validate":
+                                try:
+                                    # self.beta_QA, _, _, _, self.thrsh_met = self._model.find_beta(self.beta_QA, self._config.qpu.qpu_lr, self._config.qpu.qpu_iterations, 
+                                                                                                  # self._config.qpu.power, self._config.qpu.method, True, self._config.qpu.thrs_const)
+                                    if self.thrsh_met == 0:
+                                        logger.warn("We regret to inform you that the threshold was not met. The samples will be classically generated.")
+                                        sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
+                                    else:
+                                        sample_dwave_energies, sample_dwave_data = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/self.beta_QA)
+                                except:
+                                    logger.warn("Unable to use QPU :'( . You probably ran outta $$. We'll use classical sampling instead")
+                                    sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
+                            else:
+                                sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
 
                             self._model.sampler._batch_size = self._config.engine.rbm_batch_size
                             # sample_energies, sample_data = self._model.generate_samples()
@@ -342,10 +365,18 @@ class EngineAtlas(EngineCaloV3):
         self._model.sampler._batch_size = true_energy.shape[0]
         sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
         
-        if self._config.val_w_qpu:
-            beta, _, _, _ = self._model.find_beta(num_epochs = 0)
-            # beta = 7.5
-            sample_dwave_energies, sample_dwave_data = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/beta)
+        if self._config.qpu.val_w_qpu:
+            try:
+                # self.beta_QA, _, _, _, self.thrsh_met = self._model.find_beta(self.beta_QA, self._config.qpu.qpu_lr, self._config.qpu.qpu_iterations, 
+                                                                                                  # self._config.qpu.power, self._config.qpu.method, True, self._config.qpu.thrs_const)
+                if self.thrsh_met == 0:
+                    logger.warn("We regret to inform you that the threshold was not met. The samples will be classically generated.")
+                    sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
+                else:
+                    sample_dwave_energies, sample_dwave_data = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/self.beta_QA)
+            except:
+                logger.warn("Unable to use QPU :'( . You probably ran outta $$. We'll use classical sampling instead")
+                sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
         else:
             sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
         

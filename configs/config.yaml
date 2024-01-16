@@ -8,7 +8,10 @@ save_hists: 1
 save_partition: 1
 freeze_vae: 1
 
-val_w_qpu: 0
+# val_w_qpu: 0
+# init_beta_qa: 4.5
+# qpu_iterations: 10
+# qpu_it_thrsh_const: 1.5
 
 wandb_enabled: 1
 
@@ -45,7 +48,7 @@ wandb_enabled: 1
 output_path: /fast_scratch_1/jtoledo/outputs
 device: gpu
 gpu_list:
-  - 4
+  - 1
 
 task:
   - train
@@ -56,6 +59,7 @@ defaults:
   - model: gumboltatlasPrbmcnn
   - data: atlasDGX
   - engine: dvaeatlas_training_peg
+  - qpu: peggy
 
 # model: gumboltatlascrbmcnndcond
 # model: gumboltatlascrbmfcn

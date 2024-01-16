@@ -598,7 +598,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
                 J[edge] = dwave_weights_np[wKey][idx_map[partition_edge_1][edge[1]]][idx_map[partition_edge_0][edge[0]]]
         return h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias
         
-    def find_beta(self, beta_init=10.0, lr=0.01, num_epochs = 20, delta = 2.0, method = 'KL', TOL=True):
+    def find_beta(self, beta_init=10.0, lr=0.01, num_epochs = 20, delta = 2.0, method = 'KL', TOL=True, const = 1.0):
         # beta_init = 10.0
         # lr = 0.01
         # num_epochs = 20
@@ -610,6 +610,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         mean_dwave_energy_list = []
         training_results = {}
         sample_size = self.sampler._batch_size
+        thrsh_met = 0
 
         for epoch in range(num_epochs+1):
             _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
@@ -643,14 +644,16 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
             mean_rbm_energy_list.append(mean_rbm_energy)
             mean_dwave_energy_list.append(mean_dwave_energy)
             beta_list.append(beta)
-            print (f'Epoch {epoch}: beta = {beta}')
+            # print (f'Epoch {epoch}: beta = {beta}')
+            logger.info(f'Epoch {epoch}: beta = {beta}')
             if method == 'KL':
                 beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
             else:
                 beta = beta * np.power(mean_dwave_energy/mean_rbm_energy, delta)
             
-            if TOL and np.abs(mean_rbm_energy - mean_dwave_energy) < 2.0 * np.std(dwave_energies) * np.std(rbm_energies) / ( np.sqrt(sample_size) * (np.std(dwave_energies) + np.std(rbm_energies))):
+            if TOL and np.abs(mean_rbm_energy - mean_dwave_energy) < const * 2.0 * np.std(dwave_energies) * np.std(rbm_energies) / ( np.sqrt(sample_size) * (np.std(dwave_energies) + np.std(rbm_energies))):
+                thrsh_met = 1
                 break
         beta = beta_list[-1]
-        return beta, beta_list, rbm_energy_list, dwave_energies_list
+        return beta, beta_list, rbm_energy_list, dwave_energies_list, thrsh_met
     
