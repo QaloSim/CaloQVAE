@@ -131,7 +131,9 @@ def run(config=None):
     engine.model = model
     # add the modelCreator instance to engine namespace
     engine.model_creator = modelCreator
-
+    
+    mov_cov_mat_to_model()
+    
     if config.load_state:
         assert config.run_path != 0
         config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])

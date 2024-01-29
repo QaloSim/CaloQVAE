@@ -36,6 +36,7 @@ class DataManager(object):
         # Variables to be used in the scaling and inverse scaling
         self._amin_array = None
         self._transformer = None
+        self._cov_mat = None
         return
 
     @property
@@ -113,6 +114,10 @@ class DataManager(object):
     def _set_transformer(self):
         assert self._config.data.scaler_path
         self._transformer = joblib.load(self._config.data.scaler_path)
+        
+    def _set_covmat(self):
+        covariance_matrix_path = "/fast_scratch/QVAE/data/atlas/matrix.hdf5"
+        self._cov_mat = np.load(covariance_matrix_path)
 
     def pre_processing(self):
         if not self._config.load_data_from_pkl:
