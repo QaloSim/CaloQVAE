@@ -357,7 +357,8 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
     # Calculate ae_loss using inverse covariance matrix
     delta = input_data - fwd_out.output_activations
-    inv_cov_mat = self._cov_mat
+    inv_cov_mat = self.model._cov_mat
+    
     ae_loss = torch.einsum('bi,ij,bj->b', delta, inv_cov_mat, delta)
 
     hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
