@@ -36,7 +36,7 @@ class DataManager(object):
         # Variables to be used in the scaling and inverse scaling
         self._amin_array = None
         self._transformer = None
-        self._cov_mat = None
+        self._cov_mat = cov_mat
         return
 
     @property
