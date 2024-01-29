@@ -81,7 +81,7 @@ class Engine(EngineBase):
 
         return batch_loss_dict["loss"]
     
-    def mov_cov_mat_to_model():
+    def mov_cov_mat_to_model(self):
     self.model._cov_mat = self.data_mgr.cov_mat
     
     def evaluate(self):
