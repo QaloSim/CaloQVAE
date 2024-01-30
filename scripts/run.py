@@ -132,7 +132,7 @@ def run(config=None):
     # add the modelCreator instance to engine namespace
     engine.model_creator = modelCreator
     
-    mov_cov_mat_to_model()
+    engine.mov_cov_mat_to_model()
     
     if config.load_state:
         assert config.run_path != 0
