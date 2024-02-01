@@ -317,57 +317,57 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNNDCond):
 
         return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
 
-    """
     
+    
+#     def loss(self, input_data, fwd_out, true_energy):
+#         """
+#         # Overrides loss in gumboltCaloV5.py
+#         """
+#         logger.debug("loss")
+        
+#         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
+#         # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
+#         sigma = torch.max(torch.sqrt(input_data), torch.tensor([0.1], device=input_data.device))
+#         interpolation_param = self._config.model.interpolation_param
+#         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
+#         ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
+#         # torch.min(x[x>0])
+        
+#         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
+#         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
+#         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
+#         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
+
+        
+#         # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
+#         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+        
+#         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+#                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+        
+#         # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+#         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
+        
+        
     def loss(self, input_data, fwd_out, true_energy):
-        """
-        #- Overrides loss in gumboltCaloV5.py
-        """
+        # Overrides loss in gumboltCaloV5.py
         logger.debug("loss")
-        
+
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-        # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
-        sigma = torch.max(torch.sqrt(input_data), torch.tensor([0.1], device=input_data.device))
-        interpolation_param = self._config.model.interpolation_param
-        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) # <---- divide by sqrt(x)
-        # torch.min(x[x>0])
-        
+
+        # Calculate ae_loss using inverse covariance matrix
+        delta = input_data - fwd_out.output_activations
+        inv_cov_mat = self.model._cov_mat
+
+        ae_loss = torch.einsum('bi,ij,bj->b', delta, inv_cov_mat, delta)
+
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
 
-        
-        # return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        
-        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        
-        # return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy, "label_loss":hit_label}
-        
-        """
-        def loss(self, input_data, fwd_out, true_energy):
-    - Overrides loss in gumboltCaloV5.py
-    logger.debug("loss")
-    
-    kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-
-    # Calculate ae_loss using inverse covariance matrix
-    delta = input_data - fwd_out.output_activations
-    inv_cov_mat = self.model._cov_mat
-    
-    ae_loss = torch.einsum('bi,ij,bj->b', delta, inv_cov_mat, delta)
-
-    hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
-    spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
-    sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
-    hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
-
-    return {"ae_loss": ae_loss, "kl_loss": kl_loss, "hit_loss": hit_loss,
-            "entropy": entropy, "pos_energy": pos_energy, "neg_energy": neg_energy}
+        return {"ae_loss": ae_loss, "kl_loss": kl_loss, "hit_loss": hit_loss,
+                "entropy": entropy, "pos_energy": pos_energy, "neg_energy": neg_energy}
         
 
         
