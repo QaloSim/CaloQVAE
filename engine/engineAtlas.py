@@ -165,8 +165,8 @@ class EngineAtlas(EngineCaloV3):
                             
                     if self._config.qpu.val_w_qpu and batch_idx == 0 and mode == "validate":
                         try:
-                            self.beta_QA, _, _, _, self.thrsh_met = self._model.find_beta(self.beta_QA, self._config.qpu.qpu_lr, self._config.qpu.qpu_iterations, 
-                                                                                                              self._config.qpu.power, self._config.qpu.method, True, self._config.qpu.thrs_const)
+                            self.beta_QA, _, _, _, self.thrsh_met = self._model.find_beta(self._config.qpu.num_reads, self.beta_QA, self._config.qpu.qpu_lr, self._config.qpu.qpu_iterations, 
+                                                                                                              self._config.qpu.power, self._config.qpu.method, True, self._config.qpu.thrs_const, self._config.qpu.adaptive)
                             # if self.thrsh_met == 0:
                             #     logger.warn("We regret to inform you that the threshold was not met. The samples will be classically generated.")
                             #     sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
@@ -196,10 +196,10 @@ class EngineAtlas(EngineCaloV3):
                             self._model.sampler._batch_size = true_energy.shape[0]
                             sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
                             
-                            if self._config.qpu.val_w_qpu and batch_idx == 0 and mode == "validate":
+                            if self._config.qpu.val_w_qpu and batch_idx == 0 and mode == "validate" and False:
                                 try:
-                                    # self.beta_QA, _, _, _, self.thrsh_met = self._model.find_beta(self.beta_QA, self._config.qpu.qpu_lr, self._config.qpu.qpu_iterations, 
-                                                                                                  # self._config.qpu.power, self._config.qpu.method, True, self._config.qpu.thrs_const)
+                                    # self.beta_QA, _, _, _, self.thrsh_met = self._model.find_beta(self._config.qpu.num_reads, self._config.qpu.num_reads, self.beta_QA, self._config.qpu.qpu_lr, self._config.qpu.qpu_iterations, 
+                                                                                                  # self._config.qpu.power, self._config.qpu.method, True, self._config.qpu.thrs_const, self._config.qpu.adaptive)
                                     if self.thrsh_met == 0:
                                         logger.warn("We regret to inform you that the threshold was not met. The samples will be classically generated.")
                                         sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
@@ -367,8 +367,8 @@ class EngineAtlas(EngineCaloV3):
         
         if self._config.qpu.val_w_qpu:
             try:
-                # self.beta_QA, _, _, _, self.thrsh_met = self._model.find_beta(self.beta_QA, self._config.qpu.qpu_lr, self._config.qpu.qpu_iterations, 
-                                                                                                  # self._config.qpu.power, self._config.qpu.method, True, self._config.qpu.thrs_const)
+                # self.beta_QA, _, _, _, self.thrsh_met = self._model.find_beta(self._config.qpu.num_reads, self.beta_QA, self._config.qpu.qpu_lr, self._config.qpu.qpu_iterations, 
+                                                                                                  # self._config.qpu.power, self._config.qpu.method, True, self._config.qpu.thrs_const, self._config.qpu.adaptive)
                 if self.thrsh_met == 0:
                     logger.warn("We regret to inform you that the threshold was not met. The samples will be classically generated.")
                     sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
@@ -541,9 +541,11 @@ class EngineAtlas(EngineCaloV3):
                 in_data, true_energy, in_data_flat = self._preprocess(xx[0],xx[1])
                 if self._config.reducedata:
                     in_data = self._reduce(in_data, true_energy, R=R)
-                # enIn = torch.cat((in_data, true_energy), dim=1)
-                # beta, post_logits, post_samples = self.model.encoder(enIn, False)
-                beta, post_logits, post_samples = self.model.encoder(in_data, true_energy, False)
+                if "PRBMCNN" in self._config.model.model_type:
+                    beta, post_logits, post_samples = self.model.encoder(in_data, true_energy, False)
+                elif "PRBMFCN" in self._config.model.model_type:
+                    enIn = torch.cat((in_data, true_energy), dim=1)
+                    beta, post_logits, post_samples = self.model.encoder(enIn, False)
                 post_samples = torch.cat(post_samples, 1)
                 post_samples_energy = self.model.stater.energy_samples(post_samples[:,0:partition_size], post_samples[:,partition_size:2*partition_size], 
                                                          post_samples[:,2*partition_size:3*partition_size], post_samples[:,3*partition_size:4*partition_size], 1.0 )

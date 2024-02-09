@@ -96,7 +96,7 @@ def generate_rbm_energy_hist(engine, model_config, val_loader, _wandb=True):
         energy_encoded_data, energy_rbm_data = rbm_energy_hist(engine, model_config, val_loader)
         image = plot_RBM_energy(energy_encoded_data, energy_rbm_data, _wandb)
     elif "PRBMFCN" in model_config.model_type:
-        energy_encoded_data, energy_rbm_data = rbm_energy_hist(engine, model_config, val_loader)
+        energy_encoded_data, energy_rbm_data = rbm_energy_hist_fcn(engine, model_config, val_loader)
         image = plot_RBM_energy(energy_encoded_data, energy_rbm_data, _wandb)
     return image
         
