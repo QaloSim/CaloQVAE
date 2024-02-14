@@ -168,7 +168,7 @@ def run(config=None):
             engine.fit(epoch=epoch, is_training=False, mode="validate")
             
         if config.freeze_vae and dummy_variable == 0:
-            if epoch > config.engine.annealing_percentage*1.3*(config.engine.n_epochs + _epoch) + 1:
+            if epoch > config.engine.annealing_percentage*2.0*(config.engine.n_epochs + _epoch) + 1:
                 for name, param in engine.model.named_parameters():
                     if 'decoder' in name or 'encoder' in name:
                         param.requires_grad = False
