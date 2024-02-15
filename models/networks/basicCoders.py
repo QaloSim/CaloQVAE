@@ -401,6 +401,132 @@ class DecoderCNNPosCondSmall(BasicDecoderV3):
         x2 = self._layers3(xx0)
         return x1, x2
 
+    
+class DecoderCNNUnconditionedAct(BasicDecoderV3):
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
+        super(DecoderCNNUnconditionedAct, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+        self.minEnergy = 256.0
+        self.n_latent_nodes = self._config.model.n_latent_nodes
+
+        self._layers =  nn.Sequential(
+                   nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+
+                   nn.ConvTranspose2d(self._node_sequence[0][0]-1, 512, 4, 2, 0),
+                   nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+                   
+
+                   nn.ConvTranspose2d(512, 256, 4, 2, 0),
+                   nn.BatchNorm2d(256),
+                   nn.PReLU(256, 0.02),
+                                   )
+        
+        self._layers2 = nn.Sequential(
+                   nn.ConvTranspose2d(257, 64, 4, 2, 0),
+                   nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+
+                   nn.ConvTranspose2d(64, 1, 3, 1, 0),
+                   nn.BatchNorm2d(1),
+                   nn.PReLU(1, 0.02),
+
+                   nn.Flatten(),
+                   nn.Linear(576,self.num_output_nodes),
+                   nn.LeakyReLU(0.02),
+                                   )
+        
+        self._layers3 = nn.Sequential(
+                   nn.ConvTranspose2d(256, 64, 4, 2, 0),
+                   nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+
+                   nn.ConvTranspose2d(64, 1, 3, 1, 0),
+                   nn.BatchNorm2d(1),
+                   nn.PReLU(1, 0.02),
+
+                   nn.Flatten(),
+                   nn.Linear(576,self.num_output_nodes),
+                   nn.LeakyReLU(0.02),
+                                   )
+        
+    def forward(self, x, x0):
+        logger.debug("Decoder::decode")
+                
+        x = self._layers(x)
+        xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000)), 1)
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(x)
+        return x1, x2
+    
+    
+    
+class DecoderCNNHitsToAct(BasicDecoderV3):
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
+        super(DecoderCNNHitsToAct, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+        self.minEnergy = 256.0
+        self.n_latent_nodes = self._config.model.n_latent_nodes
+
+        self._layers =  nn.Sequential(
+                   nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+
+                   nn.ConvTranspose2d(self._node_sequence[0][0]-1, 512, 4, 2, 0),
+                   nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+                   
+
+                   nn.ConvTranspose2d(512, 256, 4, 2, 0),
+                   nn.BatchNorm2d(256),
+                   nn.PReLU(256, 0.02),
+                                   )
+        
+        self._layers2 = nn.Sequential(
+                   nn.ConvTranspose2d(257, 64, 4, 2, 0),
+                   nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+
+                   nn.ConvTranspose2d(64, 1, 3, 1, 0),
+                   nn.BatchNorm2d(1),
+                   nn.PReLU(1, 0.02),
+                    )
+
+        self._layers2_2 = nn.Sequential(nn.Flatten(),
+                   nn.Linear(576,self.num_output_nodes),
+                   nn.LeakyReLU(0.02),
+                                   )
+        
+        self._layers3 = nn.Sequential(
+                   nn.ConvTranspose2d(256, 64, 4, 2, 0),
+                   nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+
+                   nn.ConvTranspose2d(64, 1, 3, 1, 0),
+                   nn.BatchNorm2d(1),
+                   nn.PReLU(1, 0.02),
+                    )
+        self._layers3_2 = nn.Sequential( 
+                   nn.ConvTranspose2d(2, 1, 3, 1, 0),
+                   nn.Flatten(),
+                   nn.Linear(576,self.num_output_nodes),
+                   nn.LeakyReLU(0.02),
+                                   )
+        
+    def forward(self, x, x0):
+        logger.debug("Decoder::decode")
+                
+        x = self._layers(x)
+        xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000)), 1)
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(x)
+        x2 = torch.cat((x2,x1), 1)
+        x1 = self._layers2_2(x1)
+        x2 = self._layers3_2(x2)
+
+        return x1, x2
+
 
 class Classifier(BasicDecoderV3):
     def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):

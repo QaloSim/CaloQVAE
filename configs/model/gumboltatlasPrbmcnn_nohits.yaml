@@ -28,8 +28,8 @@ pe: 1
 # pe: 2
 encodertype: Small
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: Small
-# Small, SmallUnconditioned, SmallPosEnc
+decodertype: SmallHitsToAct
+# Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct
 
 fullyconnected: False
 # bernoulli : 0
