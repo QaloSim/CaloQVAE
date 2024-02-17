@@ -87,8 +87,8 @@ class ModelCreator(object):
                 #TODO change init arguments. Ideally, the model does not carry
                 #specific information about the dataset. 
                 self.model = model_class(
-                    flat_input_size=dataMgr.get_flat_input_size(),
-                    train_ds_mean=dataMgr.get_train_dataset_mean(),
+                    flat_input_size=[dataMgr.get_flat_input_size()],
+                    train_ds_mean=10, #dataMgr.get_train_dataset_mean(),
                     activation_fct=self._default_activation_fct,
                     cfg=self._config)
                 

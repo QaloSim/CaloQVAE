@@ -28,8 +28,8 @@ pe: 1
 # pe: 2
 encodertype: Small
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: SmallHitsToAct
-# Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct
+decodertype: Small
+# Small, SmallUnconditioned, SmallPosEnc
 
 fullyconnected: False
 # bernoulli : 0
@@ -39,5 +39,5 @@ fullyconnected: False
 alpha: 0.0
 gamma: 0.0
 mse_weight: 0.0
-interpolation_param: 1.0
+interpolation_param: 0.1
 rbmMethod: CD

@@ -63,15 +63,15 @@ initialize(version_base=None, config_path="../configs")
 
 ###############################
 
-# happy-sun-270 | CNN + voxel pos enc + cond + scaled data
-# run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231201_203858-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231224_160705-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-modelname = 'happy-sun-270'
+# # happy-sun-270 | CNN + voxel pos enc + cond + scaled data
+# # run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231201_203858-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
+# run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231224_160705-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
+# modelname = 'happy-sun-270'
 
     
-# drawn-cosmos-266 | CNN + cond + scaled data
-run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231224_163015-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-modelname = 'drawn-cosmos-266'    
+# # drawn-cosmos-266 | CNN + cond + scaled data
+# run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231224_163015-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
+# modelname = 'drawn-cosmos-266'    
 
 
 # # misty-wind-267 | CNN + voxel pos enc JQTM + cond + scaled data
@@ -79,14 +79,14 @@ modelname = 'drawn-cosmos-266'
 # modelname = 'misty-wind-267'   
 
     
-# # winter-glade-268 | CNN + cond pos enc + scaled data
-# run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231224_163406-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-# modelname = 'winter-glade-268'    
+# winter-glade-268 | CNN + cond pos enc + scaled data
+run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231224_163406-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
+modelname = 'winter-glade-268'    
 
 
-# prime-totem-282 | CNN + cond + scaled data
-run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-01-08/13-51-41/wandb/run-20240108_135142-2fitsjre/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-modelname = 'prime-totem-282'
+# # prime-totem-282 | CNN + cond + scaled data
+# run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-01-08/13-51-41/wandb/run-20240108_135142-2fitsjre/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
+# modelname = 'prime-totem-282'
      
 datascaled = 'reduced'
 R = 0.01
@@ -331,17 +331,20 @@ def draw_sample(engine, dev, config, val_loader, modelname):
     
     
 def get_diff_btw_true_and_argmin_einc(engine, dev, config, val_loader, modelname, range_len=106):
-    res_ar = torch.tensor([[0,0,0,0]])
+    # res_ar = torch.tensor([[0,0,0,0]])
 # res_ar = np.array([[0,0,0,0]])
+
+    res_ar = torch.zeros(range_len,4)
 
     for i in range(range_len):
         logger.info(f'{i}')
-        er_m_list, er_std_list, log_space_values, en_inc, shower_sum_in, sp_er_m_list, sp_er_std_list = error_btwn_input_and_recon_with_different_label(engine, dev, config, val_loader, modelname, i, num=50)
+        er_m_list, er_std_list, log_space_values, en_inc, shower_sum_in, sp_er_m_list, sp_er_std_list = error_btwn_input_and_recon_with_different_label(engine, dev, config, val_loader, modelname, i, num=200)
 
         energy_label_min = log_space_values[torch.tensor(er_m_list).argmin().item()]
         energy_label_min_spar = log_space_values[torch.tensor(sp_er_m_list).argmin().item()]
         # res_ar = np.concatenate((res_ar, np.array([[energy_label_min, en_inc, shower_sum_in, energy_label_min_spar]])), axis=0)
-        res_ar = torch.cat([res_ar, torch.tensor([[energy_label_min, en_inc, shower_sum_in, energy_label_min_spar]])], dim=0)
+        # res_ar = torch.cat([res_ar, torch.tensor([[energy_label_min, en_inc, shower_sum_in, energy_label_min_spar]])], dim=0)
+        res_ar[i,:] = torch.tensor([[energy_label_min, en_inc, shower_sum_in, energy_label_min_spar]])
         
     # plt.scatter(res_ar[1:,1]/1000, (res_ar[1:,0] - res_ar[1:,1])/1000, color='b')
     # plt.grid(True)
@@ -351,13 +354,22 @@ def get_diff_btw_true_and_argmin_einc(engine, dev, config, val_loader, modelname
     # plt.show()
     
     plt.figure(figsize=(8,6))
-    plt.scatter(res_ar[1:,1]/1000, (res_ar[1:,3] - res_ar[1:,1])/1000, color='b')
+    y = (res_ar[1:,3] - res_ar[1:,1])/1000
+    x = res_ar[1:,1]/1000
+    x_pos = x[y>0]
+    y_pos = y[y>0]
+    x_neg = x[y<0]
+    y_neg = y[y<0]
+    # plt.scatter(res_ar[1:,1]/1000, abs(res_ar[1:,3] - res_ar[1:,1])/1000, color='b')
+    # plt.scatter(res_ar[1:,1]/1000, (res_ar[1:,3] - res_ar[1:,1])/1000, color='b')
+    plt.scatter(x_pos, abs(y_pos), color='b', label = 'y positive')
     plt.scatter(res_ar[1:,1]/1000, (res_ar[1:,0] - res_ar[1:,1])/1000, color='red', alpha=0.5)
     plt.grid(True)
     plt.xlabel("Incidence Energy as input to decoder (GeV)", fontsize=15)
     plt.ylabel("| Eᵢ - Eᵢ'|", fontsize=15)
     plt.legend(['sparsity', 'shower'], framealpha=0.5, fontsize=15)
     plt.xscale("log")
+    plt.yscale("log")
     plt.savefig(f'/home/javier/Projects/CaloQVAE/figs/{modelname}/diff_energy_per_inc_energy_mean_{modelname}.png')
     # plt.show()
     

@@ -18,7 +18,7 @@ from models.rbm.chimerav2 import QimeraRBM
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 # from models.networks.EncoderCNN import EncoderCNN
 from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH, EncoderUCNNHPosEnc
-from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall, DecoderCNNUnconditionedAct, DecoderCNNHitsToAct
+from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall, DecoderCNNUnconditionedAct, DecoderCNNHitsToAct, DecoderCNN_nth_da_charm, DecoderCNNUnconditionedHits
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -110,6 +110,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             DecoderCNNCond instance
         """
         logger.debug("GumBoltAtlasCRBMCNN::_create_decoder")
+        logger.info(f'GumBoltAtlasCRBMCNN::decoder {self._config.model.decodertype}')
         self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
                                   self._decoder_nodes[0][1])
 
@@ -120,22 +121,32 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallUnconditioned":
             return DecoderCNNUnconditioned(node_sequence=self._decoder_nodes,
-                              activation_fct=self._activation_fct, #<--- try identity
+                              activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallPosEnc":
             return DecoderCNNPosCondSmall(node_sequence=self._decoder_nodes,
-                              activation_fct=self._activation_fct, #<--- try identity
+                              activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallUnconditionedAct":
             return DecoderCNNUnconditionedAct(node_sequence=self._decoder_nodes,
-                              activation_fct=self._activation_fct, #<--- try identity
+                              activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallHitsToAct":
             return DecoderCNNHitsToAct(node_sequence=self._decoder_nodes,
-                              activation_fct=self._activation_fct, #<--- try identity
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallCharm":
+            return DecoderCNN_nth_da_charm(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallUnconditionedHits":
+            return DecoderCNNUnconditionedHits(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
 
@@ -410,7 +421,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         
         
         # if self._config.engine.modelhits:
-        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss*0.3,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         # else:
         #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,

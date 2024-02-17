@@ -39,8 +39,12 @@ wandb_enabled: 1
 # pions
 # run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-11/15-03-26/wandb/run-20231211_150327-vljzh7n3/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
 
+# no hits
+run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-02-13/18-47-19/wandb/run-20240213_184720-76xrzznn/files/GumBoltAtlasPRBMCNNnohits_atlas_default_latest.pth"
+
 
 output_path: /fast_scratch_1/jtoledo/outputs
+num_workers: 16
 device: gpu
 gpu_list:
   - 0
@@ -53,7 +57,7 @@ task:
 defaults:
   - model: gumboltatlasPrbmcnn
   - data: atlasDGX
-  - engine: dvaeatlas_training_peg
+  - engine: atlasPeggyBeta
   - qpu: peggy
 
 # model: gumboltatlascrbmcnndcond
@@ -68,5 +72,6 @@ defaults:
 # model: gumboltatlasPrbmcnn_nohits
 # engine: dvaeatlas_training_pegV2
 
+# engine: atlasPeggyBeta
 usinglayers: False
 reducedata: False
