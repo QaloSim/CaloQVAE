@@ -26,9 +26,9 @@ lz: 45
 ltheta: 16
 lr: 9
 pe: 2
-encodertype: SmallPosEnc
+encodertype: Small
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: SmallPosEnc
+decodertype: Small
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
 
 fullyconnected: False
@@ -38,6 +38,6 @@ fullyconnected: False
 # mse_weight: 0.1
 alpha: 0.0
 gamma: 0.0
-mse_weight: 0.0
+mse_weight: 0.09
 interpolation_param: 1.0
 rbmMethod: CD

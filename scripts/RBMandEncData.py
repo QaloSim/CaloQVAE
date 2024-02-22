@@ -79,14 +79,29 @@ initialize(version_base=None, config_path="../configs")
 # modelname = 'misty-wind-267'   
 
     
-# winter-glade-268 | CNN + cond pos enc + scaled data
-run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231224_163406-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-modelname = 'winter-glade-268'    
+# # winter-glade-268 | CNN + cond pos enc + scaled data
+# run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231224_163406-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
+# modelname = 'winter-glade-268'   
+
+
+# # generous-elevator | CNN + cond + scaled data + no hits
+# run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-13/18-47-19/wandb/run-20240216_200216-76xrzznn/files/GumBoltAtlasPRBMCNNnohits_atlas_default_latest.pth"
+# modelname = 'generous-elevator-301'
 
 
 # # prime-totem-282 | CNN + cond + scaled data
 # run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-01-08/13-51-41/wandb/run-20240108_135142-2fitsjre/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
 # modelname = 'prime-totem-282'
+
+
+# divine-valentine-309 | CNN + cond + scaled data + dec charm
+run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-15/17-36-19/wandb/run-20240215_173620-l3i43zja/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+modelname = 'divine-valentine-309'
+
+
+# # toasty-cherry-310 | CNN + cond + scaled data + hits dec uncond
+# run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-15/22-10-50/wandb/run-20240215_221050-caevb6ld/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+# modelname = 'toasty-cherry-310'
      
 datascaled = 'reduced'
 R = 0.01
@@ -368,8 +383,8 @@ def get_diff_btw_true_and_argmin_einc(engine, dev, config, val_loader, modelname
     plt.xlabel("Incidence Energy as input to decoder (GeV)", fontsize=15)
     plt.ylabel("| Eᵢ - Eᵢ'|", fontsize=15)
     plt.legend(['sparsity', 'shower'], framealpha=0.5, fontsize=15)
-    plt.xscale("log")
-    plt.yscale("log")
+    # plt.xscale("log")
+    # plt.yscale("log")
     plt.savefig(f'/home/javier/Projects/CaloQVAE/figs/{modelname}/diff_energy_per_inc_energy_mean_{modelname}.png')
     # plt.show()
     

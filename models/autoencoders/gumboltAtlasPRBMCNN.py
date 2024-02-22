@@ -649,7 +649,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
             logger.info(f'Epoch {epoch}: beta = {beta}')
             if method == 1:
                 if adaptive:
-                    lr = np.max([lr_init, np.pow(beta,2)/np.var(dwave_energies)])
+                    lr = np.max([lr_init, np.power(beta,2)/np.var(dwave_energies)])
                 beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
             else:
                 if adaptive:

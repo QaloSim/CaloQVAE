@@ -137,7 +137,7 @@ class HighLevelFeatures:
             plt.savefig(filename, facecolor='white')
         #return fig
 
-    def _DrawShower(self, data, filename, title):
+    def _DrawShower(self, data, filename, title, _vmax, _vmin, _cmap='viridis'):
         """ Draws the shower in all layers """
         if self.particle == 'electron':
             figsize = (10, 20)
@@ -151,8 +151,15 @@ class HighLevelFeatures:
         for radii in self.r_edges:
             if radii[-1] > max_r:
                 max_r = radii[-1]
-        vmin = 1e-4
-        vmax = np.max([data.max(),1e-3]) # <-------------------
+        # vmin = 1e-4
+        if _vmin == 0:
+            vmin = 1e-4
+        else:
+            vmin = _vmin
+        if _vmax == 0:
+            vmax = np.max([data.max(),1e-3]) # <-------------------
+        else:
+            vmax = _vmax
         for idx, layer in enumerate(self.relevantLayers):
             radii = np.array(self.r_edges[idx])
             if self.particle != 'electron':
@@ -167,7 +174,7 @@ class HighLevelFeatures:
             else:
                 ax = plt.subplot(1, len(self.r_edges), idx+1, polar=True)
             ax.grid(False)
-            pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=vmin, vmax=vmax))
+            pcm = ax.pcolormesh(theta, rad, data_repeated.T+1e-16, norm=LN(vmin=vmin, vmax=vmax), cmap = _cmap)
             ax.axes.get_xaxis().set_visible(False)
             ax.axes.get_yaxis().set_visible(False)
             if self.particle == 'electron':
@@ -230,12 +237,12 @@ class HighLevelFeatures:
         """ returns dictionary of widths of centers of energy in phi for each layer """
         return self.width_phis
 
-    def DrawAverageShower(self, data, filename=None, title=None):
+    def DrawAverageShower(self, data, filename=None, title=None, vmax=0, vmin = 0, cmap='viridis'):
         """ plots average of provided showers """
-        image = self._DrawShower(data.mean(axis=0), filename=filename, title=title)
+        image = self._DrawShower(data.mean(axis=0), filename=filename, title=title, _vmax=vmax, _vmin=vmin, _cmap=cmap)
         return image
 
-    def DrawSingleShower(self, data, filename=None, title=None):
+    def DrawSingleShower(self, data, filename=None, title=None, vmax=0, vmin=0, cmap='viridis'):
         """ plots all provided showers after each other """
         ret = []
         if len(data.shape) == 1:
@@ -246,7 +253,7 @@ class HighLevelFeatures:
                 local_name += '_{}'.format(num) + local_ext
             else:
                 local_name = None
-            image = self._DrawShower(shower, filename=local_name, title=title)
+            image = self._DrawShower(shower, filename=local_name, title=title, _vmax=vmax, _vmin=vmin, _cmap=cmap)
             return image
 
     def DrawHistoEtot(self, filename=None):

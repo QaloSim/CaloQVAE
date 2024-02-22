@@ -421,7 +421,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         
         
         # if self._config.engine.modelhits:
-        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss*0.3,
+        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
         # else:
         #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
