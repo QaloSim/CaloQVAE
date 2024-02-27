@@ -95,7 +95,7 @@ initialize(version_base=None, config_path="../configs")
 
 
 # divine-valentine-309 | CNN + cond + scaled data + dec charm
-run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-15/17-36-19/wandb/run-20240215_173620-l3i43zja/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-15/17-36-19/wandb/run-20240215_173620-l3i43zja/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
 modelname = 'divine-valentine-309'
 
 

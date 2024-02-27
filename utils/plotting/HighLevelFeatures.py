@@ -161,13 +161,14 @@ class HighLevelFeatures:
         else:
             vmax = _vmax
         for idx, layer in enumerate(self.relevantLayers):
-            radii = np.array(self.r_edges[idx])
+            # idx = layer
+            radii = np.array(self.r_edges[layer])
             if self.particle != 'electron':
                 radii[1:] = np.log(radii[1:])
             theta, rad = np.meshgrid(2.*np.pi*np.arange(num_splits+1)/ num_splits, radii)
-            pts_per_angular_bin = int(num_splits / self.num_alpha[idx])
-            data_reshaped = data[layer_boundaries[idx]:layer_boundaries[idx+1]].reshape(
-                int(self.num_alpha[idx]), -1)
+            pts_per_angular_bin = int(num_splits / self.num_alpha[layer])
+            data_reshaped = data[layer_boundaries[layer]:layer_boundaries[layer+1]].reshape(
+                int(self.num_alpha[layer]), -1)
             data_repeated = np.repeat(data_reshaped, (pts_per_angular_bin), axis=0)
             if self.particle == 'electron':
                 ax = plt.subplot(9, 5, idx+1, polar=True)

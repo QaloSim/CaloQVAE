@@ -109,9 +109,10 @@ class PegasusRBM(nn.Module):
         n_cells_per_layer = math.ceil(n_cells/_QPU_DEPTH)
         n_rows = math.ceil(math.sqrt(n_cells_per_layer))
         n_cols = n_rows
-
-        device = DWaveSampler(solver={'topology__type': 'pegasus',  "chip_id":"Advantage_system6.3"})
-        # device = DWaveSampler(solver={'topology__type': 'pegasus', "chip_id":"Advantage_system4.1"})
+        try:
+            device = DWaveSampler(solver={'topology__type': 'pegasus',  "chip_id":"Advantage_system6.3"})
+        except:
+            device = DWaveSampler(solver={'topology__type': 'pegasus', "chip_id":"Advantage_system4.1"})
         self._qpu_sampler = device
         qpu_nodes = device.nodelist
 
