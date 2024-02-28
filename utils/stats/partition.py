@@ -262,9 +262,6 @@ def create_filenames_dict(run_path):
     return filenames
 
 def get_right_dir(i, filenames):
-    # first_key = list(filenames)[0]
-    # _pattern_like = filenames[first_key][-1]
-    # pattern = f'RBM_{i}_' + _pattern_like.split('_')[-2] + '_weights.pth'
     pattern = get_right_pattern(i, filenames)
     
     for key in filenames.keys():

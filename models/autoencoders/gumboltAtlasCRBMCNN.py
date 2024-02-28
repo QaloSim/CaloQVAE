@@ -183,7 +183,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         if self.training:
             # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
             activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-            out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            # out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
         else:
             out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         # else:
@@ -412,7 +413,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
         # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
-        hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= 1 + input_data, reduction='none')
+        hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none') #, weight= 1 + input_data
         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
@@ -427,8 +428,8 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         # else:
         #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+            
         
-        # MSE =. sum (x_hat_i - x_i)^2 -------> sum (x_hat_i - x_i) C_ij (x_hat_j - x_j)
     def batch_dwave_samples(self, response, qubit_idxs):
         """
         sampler.sample_ising() method returns a nested SampleSet structure
