@@ -653,7 +653,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
                 beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
             else:
                 if adaptive:
-                    delta = np.max([2.0, np.abs(mean_dwave_energy)/np.var(dwave_energies)])
+                    delta = np.max([delta_init, np.abs(mean_dwave_energy)/np.var(dwave_energies)])
                 beta = np.max([2.0, beta * np.power(mean_dwave_energy/mean_rbm_energy, delta)])
             
             if TOL and np.abs(mean_rbm_energy - mean_dwave_energy) < const * 2.0 * np.std(dwave_energies) * np.std(rbm_energies) / ( np.sqrt(num_reads) * (np.std(dwave_energies) + np.std(rbm_energies))):
