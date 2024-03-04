@@ -102,6 +102,11 @@ modelname = 'divine-valentine-309'
 # # toasty-cherry-310 | CNN + cond + scaled data + hits dec uncond
 # run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-15/22-10-50/wandb/run-20240215_221050-caevb6ld/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
 # modelname = 'toasty-cherry-310'
+
+# robust-tree-339 | CNN + cond + scaled data
+run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-27/18-38-25/wandb/run-20240301_174432-y5uczif5/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+modelname = 'robust-tree-339'
+
      
 datascaled = 'reduced'
 R = 0.01

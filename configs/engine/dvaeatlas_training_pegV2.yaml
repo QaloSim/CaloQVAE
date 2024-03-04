@@ -1,6 +1,6 @@
 _target_: engine.engineAtlasV2.EngineAtlasV2
 learning_rate: 0.0001
-n_epochs: 300
+n_epochs: 100
 
 kl_enabled: 1
 ae_enabled: 1

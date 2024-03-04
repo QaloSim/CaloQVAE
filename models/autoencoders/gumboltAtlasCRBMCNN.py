@@ -413,7 +413,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
         # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
-        hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= 1 + input_data, reduction='none') #, weight= 1 + input_data
+        hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= 1+input_data, reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)

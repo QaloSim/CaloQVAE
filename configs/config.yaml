@@ -3,7 +3,7 @@ debug: False
 load_data_from_pkl: 0
 
 save_state: 1
-load_state: 0
+load_state: 1
 save_hists: 1
 save_partition: 1
 freeze_vae: 1
@@ -41,13 +41,22 @@ wandb_enabled: 1
 
 # no hits
 # run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-02-13/18-47-19/wandb/run-20240213_184720-76xrzznn/files/GumBoltAtlasPRBMCNNnohits_atlas_default_latest.pth"
-run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-02-13/18-47-19/wandb/run-20240216_200216-76xrzznn/files/GumBoltAtlasPRBMCNNnohits_atlas_default_best.pth"
+# run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-02-13/18-47-19/wandb/run-20240216_200216-76xrzznn/files/GumBoltAtlasPRBMCNNnohits_atlas_default_best.pth"
+
+#robust tree
+# run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-02-27/18-38-25/wandb/run-20240227_183826-y5uczif5/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+
+#honest breeze
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-03-01/13-51-30/wandb/run-20240301_135131-dfolca4r/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+
+#silver blaze
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-02-27/14-14-29/wandb/run-20240227_141430-9ghcd0zi/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
 
 output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 4
+  - 0
 
 task:
   - train
