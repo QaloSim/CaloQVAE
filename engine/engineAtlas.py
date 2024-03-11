@@ -109,15 +109,11 @@ class EngineAtlas(EngineCaloV3):
                     slope_act_fct = self._config.engine.slope_activation_fct_final
                 
                 fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct, slope_act_fct)
-                # if self._config.reducedata:
-                #     in_data = self._reduceinv(in_data, true_energy, R=self.R)
-                #     fwd_output.output_activations = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
                 batch_loss_dict = self._model.loss(in_data, fwd_output, true_energy)
 
                     
                 if is_training:
                     if epoch >= epoch_anneal_start:
-                        # gamma = min((((epoch-epoch_anneal_start)*num_batches)+(batch_idx+1))/(total_batches*kl_annealing_ratio), self._config.engine.kl_gamma_max)
                         gamma = 1
                     else:
                         gamma = 0
@@ -136,7 +132,9 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     
-                    batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
+                    # TESTING UNCONDITIONED DECODER
+                    #batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
+                    batch_loss_dict["loss"] = ae_gamma*(batch_loss_dict["ae_loss"] + batch_loss_dict["uncond_ae_loss"]) + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + (batch_loss_dict["hit_loss"] + batch_loss_dict["uncond_hit_loss"])
                     
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].backward()
@@ -179,9 +177,6 @@ class EngineAtlas(EngineCaloV3):
                             self._model.sampler._batch_size = true_energy.shape[0]
                             
                             sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
-                            #beta, _, _, _ = self._model.find_beta()
-                            #beta = 7.5
-                            #sample_energies, sample_data = self._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, beta=1.0/beta)
                             
                             self._model.sampler._batch_size = self._config.engine.rbm_batch_size
                             sample_data = torch.tensor(self._data_mgr.inv_transform(sample_data.detach().cpu().numpy()))
