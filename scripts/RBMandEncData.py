@@ -185,8 +185,8 @@ def main():
     logger.info(f'Done...')
     logger.info(f'Generating samples plots for incidence energy tuning in decoder')
     draw_sample(engine, dev, config, val_loader, modelname)
-    logger.info(f'Computing distances between true incidence energy label and incidence energy which minimizes MSE and sparsity.')
-    get_diff_btw_true_and_argmin_einc(engine, dev, config, val_loader, modelname, range_len=5000)
+    # logger.info(f'Computing distances between true incidence energy label and incidence energy which minimizes MSE and sparsity.')
+    # get_diff_btw_true_and_argmin_einc(engine, dev, config, val_loader, modelname, range_len=5000)
     logger.info(f'Finished!')
 
 
