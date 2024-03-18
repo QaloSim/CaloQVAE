@@ -133,8 +133,8 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     
                     # TESTING UNCONDITIONED DECODER
-                    #batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
-                    batch_loss_dict["loss"] = ae_gamma*(batch_loss_dict["ae_loss"] + batch_loss_dict["uncond_ae_loss"]) + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + (batch_loss_dict["hit_loss"] + batch_loss_dict["uncond_hit_loss"])
+                    batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
+                    #batch_loss_dict["loss"] = ae_gamma*(batch_loss_dict["ae_loss"] + batch_loss_dict["uncond_ae_loss"]) + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + (batch_loss_dict["hit_loss"] + batch_loss_dict["uncond_hit_loss"])
                     
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].backward()

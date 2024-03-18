@@ -150,6 +150,11 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         output_hits, output_activations = self.decoder(post_samples, x0)
         
         out.output_hits = output_hits
+        
+        # TESTING UNCONDITIONED DECODER
+        #zero_eng = 0 * x0
+        #uncond_hits, uncond_activations = self.decoder(post_samples, zero_eng)
+        #out.uncond_hits = uncond_hits
 
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         if self.training:
@@ -157,13 +162,13 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
             
             # TESTING UNCONDITIONED DECODER
-            zero_eng = 0 * x0
-            uncond_hits, uncond_activations = self.decoder(post_samples, zero_eng)
-            out.uncond_activations = activation_fct_annealed(uncond_activations) * torch.where(x > 0, 1., 0.)
-            out.uncond_hits = uncond_hits
+            #out.uncond_activations = activation_fct_annealed(uncond_activations) * torch.where(x > 0, 1., 0.)
             
         else:
             out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            
+            # TESTING UNCONDITIONED DECODER
+            #out.uncond_activations = self._inference_energy_activation_fct(uncond_activations) * torch.where(x > 0, 1., 0.)
             
         return out
     
@@ -390,16 +395,16 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
         
         # TESTING UNCONDITIONED DECODER
         #Unconditioned MSE Loss
-        uncond_ae_loss = torch.pow((input_data - fwd_out.uncond_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-        uncond_ae_loss = -1 * torch.mean(torch.sum(uncond_ae_loss, dim=1), dim=0)
+        #uncond_ae_loss = torch.pow((input_data - fwd_out.uncond_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
+        #uncond_ae_loss = -0.05 * torch.mean(torch.sum(uncond_ae_loss, dim=1), dim=0)
         # Unconditioned BCE Hit Loss
-        uncond_hit_loss = binary_cross_entropy_with_logits(fwd_out.uncond_hits, torch.where(input_data > 0, 1., 0.), weight = torch.sqrt(1 + input_data), reduction='none')
-        uncond_hit_loss = -1 * torch.mean(torch.sum(uncond_hit_loss, dim=1) * sparsity_weight, dim=0)
+        #uncond_hit_loss = binary_cross_entropy_with_logits(fwd_out.uncond_hits, torch.where(input_data > 0, 1., 0.), weight = torch.sqrt(1 + input_data), reduction='none')
+        #uncond_hit_loss = -0.05 * torch.mean(torch.sum(uncond_hit_loss, dim=1) * sparsity_weight, dim=0)
         
         
         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy,
-               "uncond_ae_loss": uncond_ae_loss, "uncond_hit_loss": uncond_hit_loss}
+                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy,}
+               #"uncond_ae_loss": uncond_ae_loss, "uncond_hit_loss": uncond_hit_loss}
         
         
     def batch_dwave_samples(self, response, qubit_idxs):
