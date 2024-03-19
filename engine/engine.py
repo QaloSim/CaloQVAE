@@ -81,6 +81,9 @@ class Engine(EngineBase):
 
         return batch_loss_dict["loss"]
     
+    def mov_cov_mat_to_model(self):
+        self.model._cov_mat = self.data_mgr._cov_mat
+    
     def evaluate(self):
         #similar to test call of fit() method but returning values
         self._model.eval()

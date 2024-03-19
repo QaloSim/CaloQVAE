@@ -54,7 +54,7 @@ def main(cfg=None):
     mode = 'online' if cfg.wandb_enabled else 'disabled'
     if cfg.load_state == 0:
         # wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
-        wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
+        wandb.init(project="caloqvae", entity="dsogutlu", config=cfg, mode=mode)
     else:
         os.environ["WANDB_DIR"] = cfg.run_path.split("wandb")[0]
         iden = get_project_id(cfg.run_path)
@@ -140,7 +140,8 @@ def run(config=None):
     engine.model = model
     # add the modelCreator instance to engine namespace
     engine.model_creator = modelCreator
-
+    engine.data_mgr._set_covmat()
+    engine.mov_cov_mat_to_model()
     _epoch = 0
     if config.load_state:
         assert config.run_path != 0
@@ -176,6 +177,8 @@ def run(config=None):
         save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path)
 
     logger.info("run() finished successfully.")
+    
+    
 
 
 if __name__=="__main__":

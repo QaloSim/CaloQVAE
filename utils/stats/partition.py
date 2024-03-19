@@ -257,8 +257,17 @@ def create_filenames_dict(run_path):
     return filenames
 
 def get_right_dir(i, filenames):
+    pattern = get_right_pattern(i, filenames)
+    
     for key in filenames.keys():
-        if f'RBM_{i}_9_weights.pth' in filenames[key]:
+        # if f'RBM_{i}_9_weights.pth' in filenames[key]:
+        if pattern in filenames[key]:
             _right_dir = key
             break
     return _right_dir
+
+def get_right_pattern(i, filenames, keyword='weights'):
+    first_key = list(filenames)[0]
+    _pattern_like = filenames[first_key][-1]
+    pattern = f'RBM_{i}_' + _pattern_like.split('_')[-2] + f'_{keyword}.pth'
+    return pattern

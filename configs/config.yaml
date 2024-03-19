@@ -14,7 +14,7 @@ wandb_enabled: 1
 output_path: /fast_scratch_1/jtoledo/outputs
 device: gpu
 gpu_list:
-  - 2
+  - 6
 
 task:
   - train
