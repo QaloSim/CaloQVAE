@@ -276,12 +276,13 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
 
         if measure_time:
             start = time.perf_counter()
-            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False)
             self.sampling_time_qpu.append([time.perf_counter() - start, num_samples])
         else:
-            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False)
 
         dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
+        # dwave_samples, dwave_energies = response.record['sample'], response.record['energy']
         dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(prbm_weights['01'].device)
 
         # Convert spin Ising samples to binary RBM samples
@@ -369,13 +370,14 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         if measure_time:
             # start = time.process_time()
             start = time.perf_counter()
-            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False)
             self.sampling_time_qpu.append([time.perf_counter() - start, num_samples])
             # self.sampling_time_qpu.append([time.process_time() - start, num_samples])
         else:
-            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, auto_scale=False)
+            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False)
 
         dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
+        # dwave_samples, dwave_energies = response.record['sample'], response.record['energy']
         dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(prbm_weights['01'].device)
         
         # Convert spin Ising samples to binary RBM samples
@@ -628,6 +630,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
 
             response = self._qpu_sampler.sample_ising(h, J, num_reads=num_reads, auto_scale=False)
             dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
+            # dwave_samples, dwave_energies = response.record['sample'], response.record['energy']
 
             nonpl = len(idx_dict['0'])
             dwave_1, dwave_2, dwave_3, dwave_4 = dwave_samples[:,0:nonpl], dwave_samples[:,nonpl:2*nonpl], dwave_samples[:,2*nonpl:3*nonpl], dwave_samples[:,3*nonpl:4*nonpl]
@@ -662,4 +665,75 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         beta = beta_list[-1]
         # self.sampler._batch_size = sample_size
         return beta, beta_list, rbm_energy_list, dwave_energies_list, thrsh_met
+    
+    def remove_gaps(self, lst):
+        # Create a sorted set of the unique elements in the list
+        unique_sorted = sorted(set(lst))
+
+        # Create a dictionary that maps each element to its index in the sorted set
+        rank_dict = {val: idx for idx, val in enumerate(unique_sorted)}
+
+        # Replace each element in the original list with its rank
+        ranked_lst = [rank_dict[val] for val in lst]
+
+        return ranked_lst
+
+    def create_sparse_matrix(self, lst):
+        # Example 1D array of column positions
+        column_positions = torch.tensor(lst)
+
+        # Number of rows
+        num_rows = len(column_positions)
+
+        # Creating row indices since each 1 is in a different row
+        row_indices = torch.arange(num_rows)
+
+        # Coordinates for non-zero values
+        indices = torch.stack([row_indices, column_positions])
+
+        # Creating the data array, all values are 1
+        values = torch.ones(num_rows)
+
+        # Create the sparse matrix
+        sparse_matrix = torch.sparse_coo_tensor(indices, values, (num_rows, num_rows))
+
+        # Convert to dense for visualization
+        dense_matrix = sparse_matrix.to_dense()
+        return dense_matrix
+    
+    def batch_dwave_samples(self, response, qubit_idxs):
+        """
+        This replaces gumboltAtlasCRBMCNN.
+        After Hao figured we could use response.record instead of response.data.
+        """
+        original_list = qubit_idxs
+        sequential_qubit_idxs = self.remove_gaps(qubit_idxs)
+        dense_matrix = self.create_sparse_matrix(sequential_qubit_idxs)
+        
+        batch_samples = torch.mm(dense_matrix, torch.tensor(response.record["sample"]).transpose(0,1).float()).transpose(0,1)
+        
+        
+#         samples = []
+#         energies = []
+#         origSamples = []
+
+#         for sample_info in response.data():
+#             origSamples.extend([sample_info[0]]*sample_info[2]) # this is the original sample
+#             # the first step is to reorder
+#             origDict = sample_info[0] # it is a dictionary {0:-1,1:1,2:-1,3:-1,4:-1 ...} 
+#                                       # we need to rearrange it to {0:-1,1:1,2:-1,3:-1,132:-1 ...}
+#             keyorder = qubit_idxs
+#             reorderedDict = {k: origDict[k] for k in keyorder if k in origDict} # reorder dict
+
+#             uniq_sample = list(reorderedDict.values()) # one sample
+#             sample_energy = sample_info[1]
+#             num_occurences = sample_info[2]
+
+#             samples.extend([uniq_sample]*num_occurences)
+#             energies.extend([sample_energy]*num_occurences)
+
+#         batch_samples = np.array(samples)
+#         batch_energies = np.array(energies).reshape(-1)
+
+        return batch_samples.numpy(), response.record['energy'], 0
     
