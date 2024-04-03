@@ -81,7 +81,7 @@ class GumBoltAtlasCRBMCNNV2(GumBoltCaloCRBM):
     #                           num_output_nodes = self._flat_input_size,
     #                           cfg=self._config)
     
-    def forward(self, xx, is_training):
+    def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
         """
         - Overrides forward in GumBoltCaloV5.py
         
@@ -94,22 +94,28 @@ class GumBoltAtlasCRBMCNNV2(GumBoltCaloCRBM):
         out=self._output_container.clear()
         x, x0 = xx
         
-	    #Step 1: Feed data through encoder
-        # in_data = torch.cat([x[0], x[1]], dim=1)
-        
-        out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training)
-        # out.post_samples = self.encoder(x, x0, is_training)
+        out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training, beta_smoothing_fct)
         post_samples = out.post_samples
         post_samples = torch.cat(out.post_samples, 1)
-#         post_samples = torch.cat([post_samples, x[1]], dim=1)
         
         output_hits, output_activations = self.decoder(post_samples, x0)
-        # labels = self.classifier(output_hits)
         
         out.output_hits = output_hits
-        # out.labels = labels
+
         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-        out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        if self.training:
+            activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+            out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
+            
+            # TESTING UNCONDITIONED DECODER
+            zero_eng = 0 * x0
+            uncond_hits, uncond_activations = self.decoder(post_samples, zero_eng)
+            out.uncond_activations = activation_fct_annealed(uncond_activations) * torch.where(x > 0, 1., 0.)
+            out.uncond_hits = uncond_hits
+            
+        else:
+            out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            
         return out
     
     def generate_samples(self, num_samples=64, true_energy=None):

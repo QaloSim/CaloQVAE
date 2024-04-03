@@ -40,4 +40,5 @@ alpha: 0.0
 gamma: 0.0
 mse_weight: 0.0
 interpolation_param: 1.0
+bce_weights_power: 0.25
 rbmMethod: CD
