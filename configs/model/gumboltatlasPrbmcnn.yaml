@@ -14,8 +14,12 @@ encoder_hidden_nodes:
   - 400
   - 350
   - 300
-n_latent_hierarchy_lvls: 4
-n_latent_nodes: 512
+# n_latent_hierarchy_lvls: 4
+# n_latent_nodes: 512
+#for PB
+n_latent_hierarchy_lvls: 1
+n_latent_nodes: 2048
+n_latent_nodes_per_p: 512
 
 cylencoding: 0
 # lz: 1
@@ -26,9 +30,9 @@ lz: 45
 ltheta: 16
 lr: 9
 pe: 2
-encodertype: Small
+encodertype: SmallPB
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: Small
+decodertype: SmallPB
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
 
 fullyconnected: False
@@ -38,7 +42,7 @@ fullyconnected: False
 # mse_weight: 0.1
 alpha: 0.0
 gamma: 0.0
-mse_weight: 0.09
-interpolation_param: 0.1
-bce_weights_power: 0.25
+mse_weight: 0.0
+interpolation_param: 1.0
+bce_weights_power: 0.0
 rbmMethod: CD

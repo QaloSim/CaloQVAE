@@ -531,7 +531,7 @@ class EngineAtlas(EngineCaloV3):
         wandb.log({"rbm_weights": wandb.plot.histogram(weights_table, "weights", title=None)})
         
     def _energy_encoded_data(self):
-        partition_size=self._config.model.n_latent_nodes
+        partition_size=self._config.model.n_latent_nodes_per_p
         data_loader = self.data_mgr.val_loader
         energy_encoded_data = []
 

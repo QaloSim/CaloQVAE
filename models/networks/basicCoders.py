@@ -644,7 +644,61 @@ class DecoderCNNUnconditionedHits(BasicDecoderV3):
         xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000)), 1)
         x1 = self._layers2(x)
         x2 = self._layers3(xx0)
-        return x1, x2    
+        return x1, x2   
+    
+    
+class DecoderCNNPB(BasicDecoderV3):
+# class DecoderCNNPB(nn.Module):
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
+        super(DecoderCNNPB, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+
+        self.n_latent_nodes = self._config.model.n_latent_nodes
+        
+        # self._node_sequence = [(2049, 800), (800, 700), (700, 600), (600, 550), (550, 500), (500, 6480)]
+
+        self._layers =  nn.Sequential(
+                   nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+
+                   nn.ConvTranspose2d(self._node_sequence[0][0]-1, 1028, (3,5), 2, 0),
+                   nn.BatchNorm2d(1028),
+                   nn.PReLU(1028, 0.02),
+                   
+
+                   nn.ConvTranspose2d(1028, 512, (3,5), 1, 0),
+                   nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+                                   )
+        
+        self._layers2 = nn.Sequential(
+                   nn.ConvTranspose2d(513, 128, (3,5), 1, 0),
+                   nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+
+                   nn.ConvTranspose2d(128, 45, (3,4), 1, 0),
+                   # nn.BatchNorm2d(45),
+                   nn.PReLU(45, 0.02),
+                                   )
+        
+        self._layers3 = nn.Sequential(
+                   nn.ConvTranspose2d(513, 128, (3,5), 1, 0),
+                   nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+
+                   nn.ConvTranspose2d(128, 45, (3,4), 1, 0),
+                   # nn.BatchNorm2d(45),
+                   nn.PReLU(45, 0.02),
+                                   )
+        
+    def forward(self, x, x0):
+        logger.debug("Decoder::decode")
+                
+        x = self._layers(x)
+        xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000)), 1)
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(xx0)
+        return x1.reshape(x1.shape[0],45*9*16), x2.reshape(x1.shape[0],45*9*16)
     
     
 ##################################

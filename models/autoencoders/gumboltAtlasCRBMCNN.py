@@ -18,7 +18,7 @@ from models.rbm.chimerav2 import QimeraRBM
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 # from models.networks.EncoderCNN import EncoderCNN
 from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH, EncoderUCNNHPosEnc
-from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall, DecoderCNNUnconditionedAct, DecoderCNNHitsToAct, DecoderCNN_nth_da_charm, DecoderCNNUnconditionedHits
+from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall, DecoderCNNUnconditionedAct, DecoderCNNHitsToAct, DecoderCNN_nth_da_charm, DecoderCNNUnconditionedHits, DecoderCNNPB
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -146,6 +146,11 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallUnconditionedHits":
             return DecoderCNNUnconditionedHits(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB":
+            return DecoderCNNPB(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)

@@ -7,6 +7,7 @@ Changes the way the encoder is constructed wrt V2.
 import torch
 import torch.nn as nn  
 from models.networks.hierarchicalEncoder import HierarchicalEncoder
+import torch.nn.functional as F
 
 class EncoderUCNN(HierarchicalEncoder):
     def __init__(self, **kwargs):
@@ -169,6 +170,8 @@ class EncoderUCNNH(HierarchicalEncoder):
                 moduleLayers.append(EncoderBlockSmallUnconditioned(layers[l], layers[l+1]))
             elif self.encArch == 'SmallPosEnc':
                 moduleLayers.append(EncoderBlockSmallPosEnc(layers[l], layers[l+1]))
+            elif self.encArch == 'SmallPB':
+                moduleLayers.append(EncoderBlockSmallPB(layers[l], layers[l+1]))
            
 
         # sequential = nn.Sequential(*moduleLayers)
@@ -583,3 +586,64 @@ class EncoderUCNNHPosEnc(HierarchicalEncoder):
             PE_r = self._positional_encoding_2(torch.tensor(range(9)),lr).repeat(16*45)
 
         return PE_z + PE_theta + PE_r
+    
+    
+    
+class EncoderBlockSmallPB(nn.Module):
+    """
+        This only works w/o hierachy levels currently
+    """
+    def __init__(self, num_input_nodes, n_latent_nodes):
+        super(EncoderBlockSmallPB, self).__init__()
+        self.num_input_nodes = num_input_nodes
+        self.n_latent_nodes = n_latent_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+        
+        self.seq1 = nn.Sequential(
+                   # nn.Linear(self.num_input_nodes, 24*24),
+                   # nn.Unflatten(1, (1,24, 24)),
+    
+                   PeriodicConv2d(45, 128, (3,5), 1, 0),
+                   nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+    
+                   PeriodicConv2d(128, 512, (3,5), 1, 0),
+                   nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+                )
+
+        self.seq2 = nn.Sequential(
+                           PeriodicConv2d(513, 1024, (3,5), 1, 0),
+                           nn.BatchNorm2d(1024),
+                           nn.PReLU(1024, 0.02),
+
+                           PeriodicConv2d(1024, self.n_latent_nodes, (3,4), 1, 0),
+                           # nn.BatchNorm2d(self.n_latent_nodes),
+                           nn.PReLU(self.n_latent_nodes, 1.0),
+                           nn.Flatten(),
+                        )
+        
+
+    def forward(self, x, x0):
+        x = x.reshape(x.shape[0],self.z, self.r,self.phi) 
+        x = self.seq1(x)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000.0)), 1)
+        x = self.seq2(x)
+        
+        return x
+
+class PeriodicConv2d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):
+        super(PeriodicConv2d, self).__init__()
+        self.padding = padding
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=0, dilation=dilation, groups=groups, bias=bias)
+
+    def forward(self, x):
+        # Pad input tensor with periodic boundary conditions
+        x = F.pad(x, (self.padding, self.padding, self.padding, self.padding), mode='circular')
+        # Apply convolution
+        x = self.conv(x)
+        return x
+    

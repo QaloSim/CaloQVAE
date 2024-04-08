@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # Encoded data and RBM
 def rbm_energy_hist(engine, model_config, val_loader, reducedata=False):
-    partition_size = model_config.n_latent_nodes
+    partition_size = model_config.n_latent_nodes_per_p
     energy_encoded_data = []
     energy_rbm_data = []
 
@@ -35,7 +35,7 @@ def rbm_energy_hist(engine, model_config, val_loader, reducedata=False):
 
 
 def rbm_energy_hist_fcn(engine, model_config, val_loader, reducedata=False):
-    partition_size = model_config.n_latent_nodes
+    partition_size = 512 #model_config.n_latent_nodes
     energy_encoded_data = []
     energy_rbm_data = []
 
