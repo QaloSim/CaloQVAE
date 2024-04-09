@@ -21,6 +21,12 @@
                    num_reads=100, flux_drift_compensation=False, flux_biases=fb)       
     sampleset.record["sample"]
     >> [[-1,1,-1]]
+    
+    For our purposes, suppose spin 60 needs to be up and spin 61 down. then we do:
+    
+    fb[60] = h_to_fluxbias(-20)  
+    fb[61] = h_to_fluxbias(20)    # I was able to go up to 50, but ~20 should be enough
+    response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb)
 """
 
 from typing import Optional, Literal, Union

@@ -366,6 +366,10 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         #     else:
         #         J[edge] = dwave_weights_np[visible_idx_map[edge[1]]][hidden_idx_map[edge[0]]]
         
+        # fb[60] = flux_biases.h_to_fluxbias(-20)  
+        # fb[61] = flux_biases.h_to_fluxbias(20)    # I was able to go up to 50, but ~20 should be enough
+        # response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb)
+        
         
         if measure_time:
             # start = time.process_time()
