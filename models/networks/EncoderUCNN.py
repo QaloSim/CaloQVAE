@@ -647,3 +647,140 @@ class PeriodicConv2d(nn.Module):
         x = self.conv(x)
         return x
     
+class EncoderHierarchyPB(HierarchicalEncoder):
+    def __init__(self, encArch = 'Large', **kwargs):
+        self.encArch = encArch
+        super(EncoderHierarchyPB, self).__init__(**kwargs)
+        
+        
+    def _create_hierarchy_network(self, level: int = 0):
+        """Overrides _create_hierarchy_network in HierarchicalEncoder
+        :param level
+        """
+        # layers = [self.num_input_nodes + (level*self.n_latent_nodes)] + \
+        #     list(self._config.model.encoder_hidden_nodes) + \
+        #     [self.n_latent_nodes]
+        layers = [self.n_latent_nodes + (level*self.n_latent_nodes)] + [self.n_latent_nodes]
+
+        moduleLayers = nn.ModuleList([])
+        for l in range(len(layers)-1):
+            moduleLayers.append(EncoderBlockSmallPBH(layers[l], layers[l+1]))
+            # if self.encArch == 'Large':
+            #     moduleLayers.append(EncoderBlock(layers[l], layers[l+1]))
+            # elif self.encArch == 'Small':
+            #     moduleLayers.append(EncoderBlockSmall(layers[l], layers[l+1]))
+            # elif self.encArch == 'SmallUnconditioned':
+            #     moduleLayers.append(EncoderBlockSmallUnconditioned(layers[l], layers[l+1]))
+            # elif self.encArch == 'SmallPosEnc':
+            #     moduleLayers.append(EncoderBlockSmallPosEnc(layers[l], layers[l+1]))
+            # elif self.encArch == 'SmallPB':
+            #     moduleLayers.append(EncoderBlockSmallPB(layers[l], layers[l+1]))
+            
+           
+
+        # sequential = nn.Sequential(*moduleLayers)
+        sequential = sequentialMultiInput(*moduleLayers)
+        return sequential
+
+    def forward(self, x, x0, is_training=True, beta_smoothing_fct=5):
+        """ This function defines a hierarchical approximate posterior distribution. The length of the output is equal 
+            to n_latent_hierarchy_lvls and each element in the list is a DistUtil object containing posterior distribution 
+            for the group of latent nodes in each hierarchy level. 
+
+        Args:
+            input: a tensor containing input tensor.
+            is_training: A boolean indicating whether we are building a training graph or evaluation graph.
+
+        Returns:
+            posterior: a list of DistUtil objects containing posterior parameters.
+            post_samples: A list of samples from all the levels in the hierarchy, i.e. q(z_k| z_{0<i<k}, x).
+        """
+        # logger.debug("ERROR Encoder::hierarchical_posterior")
+        
+        post_samples = []
+        post_logits = []
+        
+        #loop hierarchy levels. apply previously defined network to input.
+        #input is concatenation of data and latent variables per layer.
+        for lvl in range(self.n_latent_hierarchy_lvls):
+            
+            current_net=self._networks[lvl]
+            # if type(x) is tuple:
+            #     current_input=torch.cat([x[0]]+post_samples,dim=1)
+            # else:
+            #     current_input=torch.cat([x]+post_samples,dim=1)
+            current_input = x
+
+            # Clamping logit values
+            logits=torch.clamp(current_net(current_input, x0, post_samples), min=-88., max=88.)
+            # logits=torch.clamp(self.forward2(current_input, x0), min=-88., max=88.)
+            post_logits.append(logits)
+
+            # Scalar tensor - device doesn't matter but made explicit
+            # beta = torch.tensor(self._config.model.beta_smoothing_fct,
+            #                     dtype=torch.float, device=logits.device,
+            #                     requires_grad=False)
+            beta = torch.tensor(beta_smoothing_fct,
+                                dtype=torch.float, device=logits.device,
+                                requires_grad=False)
+
+            samples=self.smoothing_dist_mod(logits, beta, is_training)
+
+            if type(x) is tuple:
+                samples = torch.bmm(samples.unsqueeze(2), x[1].unsqueeze(2)).squeeze(2)
+
+            post_samples.append(samples)
+            
+        return beta, post_logits, post_samples
+    
+
+class EncoderBlockSmallPBH(nn.Module):
+    """
+        This only works w/o hierachy levels currently
+    """
+    def __init__(self, num_input_nodes, n_latent_nodes):
+        super(EncoderBlockSmallPBH, self).__init__()
+        self.num_input_nodes = num_input_nodes
+        self.n_latent_nodes = n_latent_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+        
+        self.seq1 = nn.Sequential(
+                   # nn.Linear(self.num_input_nodes, 24*24),
+                   # nn.Unflatten(1, (1,24, 24)),
+    
+                   PeriodicConv2d(45, 128, (3,5), 1, 0),
+                   nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+    
+                   PeriodicConv2d(128, 512, (3,5), 1, 0),
+                   nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+                )
+
+        self.seq2 = nn.Sequential(
+                           PeriodicConv2d(513, 1024, (3,5), 1, 0),
+                           nn.BatchNorm2d(1024),
+                           nn.PReLU(1024, 0.02),
+
+                           PeriodicConv2d(1024, self.n_latent_nodes, (3,4), 1, 0),
+                           # nn.BatchNorm2d(self.n_latent_nodes),
+                           nn.PReLU(self.n_latent_nodes, 1.0),
+                           nn.Flatten(),
+                        )
+        self.seq3 = nn.Sequential(
+                           nn.Linear(self.num_input_nodes, self.n_latent_nodes),
+                    )
+        
+
+    def forward(self, x, x0, post_samples):
+        x = x.reshape(x.shape[0],self.z, self.r,self.phi) 
+        x = self.seq1(x)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000.0)), 1)
+        x = self.seq2(x)
+        x = torch.cat([x] + post_samples,1)
+        self.x_current = x
+        x = self.seq3(x)
+        
+        return x

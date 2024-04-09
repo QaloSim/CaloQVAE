@@ -17,7 +17,7 @@ from models.samplers.GibbsSampling import GS
 from models.rbm.chimerav2 import QimeraRBM
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 # from models.networks.EncoderCNN import EncoderCNN
-from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH, EncoderUCNNHPosEnc
+from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH, EncoderUCNNHPosEnc, EncoderHierarchyPB
 from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall, DecoderCNNUnconditionedAct, DecoderCNNHitsToAct, DecoderCNN_nth_da_charm, DecoderCNNUnconditionedHits, DecoderCNNPB
 
 from CaloQVAE import logging
@@ -86,6 +86,14 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                 ltheta = self._config.model.ltheta,
                 lr = self._config.model.lr,
                 pe = self._config.model.pe,
+                input_dimension=self._flat_input_size,
+                n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+                n_latent_nodes=self.n_latent_nodes,
+                skip_latent_layer=False,
+                smoother="Gumbel",
+                cfg=self._config)
+        elif "encoder_pb_hierarchy" in self._config.model and self._config.model.encoder_pb_hierarchy:
+            return EncoderHierarchyPB(encArch=self._config.model.encodertype,
                 input_dimension=self._flat_input_size,
                 n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
                 n_latent_nodes=self.n_latent_nodes,
