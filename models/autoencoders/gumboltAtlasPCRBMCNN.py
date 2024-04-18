@@ -12,7 +12,7 @@ import numpy as np
 
 from models.samplers.GibbsSampling import GS
 
-from utils.stats.partition import Stats
+from utils.stats.condrbm_partition import CRBMStats
 
 from models.autoencoders.gumboltAtlasPRBMCNN import GumBoltAtlasPRBMCNN
 from CaloQVAE.models.rbm import pegasusRBM
@@ -55,6 +55,13 @@ class GumBoltAtlasPCRBMCNN(GumBoltAtlasPRBMCNN):
         """
         return cpgbs.CPGBS(self.prior, self._config.engine.rbm_batch_size,
                          n_steps=self._config.engine.n_gibbs_sampling_steps)
+    
+    def _create_stat(self):
+        """This object contains methods to compute Stat Mech stuff.
+
+        :return: Instance of a utils.stats.partition.Stats
+        """
+        return CRBMStats(self.sampler)
 
     
     def kl_divergence(self, post_logits, post_samples, true_energy, is_training=True):
@@ -195,10 +202,12 @@ class GumBoltAtlasPCRBMCNN(GumBoltAtlasPRBMCNN):
     def convert_inc_eng_to_binary(self, true_energy):
         n_nodes_p = self.prior.nodes_per_partition
         bin_engs = torch.zeros((true_energy.shape[0], n_nodes_p), device=true_energy.device)
+        num_bits = 32
+        repeats = n_nodes_p // num_bits
         
         for idx_eng, eng in enumerate(true_energy):
             int_eng = int(eng.item())
-            bits = bin(int_eng)[2:] # Skip '0b'
+            bits = bin(int_eng)[2:].zfill(num_bits) * repeats # Skip '0b', add leading zeros, and repeat
             
             for idx_bit, bit in enumerate(reversed(bits)):
                 bin_engs[idx_eng][idx_bit] = int(bit)
