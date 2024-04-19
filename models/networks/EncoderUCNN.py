@@ -712,8 +712,11 @@ class EncoderHierarchyPB(HierarchicalEncoder):
             current_input = x
 
             # Clamping logit values
-            logits=torch.clamp(current_net(current_input, x0, post_samples), min=-88., max=88.)
-            # logits=torch.clamp(self.forward2(current_input, x0), min=-88., max=88.)
+            # logits=torch.clamp(current_net(current_input, x0, post_samples), min=-88., max=88.)
+            # logits=torch.clamp(current_net(current_input, x0, post_logits), min=-88., max=88.)
+            
+            logits=torch.clamp(current_net(current_input, x0, post_samples), min=-10., max=10.)
+
             post_logits.append(logits)
 
             # Scalar tensor - device doesn't matter but made explicit
@@ -735,9 +738,6 @@ class EncoderHierarchyPB(HierarchicalEncoder):
     
 
 class EncoderBlockSmallPBH(nn.Module):
-    """
-        This only works w/o hierachy levels currently
-    """
     def __init__(self, num_input_nodes, n_latent_nodes):
         super(EncoderBlockSmallPBH, self).__init__()
         self.num_input_nodes = num_input_nodes

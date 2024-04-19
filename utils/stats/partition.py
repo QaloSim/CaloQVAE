@@ -155,7 +155,7 @@ class Stats():
     
     def AIS(self, nbeta=20.0):
         # http://www.cs.utoronto.ca/~rsalakhu/papers/bm.pdf
-        self.lnZa = np.sum([torch.log(1 + torch.exp(-self._prbm.bias_dict[i] )).sum().item() for i in ['0','1','2','3']])
+        self.lnZa = np.sum([torch.log(1 + torch.exp(self._prbm.bias_dict[i] )).sum().item() for i in ['0','1','2','3']])
         FreeEnergy_ratios = 0.0
         Δbeta = 1/nbeta
         for beta in np.arange(0.0,1.0,Δbeta):
@@ -170,7 +170,7 @@ class Stats():
         return logZb
     
     def RAIS(self, nbeta=20.0):
-        self.lnZb = np.sum([torch.log(1 + torch.exp(-self._prbm.bias_dict[i])).sum().item() for i in ['0','1','2','3']])
+        self.lnZb = np.sum([torch.log(1 + torch.exp(self._prbm.bias_dict[i])).sum().item() for i in ['0','1','2','3']])
         FreeEnergy_ratios = 0.0
         Δbeta = 1/nbeta
 

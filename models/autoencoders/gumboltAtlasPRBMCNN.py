@@ -50,7 +50,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         nodes_per_partition = int((self._config.model.n_latent_hierarchy_lvls *
                                    self._config.model.n_latent_nodes)/4)
         
-        return pegasusRBM.PegasusRBM(nodes_per_partition)
+        return pegasusRBM.PegasusRBM(nodes_per_partition, True, self._config.model.fullyconnected)
         
     def _create_sampler(self, rbm=None):
         """Override _create_sampler in GumBoltCaloV6.py

@@ -20,7 +20,7 @@ class PegasusRBM(nn.Module):
     PyTorch implementation of a quadripartite Boltzmann machine with a 
     Pegasus/Advantage QPU topology
     """
-    def __init__(self, nodes_per_partition: int, qpu: bool = True, **kwargs):
+    def __init__(self, nodes_per_partition: int, qpu: bool = True, fullyconnected: bool = False, **kwargs):
         """__init__()
 
         Initialize an instance of a 4-partite PegasusRBM
@@ -41,6 +41,7 @@ class PegasusRBM(nn.Module):
 
         # Fully-connected or Pegasus-restricted 4-partite BM
         self._qpu = qpu
+        self.fullyconnected = fullyconnected
 
         # Dict of RBM weights for different partition combinations
         for key in itertools.combinations(range(self._n_partitions), 2):
@@ -54,10 +55,15 @@ class PegasusRBM(nn.Module):
             self._bias_dict[str(i)] = nn.Parameter(
                 torch.randn(self._nodes_per_partition), requires_grad=True)
 
-        if qpu:
-            self._qubit_idx_dict, device = self.gen_qubit_idx_dict()
+        # if qpu:
+        self._qubit_idx_dict, device = self.gen_qubit_idx_dict()
+        if not fullyconnected:
             self._weight_mask_dict = self.gen_weight_mask_dict(
                 self._qubit_idx_dict, device)
+        else:
+            for key in itertools.combinations(range(self._n_partitions), 2):
+                str_key = ''.join([str(key[i]) for i in range(len(key))])
+                self._weight_mask_dict[str_key] = torch.ones(self._nodes_per_partition, self._nodes_per_partition, requires_grad=False)
 
     @property
     def nodes_per_partition(self):
@@ -74,10 +80,10 @@ class PegasusRBM(nn.Module):
         :return: dict with partition combinations as str keys ('01', '02', ...)
                  and partition weight matrices as values (w_01, w_02, ...)
         """
-        if self._qpu:
-            for key in self._weight_dict.keys():
-                self._weight_dict[key] = self._weight_dict[key] \
-                    * self._weight_mask_dict[key]
+        # if self._qpu:
+        for key in self._weight_dict.keys():
+            self._weight_dict[key] = self._weight_dict[key] \
+                * self._weight_mask_dict[key]
         return self._weight_dict
 
 
