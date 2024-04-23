@@ -197,17 +197,31 @@ class GumBoltAtlasPCRBMCNN(GumBoltAtlasPRBMCNN):
             samples.append(sample)
 
         return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
+ 
     
     
     def convert_inc_eng_to_binary(self, true_energy):
+        
         n_nodes_p = self.prior.nodes_per_partition
         bin_engs = torch.zeros((true_energy.shape[0], n_nodes_p), device=true_energy.device)
-        num_bits = 32
+
+        num_int_bits = 20
+        num_sqrt_bits = 10
+        num_ln_bits = 4
+        num_bits = num_int_bits + num_sqrt_bits + num_ln_bits
+        
         repeats = n_nodes_p // num_bits
         
         for idx_eng, eng in enumerate(true_energy):
             int_eng = int(eng.item())
-            bits = bin(int_eng)[2:].zfill(num_bits) * repeats # Skip '0b', add leading zeros, and repeat
+            ln_eng = int(np.log(int_eng))
+            sqrt_eng = int(np.sqrt(int_eng))
+            
+            int_bits = bin(int_eng)[2:].zfill(num_int_bits) # Skip '0b', add leading zeros
+            sqrt_bits = bin(sqrt_eng)[2:].zfill(num_sqrt_bits)
+            ln_bits = bin(ln_eng)[2:].zfill(num_ln_bits)
+            
+            bits = (ln_bits + sqrt_bits + int_bits) * repeats # repeat
             
             for idx_bit, bit in enumerate(reversed(bits)):
                 bin_engs[idx_eng][idx_bit] = int(bit)
