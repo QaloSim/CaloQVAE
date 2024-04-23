@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn  
 from models.networks.hierarchicalEncoder import HierarchicalEncoder
 import torch.nn.functional as F
+import numpy as np
 
 class EncoderUCNN(HierarchicalEncoder):
     def __init__(self, **kwargs):
@@ -712,10 +713,10 @@ class EncoderHierarchyPB(HierarchicalEncoder):
             current_input = x
 
             # Clamping logit values
-            # logits=torch.clamp(current_net(current_input, x0, post_samples), min=-88., max=88.)
+            logits=torch.clamp(current_net(current_input, x0, post_samples), min=-88., max=88.)
             # logits=torch.clamp(current_net(current_input, x0, post_logits), min=-88., max=88.)
             
-            logits=torch.clamp(current_net(current_input, x0, post_samples), min=-10., max=10.)
+            # logits=torch.clamp(current_net(current_input, x0, post_samples), min=-10., max=10.)
 
             post_logits.append(logits)
 
@@ -784,3 +785,92 @@ class EncoderBlockSmallPBH(nn.Module):
         x = self.seq3(x)
         
         return x
+    
+    
+class EncoderHierarchyPB_BinE(HierarchicalEncoder):
+    def __init__(self, encArch = 'Large', **kwargs):
+        self.encArch = encArch
+        super(EncoderHierarchyPB_BinE, self).__init__(**kwargs)
+        
+        
+    def _create_hierarchy_network(self, level: int = 0):
+        """Overrides _create_hierarchy_network in HierarchicalEncoder
+        :param level
+        """
+        # layers = [self.num_input_nodes + (level*self.n_latent_nodes)] + \
+        #     list(self._config.model.encoder_hidden_nodes) + \
+        #     [self.n_latent_nodes]
+        layers = [self.n_latent_nodes + (level*self.n_latent_nodes)] + [self.n_latent_nodes]
+
+        moduleLayers = nn.ModuleList([])
+        for l in range(len(layers)-1):
+            moduleLayers.append(EncoderBlockSmallPBH(layers[l], layers[l+1]))
+
+        sequential = sequentialMultiInput(*moduleLayers)
+        return sequential
+
+    def forward(self, x, x0, is_training=True, beta_smoothing_fct=5):
+        """ This function defines a hierarchical approximate posterior distribution. The length of the output is equal 
+            to n_latent_hierarchy_lvls and each element in the list is a DistUtil object containing posterior distribution 
+            for the group of latent nodes in each hierarchy level. 
+
+        Args:
+            input: a tensor containing input tensor.
+            is_training: A boolean indicating whether we are building a training graph or evaluation graph.
+
+        Returns:
+            posterior: a list of DistUtil objects containing posterior parameters.
+            post_samples: A list of samples from all the levels in the hierarchy, i.e. q(z_k| z_{0<i<k}, x).
+        """
+        # logger.debug("ERROR Encoder::hierarchical_posterior")
+        
+        post_samples = []
+        post_logits = []
+        
+        #loop hierarchy levels. apply previously defined network to input.
+        #input is concatenation of data and latent variables per layer.
+        for lvl in range(self.n_latent_hierarchy_lvls):
+            
+            current_net=self._networks[lvl]
+            # if type(x) is tuple:
+            #     current_input=torch.cat([x[0]]+post_samples,dim=1)
+            # else:
+            #     current_input=torch.cat([x]+post_samples,dim=1)
+            current_input = x
+
+            # Clamping logit values
+            logits=torch.clamp(current_net(current_input, x0, post_samples), min=-88., max=88.)
+            # logits=torch.clamp(current_net(current_input, x0, post_logits), min=-88., max=88.)
+            
+            # logits=torch.clamp(current_net(current_input, x0, post_samples), min=-10., max=10.)
+
+            post_logits.append(logits)
+
+            # Scalar tensor - device doesn't matter but made explicit
+            # beta = torch.tensor(self._config.model.beta_smoothing_fct,
+            #                     dtype=torch.float, device=logits.device,
+            #                     requires_grad=False)
+            beta = torch.tensor(beta_smoothing_fct,
+                                dtype=torch.float, device=logits.device,
+                                requires_grad=False)
+
+            samples=self.smoothing_dist_mod(logits, beta, is_training)
+
+            if type(x) is tuple:
+                samples = torch.bmm(samples.unsqueeze(2), x[1].unsqueeze(2)).squeeze(2)
+
+            post_samples.append(samples)
+            
+        
+        post_samples.append(self.binary_energy(x0))   
+        return beta, post_logits, post_samples
+    
+    def binary(self, x, bits):
+        mask = 2**torch.arange(bits).to(x.device, x.dtype)
+        return x.bitwise_and(mask).ne(0).byte()
+    
+    def binary_energy(self, x, lin_bits=20, sqrt_bits=10, log_bits=4):
+        reps = int(np.floor(512/(lin_bits+sqrt_bits+log_bits)))
+        residual = 512 - reps*(lin_bits+sqrt_bits+log_bits)
+        x = torch.cat((self.binary(x.int(),lin_bits), self.binary(x.sqrt().int(),sqrt_bits), self.binary(x.log().int(),log_bits)), 1)
+        return torch.cat((x.repeat(1,reps), torch.zeros(x.shape[0],residual).to(x.device, x.dtype)), 1)

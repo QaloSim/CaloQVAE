@@ -711,13 +711,15 @@ class DecoderCNNPBv2(BasicDecoderV3):
         self.r = 9
         self.phi = 16
 
-        self.n_latent_nodes = self._config.model.n_latent_nodes
+        # self.n_latent_nodes = self._config.model.n_latent_nodes
+        self.n_latent_nodes = self._config.model.n_latent_nodes_per_p * 4
         
         # self._node_sequence = [(2049, 800), (800, 700), (700, 600), (600, 550), (550, 500), (500, 6480)]
         self._layers =  nn.Sequential(
-                   nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+                   # nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+                   nn.Unflatten(1, (self.n_latent_nodes, 1,1)),
 
-                   PeriodicConvTranspose2d(self._node_sequence[0][0]-1, 1024, (3,5), 2, 0),
+                   PeriodicConvTranspose2d(self.n_latent_nodes, 1024, (3,5), 2, 0),
                    nn.BatchNorm2d(1024),
                    nn.PReLU(1024, 0.02),
                    

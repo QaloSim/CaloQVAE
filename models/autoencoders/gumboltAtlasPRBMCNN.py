@@ -17,7 +17,7 @@ from utils.stats.partition import Stats
 # DiVAE.models imports
 # from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
 from models.autoencoders.gumboltAtlasCRBMCNN import GumBoltAtlasCRBMCNN
-from CaloQVAE.models.rbm import pegasusRBM
+from CaloQVAE.models.rbm import pegasusRBM, zephyrRBM
 from CaloQVAE.models.samplers import pgbs
 # from models.networks.EncoderCNN import EncoderCNN
 from models.networks.EncoderUCNN import EncoderUCNN
@@ -47,10 +47,12 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
                 self._config.model.n_latent_nodes) % 4 == 0, \
             'total no. of latent nodes should be divisible by 4'
 
-        nodes_per_partition = int((self._config.model.n_latent_hierarchy_lvls *
-                                   self._config.model.n_latent_nodes)/4)
+        # nodes_per_partition = int((self._config.model.n_latent_hierarchy_lvls *
+                                   # self._config.model.n_latent_nodes)/4)
+        nodes_per_partition = self._config.model.n_latent_nodes_per_p
         
         return pegasusRBM.PegasusRBM(nodes_per_partition, True, self._config.model.fullyconnected)
+        # return zephyrRBM.ZephyrRBM(nodes_per_partition, self._config.model.fullyconnected)
         
     def _create_sampler(self, rbm=None):
         """Override _create_sampler in GumBoltCaloV6.py
@@ -126,7 +128,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         post_zetas = torch.cat(post_samples, 1)
 
         # Compute cross-entropy b/w post_logits and post_samples
-        entropy = - self._bce_loss(logits_q_z, post_zetas)
+        entropy = - self._bce_loss(logits_q_z, post_zetas[:,:self._config.model.n_latent_nodes * self._config.model.n_latent_hierarchy_lvls])
         entropy = torch.mean(torch.sum(entropy, dim=1), dim=0)
 
         # Compute positive phase (energy expval under posterior variables) 

@@ -17,9 +17,11 @@ encoder_hidden_nodes:
 # n_latent_hierarchy_lvls: 4
 # n_latent_nodes: 512
 #for PB
-n_latent_hierarchy_lvls: 4
+n_latent_hierarchy_lvls: 3
 n_latent_nodes: 512
 n_latent_nodes_per_p: 512
+# n_latent_nodes: 300
+# n_latent_nodes_per_p: 300
 
 cylencoding: 0
 # lz: 1
@@ -35,9 +37,10 @@ encodertype: SmallPB
 decodertype: SmallPBv2
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
 
-encoder_pb_hierarchy: 1
+encoder_pb_hierarchy: 0
+encoder_pb_hierarchy_bin: 1
 
-fullyconnected: True
+fullyconnected: False
 # bernoulli : 0
 # alpha: 5.0
 # gamma: 5.0
