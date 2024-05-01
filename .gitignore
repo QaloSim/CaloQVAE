@@ -18,6 +18,7 @@ MNIST/
 sandbox/
 nohup.out
 runJT.sh
+GenSamples_bkp.ipynb
 llJT.sh
 figs/
 runSG.sh

@@ -20,8 +20,8 @@ encoder_hidden_nodes:
 n_latent_hierarchy_lvls: 3
 n_latent_nodes: 512
 n_latent_nodes_per_p: 512
-# n_latent_nodes: 300
-# n_latent_nodes_per_p: 300
+# n_latent_nodes: 302
+# n_latent_nodes_per_p: 302
 
 cylencoding: 0
 # lz: 1
@@ -41,6 +41,7 @@ encoder_pb_hierarchy: 0
 encoder_pb_hierarchy_bin: 1
 
 fullyconnected: False
+topology: pegasus
 # bernoulli : 0
 # alpha: 5.0
 # gamma: 5.0
@@ -49,5 +50,5 @@ alpha: 0.0
 gamma: 0.0
 mse_weight: 0.0
 interpolation_param: 1.0
-bce_weights_power: 0.0
+bce_weights_power: 0.25
 rbmMethod: CD

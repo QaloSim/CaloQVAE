@@ -38,11 +38,12 @@ class ZephyrRBM(nn.Module):
         self._weight_dict = nn.ParameterDict()
         self._bias_dict = nn.ParameterDict()
         self._nodes_per_partition = nodes_per_partition
-        if self._nodes_per_partition > 300 and fullyconnected == False:
-            logger.warn("No more than ~300 nodes per partition for Adv2 \
-                        at the time being. Will train a fully connected RBM instead. \
+        if self._nodes_per_partition > 302 and fullyconnected == False:
+            logger.warn("No more than 302 nodes per partition for Adv2 \
+                        at the time being. Will set partitions to 302. \
                         Otherwise, stop job, reduce nodes per partition and restart.")
-            fullyconnected = True
+            # fullyconnected = True
+            self._nodes_per_partition = 302
         self._weight_mask_dict = nn.ParameterDict()
 
         # Fully-connected or Pegasus-restricted 4-partite BM
@@ -187,6 +188,19 @@ class ZephyrRBM(nn.Module):
         for name, layer in weight_mask_dict.items():
             nn_weight_mask_dict[name] = nn.Parameter(layer.data, requires_grad=False)
         return nn_weight_mask_dict
+    
+        """
+            A simpler way to build the mask:
+            for i, partition_a in enumerate(self.idx_dict.keys()):
+                for qubit_a in self.idx_dict[partition_a]:
+                    for qubit_b in self._qpu_sampler.adjacency[qubit_a]:
+                        for partition_b in list(self.idx_dict.keys())[i:]:
+                            if qubit_b in self.idx_dict[partition_b]:
+                                weight_idx = partition_a + partition_b
+                                idx_a = self.idx_dict[partition_a].index(qubit_a)
+                                idx_b = self.idx_dict[partition_b].index(qubit_b)
+                                self._weight_mask_dict[weight_idx][idx_a,idx_b] = 1.0
+        """
 
     def load_coordinates(self):
         self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr'})

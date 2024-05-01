@@ -154,7 +154,8 @@ def run(config=None):
         _epoch = fn["size"]
         if config.freeze_vae:
             for name, param in engine.model.named_parameters():
-                if 'decoder' in name or 'encoder' in name:
+                # if 'decoder' in name or 'encoder' in name:
+                if 'encoder' in name:
                     param.requires_grad = False
                 print(name, param.requires_grad)
             engine.optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, engine.model.parameters()), lr=config.engine.learning_rate)
@@ -170,7 +171,8 @@ def run(config=None):
         if config.freeze_vae and dummy_variable == 0:
             if epoch > config.engine.annealing_percentage*2.0*(config.engine.n_epochs + _epoch) + 1:
                 for name, param in engine.model.named_parameters():
-                    if 'decoder' in name or 'encoder' in name:
+                    # if 'decoder' in name or 'encoder' in name:
+                    if 'encoder' in name:
                         param.requires_grad = False
                     print(name, param.requires_grad)
                 engine.optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, engine.model.parameters()), lr=config.engine.learning_rate)

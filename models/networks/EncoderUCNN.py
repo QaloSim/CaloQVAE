@@ -870,7 +870,12 @@ class EncoderHierarchyPB_BinE(HierarchicalEncoder):
         return x.bitwise_and(mask).ne(0).byte()
     
     def binary_energy(self, x, lin_bits=20, sqrt_bits=10, log_bits=4):
-        reps = int(np.floor(512/(lin_bits+sqrt_bits+log_bits)))
-        residual = 512 - reps*(lin_bits+sqrt_bits+log_bits)
+        reps = int(np.floor(self.n_latent_nodes/(lin_bits+sqrt_bits+log_bits)))
+        residual = self.n_latent_nodes - reps*(lin_bits+sqrt_bits+log_bits)
         x = torch.cat((self.binary(x.int(),lin_bits), self.binary(x.sqrt().int(),sqrt_bits), self.binary(x.log().int(),log_bits)), 1)
         return torch.cat((x.repeat(1,reps), torch.zeros(x.shape[0],residual).to(x.device, x.dtype)), 1)
+    # def binary_energy(self, x, lin_bits=20, sqrt_bits=10, log_bits=4):
+    #     reps = int(np.floor(self.n_latent_nodes/(lin_bits)))
+    #     residual = self.n_latent_nodes - reps*(lin_bits)
+    #     x = self.binary(x.int(),lin_bits)
+    #     return torch.cat((x.repeat(1,reps), torch.zeros(x.shape[0],residual).to(x.device, x.dtype)), 1)
