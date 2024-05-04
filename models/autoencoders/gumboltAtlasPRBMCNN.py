@@ -13,6 +13,7 @@ import numpy as np
 from models.samplers.GibbsSampling import GS
 
 from utils.stats.partition import Stats
+from utils.flux_biases import h_to_fluxbias
 
 # DiVAE.models imports
 # from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
@@ -496,10 +497,128 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         # return torch.cat(true_energies, dim=0).unsqueeze(dim=1), samples
         return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
     
-    def gen_fb(self, true_energy, thrsh=30):
+    def generate_samples_qpu_cond(self, num_samples=64, true_energy=None, measure_time=False, beta=1.0, thrsh=20):
+        """
+        generate_samples()
+        
+        Overrides generate samples in gumboltCaloV5.py
+        """
+        true_energies = []
+        samples = []
+        # Extract the RBM parameters
+        prbm_weights = {}
+        prbm_bias = {}
+        for key in self.prior._weight_dict.keys():
+            prbm_weights[key] = self.prior._weight_dict[key]
+        for key in self.prior._bias_dict.keys():
+            prbm_bias[key] = self.prior._bias_dict[key]
+        prbm_edgelist = self.prior._pruned_edge_list
+        
+        if self.prior.idx_dict is None:
+            idx_dict, device = self.prior.gen_qubit_idx_dict()
+        else:
+            idx_dict = self.prior.idx_dict
+        
+        qubit_idxs = idx_dict['0'] + idx_dict['1'] + idx_dict['2'] + idx_dict['3']
+        
+        idx_map = {}
+        for key in idx_dict.keys():
+            idx_map[key] = {idx:i for i, idx in enumerate(self.prior.idx_dict[key])}
+        
+        dwave_weights = {}
+        dwave_bias = {}
+        for key in prbm_weights.keys():
+            dwave_weights[key] = - prbm_weights[key]/4. * beta
+        for key in prbm_bias.keys():
+            s = torch.zeros(prbm_bias[key].size(), device=prbm_bias[key].device)
+            for i in range(4):
+                if i > int(key):
+                    wKey = key + str(i)
+                    s = s - torch.sum(prbm_weights[wKey], dim=1)/4. * beta
+                elif i < int(key):
+                    wKey = str(i) + key
+                    s = s - torch.sum(prbm_weights[wKey], dim=0)/4. * beta
+            dwave_bias[key] = - prbm_bias[key]/2.0 * beta + s
+        
+        dwave_weights_np = {}
+        for key in dwave_weights.keys():
+            dwave_weights_np[key] = dwave_weights[key].detach().cpu().numpy()
+        biases = torch.cat([dwave_bias[key] for key in dwave_bias.keys()])
+        
+        # Initialize the values of biases and couplers. The next lines are critical
+        # maps the RBM coupling values into dwave's couplings h, J. In particular,
+        # J is a dictionary, each key is an edge in Pegasus
+        h = {qubit_idx:bias for qubit_idx, bias in zip(qubit_idxs, biases)}
+        J = {}
+        for edge in prbm_edgelist:
+            partition_edge_0 = self.find_partition_key(edge[0], idx_dict)
+            partition_edge_1 = self.find_partition_key(edge[1], idx_dict)
+            if int(partition_edge_0) < int(partition_edge_1):
+                wKey = partition_edge_0 + partition_edge_1
+                J[edge] = dwave_weights_np[wKey][idx_map[partition_edge_0][edge[0]]][idx_map[partition_edge_1][edge[1]]]
+            elif int(partition_edge_0) > int(partition_edge_1):
+                wKey = partition_edge_1 + partition_edge_0
+                J[edge] = dwave_weights_np[wKey][idx_map[partition_edge_1][edge[1]]][idx_map[partition_edge_0][edge[0]]]
+        
+        
+        # fb[60] = flux_biases.h_to_fluxbias(-20)  
+        # fb[61] = flux_biases.h_to_fluxbias(20)    # I was able to go up to 50, but ~20 should be enough
+        # response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb)
+        
+        
+        # if measure_time:
+        #     # start = time.process_time()
+        #     start = time.perf_counter()
+        #     response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False)
+        #     self.sampling_time_qpu.append([time.perf_counter() - start, num_samples])
+        #     # self.sampling_time_qpu.append([time.process_time() - start, num_samples])
+        # else:
+        response_list = []
+        for x in true_energy:
+            fb = self.gen_fb(x, thrsh=thrsh)
+            response_list.append( self._qpu_sampler.sample_ising(h, J, num_reads=1, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb))
+            
+        response_array = np.concatenate([response_list[i].record["sample"] for i in range(len(response_list))])
+
+        dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples_cond(response_array, qubit_idxs)
+        # dwave_samples, dwave_energies = response.record['sample'], response.record['energy']
+        dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(prbm_weights['01'].device)
+        
+        # Convert spin Ising samples to binary RBM samples
+        _ZERO = torch.tensor(0., dtype=torch.float).to(prbm_weights['01'].device)
+        _MINUS_ONE = torch.tensor(-1., dtype=torch.float).to(prbm_weights['01'].device)
+        
+        dwave_samples = torch.where(dwave_samples == _MINUS_ONE, _ZERO, dwave_samples)
+        self.dwave_samples = dwave_samples
+        
+        if true_energy is None:
+            true_e = torch.rand((num_samples, 1), device=prbm_weights['01'].device).detach() * 100.
+        else:
+            true_e = torch.ones((num_samples, 1), device=prbm_weights['01'].device).detach() * true_energy
+        # prior_samples = torch.cat([dwave_samples, true_e], dim=1)
+        prior_samples = torch.cat([dwave_samples], dim=1)
+        self.prior_samples = prior_samples
+            
+        # output_hits, output_activations = self.decoder(prior_samples)
+        output_hits, output_activations = self.decoder(prior_samples, true_e)
+        beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+        # if self._config.engine.modelhits:
+        sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)
+        # else:
+        #     sample = self._inference_energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device) 
+        # samples = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False) 
+        true_energies.append(true_e)
+        samples.append(sample) 
+        # return torch.cat(true_energies, dim=0).unsqueeze(dim=1), samples
+        return torch.cat(true_energies, dim=0), torch.cat(samples, dim=0)
+    
+    def gen_fb(self, x, thrsh=30):
         fb = [0]*self._qpu_sampler.properties['num_qubits']
-        bin_energy = self.encoder.binary_energy(x0)
-        fb_lists = ((bin_energy.to(dtype=int) * 2 - 1) * (-1) * thrsh).cpu().numpy()
+        bin_energy = self.encoder.binary_energy(x.unsqueeze(0))
+        fb_lists = ((bin_energy.to(dtype=int) * 2 - 1) * (-1) * thrsh).cpu().numpy()[0,:]
+        for i,idx in enumerate(self.prior.idx_dict['3']):
+            fb[idx] = h_to_fluxbias(fb_lists[i])
+        return fb
     
     def find_partition_key(self, idx, qubit_idxs):
         for key in qubit_idxs.keys():
@@ -852,29 +971,19 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         dense_matrix = self.create_sparse_matrix(sequential_qubit_idxs)
         
         batch_samples = torch.mm(dense_matrix, torch.tensor(response.record["sample"]).transpose(0,1).float()).transpose(0,1)
-        
-        
-#         samples = []
-#         energies = []
-#         origSamples = []
-
-#         for sample_info in response.data():
-#             origSamples.extend([sample_info[0]]*sample_info[2]) # this is the original sample
-#             # the first step is to reorder
-#             origDict = sample_info[0] # it is a dictionary {0:-1,1:1,2:-1,3:-1,4:-1 ...} 
-#                                       # we need to rearrange it to {0:-1,1:1,2:-1,3:-1,132:-1 ...}
-#             keyorder = qubit_idxs
-#             reorderedDict = {k: origDict[k] for k in keyorder if k in origDict} # reorder dict
-
-#             uniq_sample = list(reorderedDict.values()) # one sample
-#             sample_energy = sample_info[1]
-#             num_occurences = sample_info[2]
-
-#             samples.extend([uniq_sample]*num_occurences)
-#             energies.extend([sample_energy]*num_occurences)
-
-#         batch_samples = np.array(samples)
-#         batch_energies = np.array(energies).reshape(-1)
 
         return batch_samples.numpy(), response.record['energy'], 0
+    
+    def batch_dwave_samples_cond(self, response, qubit_idxs):
+        """
+        This replaces gumboltAtlasCRBMCNN.
+        After Hao figured we could use response.record instead of response.data.
+        """
+        original_list = qubit_idxs
+        sequential_qubit_idxs = self.remove_gaps(qubit_idxs)
+        dense_matrix = self.create_sparse_matrix(sequential_qubit_idxs)
+        
+        batch_samples = torch.mm(dense_matrix, torch.tensor(response).transpose(0,1).float()).transpose(0,1)
+
+        return batch_samples.numpy(), 0, 0
     

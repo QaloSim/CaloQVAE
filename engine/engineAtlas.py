@@ -156,6 +156,7 @@ class EngineAtlas(EngineCaloV3):
                     
                     batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
                     batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
+                    batch_loss_dict["ah_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
                     
                     for key, value in batch_loss_dict.items():
                         try:
@@ -275,18 +276,20 @@ class EngineAtlas(EngineCaloV3):
                     if "hit_loss" in valid_loss_dict.keys():
                         valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"]
                         valid_loss_dict["ahep_loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"] + valid_loss_dict["hit_loss"]
+                        valid_loss_dict["ah_loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["hit_loss"]
                     else:
                         valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"]
                         valid_loss_dict["ahep_loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"]
+                        valid_loss_dict["ah_loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["hit_loss"]
                     # wandb.log(val_loss_dict)
                     # Check the loss over the validation set is 
                     # if valid_loss_dict["loss"].sum() < self._best_model_loss:
-                    if valid_loss_dict["ahep_loss"].sum() < self._best_model_loss:
-                        self._best_model_loss = valid_loss_dict["ahep_loss"].sum()
+                    if valid_loss_dict["ah_loss"].sum() < self._best_model_loss:
+                        self._best_model_loss = valid_loss_dict["ah_loss"].sum()
                         # Save the best model here
                         config_string = "_".join(str(i) for i in [self._config.model.model_type,
                                                                   self._config.data.data_type,
-                                                                  self._config.tag, "best"])
+                                                                  self._config.tag, f'best'])
                         self._model_creator.save_state(config_string)
                         
         if not is_training:
