@@ -20,6 +20,7 @@ nohup.out
 runJT.sh
 llJT.sh
 figs/
+runIL.sh
 runSG.sh
 init_container.sh
 <<<<<<< HEAD
