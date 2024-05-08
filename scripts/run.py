@@ -53,12 +53,12 @@ def main(cfg=None):
     # Use mode='disabled' to prevent logging
     mode = 'online' if cfg.wandb_enabled else 'disabled'
     if cfg.load_state == 0:
-        # wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
-        wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
+        wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
+        # wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
     else:
         os.environ["WANDB_DIR"] = cfg.run_path.split("wandb")[0]
         iden = get_project_id(cfg.run_path)
-        wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode, resume='allow', id=iden)
+        wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode, resume='allow', id=iden)
 
     # run the ting
     run(config=cfg)
