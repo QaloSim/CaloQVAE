@@ -2,10 +2,11 @@ tag: default
 debug: False
 load_data_from_pkl: 0
 
-save_state: 0
+save_state: 1
 load_state: 0
-save_hists: 0
-save_partition: 0
+save_hists: 1
+save_partition: 1
+freeze_vae: 1
 
 wandb_enabled: 1
 
@@ -13,7 +14,7 @@ wandb_enabled: 1
 output_path: /fast_scratch_1/jtoledo/outputs
 device: gpu
 gpu_list:
-  - 3
+  - 6
 
 task:
   - train

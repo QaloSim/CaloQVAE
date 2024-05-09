@@ -53,12 +53,12 @@ def main(cfg=None):
     # Use mode='disabled' to prevent logging
     mode = 'online' if cfg.wandb_enabled else 'disabled'
     if cfg.load_state == 0:
-        # wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
-        wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
+        wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
+        # wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
     else:
         os.environ["WANDB_DIR"] = cfg.run_path.split("wandb")[0]
         iden = get_project_id(cfg.run_path)
-        wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode, resume='allow', id=iden)
+        wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode, resume='allow', id=iden)
 
     # run the ting
     run(config=cfg)
@@ -142,6 +142,7 @@ def run(config=None):
     engine.model_creator = modelCreator
 
     _epoch = 0
+    dummy_variable = 0
     if config.load_state:
         assert config.run_path != 0
         config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
@@ -150,6 +151,14 @@ def run(config=None):
         # temp solution to get total number of epochs this model has been trained on
         fn = create_filenames_dict(config.run_path)
         _epoch = fn["size"]
+        if config.freeze_vae:
+            for name, param in engine.model.named_parameters():
+                # if 'decoder' in name or 'encoder' in name:
+                if 'encoder' in name:
+                    param.requires_grad = False
+                print(name, param.requires_grad)
+            engine.optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, engine.model.parameters()), lr=config.engine.learning_rate)
+            dummy_variable = 1
 
     for epoch in range(1+_epoch, _epoch+config.engine.n_epochs+1):
         if "train" in config.task:
@@ -157,6 +166,16 @@ def run(config=None):
 
         if "validate" in config.task:
             engine.fit(epoch=epoch, is_training=False, mode="validate")
+            
+        if config.freeze_vae and dummy_variable == 0:
+            if epoch > config.engine.annealing_percentage*2.0*(config.engine.n_epochs + _epoch) + 1:
+                for name, param in engine.model.named_parameters():
+                    # if 'decoder' in name or 'encoder' in name:
+                    if 'encoder' in name:
+                        param.requires_grad = False
+                    print(name, param.requires_grad)
+                engine.optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, engine.model.parameters()), lr=config.engine.learning_rate)
+                dummy_variable = 1
 
     if "test" in config.task:
         engine.fit(epoch=epoch, is_training=False, mode="test")
