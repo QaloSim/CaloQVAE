@@ -58,13 +58,13 @@ class CPGBS(pgbs.PGBS):
         
         if method == 'Rdm' or p1==None:
             # Initialize the random state of partitions 1, 2, and 3
-            p1_state = torch.bernoulli(torch.rand(self._batch_size,
+            p1_state = torch.bernoulli(torch.rand(u.shape[0], #self._batch_size,
                                                   prbm.nodes_per_partition,
                                                   device=p1_bias.device))
-            p2_state = torch.bernoulli(torch.rand(self._batch_size,
+            p2_state = torch.bernoulli(torch.rand(u.shape[0], #self._batch_size,
                                                   prbm.nodes_per_partition,
                                                   device=p1_bias.device))
-            p3_state = torch.bernoulli(torch.rand(self._batch_size,
+            p3_state = torch.bernoulli(torch.rand(u.shape[0], #self._batch_size,
                                               prbm.nodes_per_partition,
                                               device=p1_bias.device))
         elif method == 'CD':
