@@ -48,12 +48,12 @@ def rbm_energy_hist_cond(engine, model_config, val_loader, reducedata=False):
             # beta, post_logits, post_samples = engine.model.encoder(enIn, False)
             beta, post_logits, post_samples = engine.model.encoder(in_data, true_energy, False)
             post_samples = torch.cat(post_samples, 1)
-            u = self.convert_inc_eng_to_binary(true_energy)
+            u = engine.model.convert_inc_eng_to_binary(true_energy)
 
         
             post_samples_energy = engine.model.stater.energy_samples(u, post_samples[:, :partition_size],
                                          post_samples[:, partition_size:2*partition_size],
-                                         post_samples[:, 2*partition_size:])
+                                         post_samples[:, 2*partition_size:], 1.0)
 #             post_samples_energy = engine.model.stater.energy_samples(post_samples[:,0:partition_size], post_samples[:,partition_size:2*partition_size], 
 #                                                      post_samples[:,2*partition_size:3*partition_size], post_samples[:,3*partition_size:4*partition_size], 1.0 )
             energy_encoded_data.append(post_samples_energy.detach().cpu())
