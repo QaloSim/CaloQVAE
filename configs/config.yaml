@@ -22,7 +22,7 @@ task:
   - test
 
 defaults:
-  - model: gumboltatlasPrbmcnn
+  - model: gumboltatlasPcrbmcnn
   - data: atlasDGX
   - engine: dvaeatlas_training_peg
 
