@@ -61,7 +61,7 @@ output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 4
+  - 1
 
 task:
   - train
@@ -69,7 +69,7 @@ task:
   - test
 
 defaults:
-  - model: gumboltatlasPrbmcnn
+  - model: atlasCondQVAE
   - data: atlasDGX
   - engine: dvaeatlas_training_peg
   - qpu: peggy
@@ -85,6 +85,8 @@ defaults:
 
 # model: gumboltatlasPrbmcnn_nohits
 # engine: dvaeatlas_training_pegV2
+
+# engine: atlasCondQVAE
 
 # engine: atlasPeggyBeta
 usinglayers: False

@@ -133,7 +133,8 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         post_zetas = torch.cat(post_samples, 1)
 
         # Compute cross-entropy b/w post_logits and post_samples
-        entropy = - self._bce_loss(logits_q_z, post_zetas[:,:self._config.model.n_latent_nodes * self._config.model.n_latent_hierarchy_lvls])
+        # entropy = - self._bce_loss(logits_q_z, post_zetas)
+        entropy = - self._bce_loss(logits_q_z, post_zetas[:,self._config.model.n_latent_nodes:])
         entropy = torch.mean(torch.sum(entropy, dim=1), dim=0)
 
         # Compute positive phase (energy expval under posterior variables) 
@@ -238,60 +239,59 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
 
         :return energy expectation value over the current batch
         """
-#         w_dict = self.prior.weight_dict
-#         b_dict = self.prior.bias_dict
+        w_dict = self.prior.weight_dict
+        b_dict = self.prior.bias_dict
 
-#         w_dict_cp = {}
+        w_dict_cp = {}
 
-#         # Broadcast weight matrices (n_nodes_pa, n_nodes_pb) to
-#         # (batch_size, n_nodes_pa, n_nodes_pb)
-#         for key in w_dict.keys():
-#             w_dict_cp[key] = w_dict[key] + torch.zeros((p0_state.size(0),) +
-#                                                     w_dict[key].size(),
-#                                                     device=w_dict[key].device)
+        # Broadcast weight matrices (n_nodes_pa, n_nodes_pb) to
+        # (batch_size, n_nodes_pa, n_nodes_pb)
+        for key in w_dict.keys():
+            w_dict_cp[key] = w_dict[key] + torch.zeros((p0_state.size(0),) +
+                                                    w_dict[key].size(),
+                                                    device=w_dict[key].device)
 
-#         # Prepare px_state_t for torch.bmm()
-#         # Change px_state.size() to (batch_size, 1, n_nodes_px)
-#         p0_state_t = p0_state.unsqueeze(2).permute(0, 2, 1)
-#         p1_state_t = p1_state.unsqueeze(2).permute(0, 2, 1)
-#         p2_state_t = p2_state.unsqueeze(2).permute(0, 2, 1)
+        # Prepare px_state_t for torch.bmm()
+        # Change px_state.size() to (batch_size, 1, n_nodes_px)
+        p0_state_t = p0_state.unsqueeze(2).permute(0, 2, 1)
+        p1_state_t = p1_state.unsqueeze(2).permute(0, 2, 1)
+        p2_state_t = p2_state.unsqueeze(2).permute(0, 2, 1)
 
-#         # Prepare py_state for torch.bmm()
-#         # Change py_state.size() to (batch_size, n_nodes_py, 1)
-#         p1_state_i = p1_state.unsqueeze(2)
-#         p2_state_i = p2_state.unsqueeze(2)
-#         p3_state_i = p3_state.unsqueeze(2)
+        # Prepare py_state for torch.bmm()
+        # Change py_state.size() to (batch_size, n_nodes_py, 1)
+        p1_state_i = p1_state.unsqueeze(2)
+        p2_state_i = p2_state.unsqueeze(2)
+        p3_state_i = p3_state.unsqueeze(2)
 
-#         # Compute the energies for batch samples
-#         batch_energy = -torch.matmul(p0_state, b_dict['0']) - \
-#             torch.matmul(p1_state, b_dict['1']) - \
-#             torch.matmul(p2_state, b_dict['2']) - \
-#             torch.matmul(p3_state, b_dict['3']) - \
-#             torch.bmm(p0_state_t,
-#                       torch.bmm(w_dict_cp['01'], p1_state_i)).reshape(-1) - \
-#             torch.bmm(p0_state_t,
-#                       torch.bmm(w_dict_cp['02'], p2_state_i)).reshape(-1) - \
-#             torch.bmm(p0_state_t,
-#                       torch.bmm(w_dict_cp['03'], p3_state_i)).reshape(-1) - \
-#             torch.bmm(p1_state_t,
-#                       torch.bmm(w_dict_cp['12'], p2_state_i)).reshape(-1) - \
-#             torch.bmm(p1_state_t,
-#                       torch.bmm(w_dict_cp['13'], p3_state_i)).reshape(-1) - \
-#             torch.bmm(p2_state_t,
-#                       torch.bmm(w_dict_cp['23'], p3_state_i)).reshape(-1)
+        # Compute the energies for batch samples
+        batch_energy = -torch.matmul(p1_state, b_dict['1']) - \
+            torch.matmul(p2_state, b_dict['2']) - \
+            torch.matmul(p3_state, b_dict['3']) - \
+            torch.bmm(p0_state_t,
+                      torch.bmm(w_dict_cp['01'], p1_state_i)).reshape(-1) - \
+            torch.bmm(p0_state_t,
+                      torch.bmm(w_dict_cp['02'], p2_state_i)).reshape(-1) - \
+            torch.bmm(p0_state_t,
+                      torch.bmm(w_dict_cp['03'], p3_state_i)).reshape(-1) - \
+            torch.bmm(p1_state_t,
+                      torch.bmm(w_dict_cp['12'], p2_state_i)).reshape(-1) - \
+            torch.bmm(p1_state_t,
+                      torch.bmm(w_dict_cp['13'], p3_state_i)).reshape(-1) - \
+            torch.bmm(p2_state_t,
+                      torch.bmm(w_dict_cp['23'], p3_state_i)).reshape(-1)
         
-        selfFields = torch.matmul(p0_state, self.prior.bias_dict['0']) + \
-            torch.matmul(p1_state, self.prior.bias_dict['1']) + \
-            torch.matmul(p2_state, self.prior.bias_dict['2'])
+#         selfFields = torch.matmul(p0_state, self.prior.bias_dict['0']) + \
+#             torch.matmul(p1_state, self.prior.bias_dict['1']) + \
+#             torch.matmul(p2_state, self.prior.bias_dict['2'])
         
-        coupled_spin_energy = torch.matmul(torch.matmul(p0_state, self.prior.weight_dict['01']), torch.transpose(p0_state,1,0)).diagonal() + \
-            torch.matmul(torch.matmul(p0_state, self.prior.weight_dict['02']), torch.transpose(p2_state,1,0)).diagonal() + \
-            torch.matmul(torch.matmul(p0_state, self.prior.weight_dict['03']), torch.transpose(p3_state,1,0)).diagonal() + \
-            torch.matmul(torch.matmul(p1_state, self.prior.weight_dict['12']), torch.transpose(p2_state,1,0)).diagonal() + \
-            torch.matmul(torch.matmul(p1_state, self.prior.weight_dict['13']), torch.transpose(p3_state,1,0)).diagonal() + \
-            torch.matmul(torch.matmul(p2_state, self.prior.weight_dict['23']), torch.transpose(p3_state,1,0)).diagonal()
+#         coupled_spin_energy = torch.matmul(torch.matmul(p0_state, self.prior.weight_dict['01']), torch.transpose(p0_state,1,0)).diagonal() + \
+#             torch.matmul(torch.matmul(p0_state, self.prior.weight_dict['02']), torch.transpose(p2_state,1,0)).diagonal() + \
+#             torch.matmul(torch.matmul(p0_state, self.prior.weight_dict['03']), torch.transpose(p3_state,1,0)).diagonal() + \
+#             torch.matmul(torch.matmul(p1_state, self.prior.weight_dict['12']), torch.transpose(p2_state,1,0)).diagonal() + \
+#             torch.matmul(torch.matmul(p1_state, self.prior.weight_dict['13']), torch.transpose(p3_state,1,0)).diagonal() + \
+#             torch.matmul(torch.matmul(p2_state, self.prior.weight_dict['23']), torch.transpose(p3_state,1,0)).diagonal()
         
-        batch_energy = - selfFields - coupled_spin_energy
+        # batch_energy = - selfFields - coupled_spin_energy
 
         return torch.mean(batch_energy, dim=0)
     
@@ -616,7 +616,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         fb = [0]*self._qpu_sampler.properties['num_qubits']
         bin_energy = self.encoder.binary_energy(x.unsqueeze(0))
         fb_lists = ((bin_energy.to(dtype=int) * 2 - 1) * (-1) * thrsh).cpu().numpy()[0,:]
-        for i,idx in enumerate(self.prior.idx_dict['3']):
+        for i,idx in enumerate(self.prior.idx_dict['0']):
             fb[idx] = h_to_fluxbias(fb_lists[i])
         return fb
     
@@ -684,18 +684,18 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         """
         n_iter = max(num_samples//self.sampler.batch_size, 1)
         true_es, samples = [], []
-        u = self.encoder.binary_energy(true_energy)
+        u = self.encoder.binary_energy(true_energy).to(dtype=torch.float32)
 
         for _ in range(n_iter):
             if measure_time:
                 # start = time.process_time()
                 start = time.perf_counter()
-                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(p3=u)
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(p0=u)
                 torch.cuda.current_stream().synchronize()
                 self.sampling_time_gpu.append([time.perf_counter() - start, self.sampler.batch_size])
                 # self.sampling_time_gpu.append([time.process_time() - start, self.sampler.batch_size])
             else:
-                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(p3=u)
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(p0=u)
 
             if true_energy is None:
                 # true_e ~ U[1, 100]

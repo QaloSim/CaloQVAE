@@ -39,7 +39,8 @@ class EngineAtlas(EngineCaloV3):
     def beta_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
         if epoch > epoch_anneal_start:
             delta_beta = self._config.engine.beta_smoothing_fct_final - self._config.engine.beta_smoothing_fct
-            delta = (self._config.engine.n_epochs * self._config.engine.annealing_percentage - epoch_anneal_start)*num_batches
+            # delta = (self._config.engine.n_epochs * self._config.engine.annealing_percentage - epoch_anneal_start)*num_batches
+            delta = (self._config.engine.epoch_annealing_end - epoch_anneal_start)*num_batches
             if delta_beta > 0:
                 beta = min(self._config.engine.beta_smoothing_fct + delta_beta/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.beta_smoothing_fct_final)
             else:
@@ -52,7 +53,8 @@ class EngineAtlas(EngineCaloV3):
     def slope_act_fct_value(self, epoch_anneal_start, num_batches, batch_idx, epoch):
         # if epoch > epoch_anneal_start:
         delta_slope = self._config.engine.slope_activation_fct_final - self._config.engine.slope_activation_fct
-        delta = (self._config.engine.n_epochs * self._config.engine.annealing_percentage - epoch_anneal_start)*num_batches
+        # delta = (self._config.engine.n_epochs * self._config.engine.annealing_percentage - epoch_anneal_start)*num_batches
+        delta = (self._config.engine.epoch_annealing_end - epoch_anneal_start)*num_batches
         if delta_slope < 0:
             slope = max(self._config.engine.slope_activation_fct + delta_slope/delta * ((epoch-1)*num_batches + batch_idx), self._config.engine.slope_activation_fct_final)
         else:
@@ -544,11 +546,11 @@ class EngineAtlas(EngineCaloV3):
                 in_data, true_energy, in_data_flat = self._preprocess(xx[0],xx[1])
                 if self._config.reducedata:
                     in_data = self._reduce(in_data, true_energy, R=R)
-                if "PRBMCNN" in self._config.model.model_type:
-                    beta, post_logits, post_samples = self.model.encoder(in_data, true_energy, False)
-                elif "PRBMFCN" in self._config.model.model_type:
+                if "PRBMFCN" in self._config.model.model_type:
                     enIn = torch.cat((in_data, true_energy), dim=1)
                     beta, post_logits, post_samples = self.model.encoder(enIn, False)
+                else: # "PRBMCNN" in self._config.model.model_type:
+                    beta, post_logits, post_samples = self.model.encoder(in_data, true_energy, False)
                 post_samples = torch.cat(post_samples, 1)
                 post_samples_energy = self.model.stater.energy_samples(post_samples[:,0:partition_size], post_samples[:,partition_size:2*partition_size], 
                                                          post_samples[:,2*partition_size:3*partition_size], post_samples[:,3*partition_size:4*partition_size], 1.0 )
@@ -556,6 +558,12 @@ class EngineAtlas(EngineCaloV3):
 
         energy_encoded_data = torch.cat(energy_encoded_data, dim=0)
         return energy_encoded_data
+    
+    def _save_model(self, name="blank"):
+        config_string = "_".join(str(i) for i in [self._config.model.model_type,
+                                                                  self._config.data.data_type,
+                                                                  self._config.tag,f'{name}'])
+        self._model_creator.save_state(config_string)
         
 if __name__=="__main__":
     logger.info("Willkommen!")

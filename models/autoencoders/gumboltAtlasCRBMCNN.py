@@ -17,8 +17,8 @@ from models.samplers.GibbsSampling import GS
 from models.rbm.chimerav2 import QimeraRBM
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 # from models.networks.EncoderCNN import EncoderCNN
-from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH, EncoderUCNNHPosEnc, EncoderHierarchyPB, EncoderHierarchyPB_BinE
-from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall, DecoderCNNUnconditionedAct, DecoderCNNHitsToAct, DecoderCNN_nth_da_charm, DecoderCNNUnconditionedHits, DecoderCNNPB, DecoderCNNPBv2
+from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH, EncoderUCNNHPosEnc, EncoderHierarchyPB, EncoderHierarchyPB_BinE, EncoderHierarchyPB_BinEv2
+from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall, DecoderCNNUnconditionedAct, DecoderCNNHitsToAct, DecoderCNN_nth_da_charm, DecoderCNNUnconditionedHits, DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -108,6 +108,13 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                 skip_latent_layer=False,
                 smoother="Gumbel",
                 cfg=self._config)
+            # return EncoderHierarchyPB_BinEv2(encArch=self._config.model.encodertype,
+            #     input_dimension=self._flat_input_size,
+            #     n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+            #     n_latent_nodes=self.n_latent_nodes,
+            #     skip_latent_layer=False,
+            #     smoother="Gumbel",
+            #     cfg=self._config)
         else: 
             return EncoderUCNNH(encArch=self._config.model.encodertype,
                 input_dimension=self._flat_input_size,

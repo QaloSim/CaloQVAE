@@ -114,7 +114,7 @@ class PGBS:
         return p0_state.detach(), p1_state.detach(), \
             p2_state.detach(), p3_state.detach()
     
-    def block_gibbs_sampling_cond(self, p0=None,p1=None,p2=None,p3=None, method='Rdm'):
+    def block_gibbs_sampling_cond(self, p0,p1=None,p2=None,p3=None, method='Rdm'):
         """block_gibbs_sampling()
 
         :return p0_state (torch.Tensor) : (batch_size, n_nodes_p1)
@@ -126,7 +126,7 @@ class PGBS:
         p0_bias = prbm._bias_dict['0']
         p_bias = prbm.bias_dict
         p_weight = prbm.weight_dict
-        p0_bias = p_bias['0']
+        # p0_bias = p_bias['0']
         p1_bias = p_bias['1']
         p2_bias = p_bias['2']
         p3_bias = p_bias['3']
@@ -134,16 +134,16 @@ class PGBS:
         
         if method == 'Rdm' or p1==None:
             # Initialize the random state of partitions 1, 2, and 3
-            p1_state = torch.bernoulli(torch.rand(self._batch_size,
+            p1_state = torch.bernoulli(torch.rand(p0.shape[0], #self._batch_size,
                                                   prbm.nodes_per_partition,
-                                                  device=p0_bias.device))
-            p2_state = torch.bernoulli(torch.rand(self._batch_size,
+                                                  device=p1_bias.device))
+            p2_state = torch.bernoulli(torch.rand(p0.shape[0], #self._batch_size,
                                                   prbm.nodes_per_partition,
-                                                  device=p0_bias.device))
-            # p3_state = torch.bernoulli(torch.rand(self._batch_size,
-                                              # prbm.nodes_per_partition,
-                                              # device=p0_bias.device))
-            p3_state = p3.to(p1_state.dtype)
+                                                  device=p1_bias.device))
+            p3_state = torch.bernoulli(torch.rand(p0.shape[0], #self._batch_size,
+                                              prbm.nodes_per_partition,
+                                              device=p1_bias.device))
+            # p3_state = p3.to(p1_state.dtype)
         elif method == 'CD':
             # Initialize the random state of partitions 1, 2, and 3
             p1_state = p1
@@ -153,28 +153,28 @@ class PGBS:
             pass
             
         for _ in range(self._n_steps):
-            p0_state = self._p_state(p_weight['01'].T,
-                                     p_weight['02'].T,
-                                     p_weight['03'].T,
-                                     p1_state, p2_state, p3_state,
-                                     p0_bias)
+            # p0_state = self._p_state(p_weight['01'].T,
+            #                          p_weight['02'].T,
+            #                          p_weight['03'].T,
+            #                          p1_state, p2_state, p3_state,
+            #                          p0_bias)
             p1_state = self._p_state(p_weight['01'],
                                      p_weight['12'].T,
                                      p_weight['13'].T,
-                                     p0_state, p2_state, p3_state,
+                                     p0, p2_state, p3_state,
                                      p1_bias)
             p2_state = self._p_state(p_weight['02'],
                                      p_weight['12'],
                                      p_weight['23'].T,
-                                     p0_state, p1_state, p3_state,
+                                     p0, p1_state, p3_state,
                                      p2_bias)
-            # p3_state = self._p_state(p_weight['03'],
-            #                          p_weight['13'],
-            #                          p_weight['23'],
-            #                          p0_state, p1_state, p2_state,
-            #                          p3_bias)
+            p3_state = self._p_state(p_weight['03'],
+                                     p_weight['13'],
+                                     p_weight['23'],
+                                     p0, p1_state, p2_state,
+                                     p3_bias)
 
-        return p0_state.detach(), p1_state.detach(), \
+        return p0.detach(), p1_state.detach(), \
             p2_state.detach(), p3_state.detach()
 
     @property
