@@ -1,10 +1,9 @@
 #!/usr/bin/python3
 """
-Main executable. The run() method steers data loading, model creation, training
+Main executable to estimate the RBM log-likelihood. The run() method steers data loading, model creation, training
 and evaluation by calling the respective interfaces.
 
-Author: Abhishek <abhishek@myumanitoba.ca>
-Author: Eric Drechsler <eric.drechsler@cern.ch>
+Author: TRIUMF QML group
 """
 
 #external libraries
@@ -41,6 +40,7 @@ logger = logging.getLogger(__name__)
 from data.dataManager import DataManager
 from utils.plotting.plotProvider import PlotProvider
 from utils.stats.partition import get_Zs, save_plot
+from utils.stats.condrbm_partition import get_Zs_cond
 from utils.helpers import get_project_id
 from engine.engine import Engine
 from models.modelCreator import ModelCreator
@@ -55,7 +55,7 @@ def main(cfg=None):
     # wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
     os.environ["WANDB_DIR"] = cfg.run_path.split("wandb")[0]
     iden = get_project_id(cfg.run_path)
-    wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode, resume='allow', id=iden)
+    wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode, resume='allow', id=iden)
     # run the ting
     run(config=cfg)
 
@@ -143,7 +143,12 @@ def run(config=None):
     config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
     modelCreator.load_state(config.run_path, dev)
 
-    lnZais_list, lnZrais_list, en_encoded_list = get_Zs(config.run_path, engine, dev, 10)
+    print(config.model.model_type)
+    if 'PCRBM' in config.model.model_type:
+        lnZais_list, lnZrais_list, en_encoded_list = get_Zs_cond(config.run_path, engine, dev, 10)
+    else:
+        lnZais_list, lnZrais_list, en_encoded_list = get_Zs(config.run_path, engine, dev, 10)
+#     lnZais_list, lnZrais_list, en_encoded_list = get_Zs(config.run_path, engine, dev, 10)
     save_plot(lnZais_list, lnZrais_list, en_encoded_list, config.run_path)
 
     logger.info("run() finished successfully.")

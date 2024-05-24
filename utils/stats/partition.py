@@ -191,8 +191,6 @@ class Stats():
         # The final estimate for logZa (partition function of the base distribution)
         logZa = - FreeEnergy_ratios + self.lnZb
         return logZa
-    
-    
 
 def get_Zs(run_path, engine, dev, step = 10):
     fn = create_filenames_dict(run_path)
@@ -200,12 +198,19 @@ def get_Zs(run_path, engine, dev, step = 10):
     lnZais_list = []
     lnZrais_list = []
     en_encoded_list = []
-    for i in range(1,fn["size"],step):
-        _right_dir = get_right_dir(i, fn)
-        rbm_path = fn["prefix"] + "/" + _right_dir + '/files/RBM/'
-        engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_weights.pth', dev)
-        engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_biases.pth', dev)
-        en = -torch.load(rbm_path + f'RBM_{i}_9_EncEn.pth').mean()
+    for i in range(1,fn["size"]+1,step):
+        substring = f'RBM_{i}_'
+        rbm_files = [element for element in fn[list(fn.keys())[0]] if substring in element]
+        encFile = [element for element in rbm_files if "EncEn" in element][0]
+        weights = [element for element in rbm_files if "weights" in element][0]
+        bias = [element for element in rbm_files if "biases" in element][0]
+        weight_path = fn["prefix"] + f'/RBM/{weights}'
+        EncEn_path = fn["prefix"] + f'/RBM/{encFile}'
+        biases_path = fn["prefix"] + f'/RBM/{bias}'
+        
+        engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(weight_path, dev)
+        engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(biases_path, dev)
+        en = -torch.load(EncEn_path).mean()
         lnZais_list.append(engine.model.stater.AIS(30).detach().cpu().item())
         lnZrais_list.append(engine.model.stater.RAIS(30).detach().cpu().item())
         en_encoded_list.append(en)
@@ -238,27 +243,95 @@ def save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path):
     
     
 def create_filenames_dict(run_path):
-    filenames = {}
-    files = os.listdir(run_path.split("wandb")[0] + "wandb")
-    trueInd = [ "run" in file for file in files]
-    for i, file in enumerate(files):
-        if trueInd[i] and "latest" not in file:
-            try:
-                filenames[file] = list(np.sort(os.listdir(run_path.split("wandb")[0] + f'wandb/{file}/files/RBM/')))
-            except:
-                logger.warning(f'Directory {run_path.split("wandb")[0]}' + f'wandb/{file}/files/RBM/ might not exist.')
-                
+    files = os.listdir(os.path.dirname(run_path) + "/RBM/")
+    filenames = {os.path.dirname(run_path) : files}
     
-    list_of_files = []
-    for key in filenames.keys():
-        list_of_files = list_of_files + filenames[key]
-    filenames["size"] = int(len(list_of_files)/3)
-    filenames["prefix"] = run_path.split("wandb")[0] + "wandb"
+#     filenames["size"] = int(len(files)/3)
+    filenames["size"] = len(list(np.unique([files[i].split("_")[1] for i in range(len(files)) ])))
+    
+    filenames["prefix"] = list(filenames.keys())[0] 
+
     return filenames
 
-def get_right_dir(i, filenames):
-    for key in filenames.keys():
-        if f'RBM_{i}_9_weights.pth' in filenames[key]:
-            _right_dir = key
-            break
-    return _right_dir
+# def get_Zs(run_path, engine, dev, step = 10):
+#     fn = create_filenames_dict(run_path)
+#     # rbm_path = run_path.split('files')[0] + 'files/RBM/'
+#     lnZais_list = []
+#     lnZrais_list = []
+#     en_encoded_list = []
+#     for i in range(1,fn["size"],step):
+#         _right_dir = get_right_dir(i, fn)
+#         # _pattern = get_right_pattern(i, fn)
+#         rbm_path = fn["prefix"] + "/" + _right_dir + '/files/RBM/'
+#         # engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_weights.pth', dev)
+#         # engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + f'RBM_{i}_9_biases.pth', dev)
+#         # en = -torch.load(rbm_path + f'RBM_{i}_9_EncEn.pth').mean()
+#         engine.model.sampler._prbm._weight_dict = engine.model_creator.load_RBM_state(rbm_path + get_right_pattern(i, fn), dev)
+#         engine.model.sampler._prbm._bias_dict = engine.model_creator.load_RBM_state(rbm_path + get_right_pattern(i, fn, 'biases'), dev)
+#         en = -torch.load(rbm_path + get_right_pattern(i, fn, 'EncEn')).mean()
+#         lnZais_list.append(engine.model.stater.AIS(30).detach().cpu().item())
+#         lnZrais_list.append(engine.model.stater.RAIS(30).detach().cpu().item())
+#         en_encoded_list.append(en)
+        
+#     return lnZais_list, lnZrais_list, en_encoded_list
+
+
+# def save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path):
+#     path = run_path.split('files')[0] + 'files/'
+#     fig, axes = plt.subplots(2,2, figsize=(8,8), tight_layout=True)
+
+#     axes[0,0].plot(-np.array(lnZais_list), c='red', lw=4.5, label='- ln Z_ais')
+#     axes[0,0].plot(-np.array(lnZrais_list), c='blue', lw=2.5, label='- ln Z_rais')
+#     axes[0,0].set_xlabel("epochs (x10)")
+#     axes[0,0].legend()
+#     axes[0,0].grid("True")
+
+#     axes[0,1].plot(np.array(en_encoded_list) - np.array(lnZais_list), c='green', lw=2.5)
+#     axes[0,1].set_ylabel("LL")
+#     axes[0,1].set_xlabel("epochs (x10)")
+#     axes[0,1].grid("True")
+
+#     axes[1,1].plot(np.array(en_encoded_list), c='orange', lw=2.5)
+#     axes[1,1].grid("True")
+#     axes[1,1].set_ylabel("LL + ln Z")
+#     axes[1,1].set_xlabel("epochs (x10)")
+#     plt.savefig(path + f'LL.png')
+    
+#     np.savez(path + 'PartitionData.npz', array1=np.array(lnZais_list), array2=np.array(lnZrais_list), array3 = np.array(en_encoded_list))
+    
+    
+# def create_filenames_dict(run_path):
+#     filenames = {}
+#     files = os.listdir(run_path.split("wandb")[0] + "wandb")
+#     trueInd = [ "run" in file for file in files]
+#     for i, file in enumerate(files):
+#         if trueInd[i] and "latest" not in file:
+#             try:
+#                 filenames[file] = list(np.sort(os.listdir(run_path.split("wandb")[0] + f'wandb/{file}/files/RBM/')))
+#             except:
+#                 logger.warning(f'Directory {run_path.split("wandb")[0]}' + f'wandb/{file}/files/RBM/ might not exist.')
+                
+    
+#     list_of_files = []
+#     for key in filenames.keys():
+#         list_of_files = list_of_files + filenames[key]
+#     filenames["size"] = int(len(list_of_files)/3)
+#     filenames["prefix"] = run_path.split("wandb")[0] + "wandb"
+#     return filenames
+
+# def get_right_dir(i, filenames):
+#     pattern = get_right_pattern(i, filenames)
+    
+#     for key in filenames.keys():
+#         # if f'RBM_{i}_9_weights.pth' in filenames[key]:
+#         if pattern in filenames[key]:
+#             _right_dir = key
+#             break
+#     return _right_dir
+
+# def get_right_pattern(i, filenames, keyword='weights'):
+#     first_key = list(filenames)[0]
+#     _pattern_like = filenames[first_key][-1]
+#     pattern = f'RBM_{i}_' + _pattern_like.split('_')[-2] + f'_{keyword}.pth'
+#     return pattern
+

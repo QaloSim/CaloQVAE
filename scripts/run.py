@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 from data.dataManager import DataManager
 from utils.plotting.plotProvider import PlotProvider
 from utils.stats.partition import get_Zs, save_plot, create_filenames_dict
+from utils.stats.condrbm_partition import get_Zs_cond
 from utils.helpers import get_epochs, get_project_id
 from engine.engine import Engine
 from models.modelCreator import ModelCreator
@@ -191,7 +192,10 @@ def run(config=None):
                                                   config.data.data_type,
                                                   config.tag, "latest"])
         run_path = os.path.join(wandb.run.dir, "{0}.pth".format(config_string))
-        lnZais_list, lnZrais_list, en_encoded_list = get_Zs(run_path, engine, dev, 10)
+        if 'PCRBM' in config.model.model_type:
+            lnZais_list, lnZrais_list, en_encoded_list = get_Zs_cond(run_path, engine, dev, 10)
+        else:
+            lnZais_list, lnZrais_list, en_encoded_list = get_Zs(run_path, engine, dev, 10)
         save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path)
 
     logger.info("run() finished successfully.")
