@@ -215,7 +215,7 @@ class EncoderBlockPBHv3(nn.Module):
 
         pres = [(torch.arange(0,M).multiply(i*np.pi/M).cos() * post_samples_cpu + torch.arange(0,M).multiply(i*np.pi/M).sin() *(1 - post_samples_cpu).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M-1,1)]
         pos_enc = torch.cat(pres,2).transpose(1,2);
-        res = pos_enc.sum([1,2])/(M-1)
+        res = pos_enc.sum([1,2])
         return res.unsqueeze(1).to(post_samples.device)
     
     

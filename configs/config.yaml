@@ -3,58 +3,21 @@ debug: False
 load_data_from_pkl: 0
 
 save_state: 1
-load_state: 0
+load_state: 1
 save_hists: 1
 save_partition: 1
 freeze_vae: 1
 
 wandb_enabled: 1
 
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231201_203858-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231205_202810-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231208_192915-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231214_161709-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231217_132315-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
+# #rural-cosmos-358
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-04-10/21-09-25/wandb/run-20240410_210926-1fmsh565/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
 
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231201_172405-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231205_212517-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231208_193641-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231214_182013-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231217_132708-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231224_163015-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
+# #zephyr
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-20-30/wandb/run-20240518_152031-zhvzuxif/files/AtlasConditionalQVAE_atlas_default_latest.pth"
 
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-37-11/wandb/run-20231201_173712-ti1793rl/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-37-11/wandb/run-20231206_172404-ti1793rl/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-37-11/wandb/run-20231211_131219-ti1793rl/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-37-11/wandb/run-20231217_133508-ti1793rl/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231201_173928-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231206_173410-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231211_132141-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231217_133053-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-
-# interpolation
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-07/17-43-00/wandb/run-20231207_174300-x1hgcsrm/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-
-# pions
-# run_path: /home/javier/Projects/CaloQVAE/outputs/2023-12-11/15-03-26/wandb/run-20231211_150327-vljzh7n3/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth
-
-# no hits
-# run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-02-13/18-47-19/wandb/run-20240213_184720-76xrzznn/files/GumBoltAtlasPRBMCNNnohits_atlas_default_latest.pth"
-# run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-02-13/18-47-19/wandb/run-20240216_200216-76xrzznn/files/GumBoltAtlasPRBMCNNnohits_atlas_default_best.pth"
-
-#robust tree
-# run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-02-27/18-38-25/wandb/run-20240227_183826-y5uczif5/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
-
-#honest breeze
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-03-01/13-51-30/wandb/run-20240301_135131-dfolca4r/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
-
-#silver blaze
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-02-27/14-14-29/wandb/run-20240227_141430-9ghcd0zi/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
-
-
-#rural-cosmos-358
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-04-10/21-09-25/wandb/run-20240410_210926-1fmsh565/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+#pegasus
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240518_152205-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_latest.pth"
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
