@@ -23,9 +23,9 @@ n_latent_nodes_per_p: 512
 # n_latent_nodes: 302
 # n_latent_nodes_per_p: 302
 
-encodertype: SmallPBv3
+encodertype: SmallPBv4
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: SmallPBv2
+decodertype: SmallPBv4
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
 
 encoder_pb_hierarchy: 0
@@ -35,7 +35,7 @@ fullyconnected: False
 topology: pegasus
 alpha: 0.0
 gamma: 0.0
-mse_weight: 0.0
+mse_weight: 0.5
 interpolation_param: 1.0
-bce_weights_power: 0.25
+bce_weights_power: 0.0
 rbmMethod: CD

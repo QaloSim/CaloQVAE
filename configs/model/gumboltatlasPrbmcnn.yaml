@@ -17,7 +17,7 @@ encoder_hidden_nodes:
 # n_latent_hierarchy_lvls: 4
 # n_latent_nodes: 512
 #for PB
-n_latent_hierarchy_lvls: 3
+n_latent_hierarchy_lvls: 4
 n_latent_nodes: 512
 n_latent_nodes_per_p: 512
 # n_latent_nodes: 302
@@ -37,8 +37,8 @@ encodertype: SmallPB
 decodertype: SmallPBv2
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
 
-encoder_pb_hierarchy: 0
-encoder_pb_hierarchy_bin: 1
+encoder_pb_hierarchy: 1
+encoder_pb_hierarchy_bin: 0
 
 fullyconnected: False
 topology: pegasus
@@ -48,7 +48,7 @@ topology: pegasus
 # mse_weight: 0.1
 alpha: 0.0
 gamma: 0.0
-mse_weight: 0.0
+mse_weight: 0.55
 interpolation_param: 1.0
-bce_weights_power: 0.25
+bce_weights_power: 0.0
 rbmMethod: CD

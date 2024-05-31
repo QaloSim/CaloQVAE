@@ -63,50 +63,25 @@ initialize(version_base=None, config_path="../configs")
 
 ###############################
 
-# # happy-sun-270 | CNN + voxel pos enc + cond + scaled data
-# # run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231201_203858-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-# run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/20-38-58/wandb/run-20231224_160705-n9y23yq6/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-# modelname = 'happy-sun-270'
-
-    
-# # drawn-cosmos-266 | CNN + cond + scaled data
-# run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-24-05/wandb/run-20231224_163015-m4f4z37z/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-# modelname = 'drawn-cosmos-266'    
 
 
-# # misty-wind-267 | CNN + voxel pos enc JQTM + cond + scaled data
-# run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-37-11/wandb/run-20231224_164009-ti1793rl/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-# modelname = 'misty-wind-267'   
-
-    
-# # winter-glade-268 | CNN + cond pos enc + scaled data
-# run_path = "/home/javier/Projects/CaloQVAE/outputs/2023-12-01/17-39-27/wandb/run-20231224_163406-p7awkxhk/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-# modelname = 'winter-glade-268'   
+# # divine-valentine-309 | CNN + cond + scaled data + dec charm
+# run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-15/17-36-19/wandb/run-20240215_173620-l3i43zja/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
+# modelname = 'divine-valentine-309'
 
 
-# # generous-elevator | CNN + cond + scaled data + no hits
-# run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-13/18-47-19/wandb/run-20240216_200216-76xrzznn/files/GumBoltAtlasPRBMCNNnohits_atlas_default_latest.pth"
-# modelname = 'generous-elevator-301'
+# # # toasty-cherry-310 | CNN + cond + scaled data + hits dec uncond
+# # run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-15/22-10-50/wandb/run-20240215_221050-caevb6ld/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+# # modelname = 'toasty-cherry-310'
 
+# # robust-tree-339 | CNN + cond + scaled data
+# run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-27/18-38-25/wandb/run-20240301_174432-y5uczif5/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+# modelname = 'robust-tree-339'
 
-# # prime-totem-282 | CNN + cond + scaled data
-# run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-01-08/13-51-41/wandb/run-20240108_135142-2fitsjre/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-# modelname = 'prime-totem-282'
-
-
-# divine-valentine-309 | CNN + cond + scaled data + dec charm
-run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-15/17-36-19/wandb/run-20240215_173620-l3i43zja/files/GumBoltAtlasPRBMCNN_atlas_default_latest.pth"
-modelname = 'divine-valentine-309'
-
-
-# # toasty-cherry-310 | CNN + cond + scaled data + hits dec uncond
-# run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-15/22-10-50/wandb/run-20240215_221050-caevb6ld/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
-# modelname = 'toasty-cherry-310'
-
-# robust-tree-339 | CNN + cond + scaled data
-run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-02-27/18-38-25/wandb/run-20240301_174432-y5uczif5/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
-modelname = 'robust-tree-339'
-
+# morning-breeze-420 | CNN + cond + scaled data + Cyl EncDec + lin/sqrt/log LONG energy encoded + CRBM 1st Partition Binv2
+# run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240518_152205-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_150.pth"
+run_path = "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240524_194939-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_200.pth"
+modelname = 'morning-breeze-420'
      
 datascaled = 'reduced'
 R = 0.01

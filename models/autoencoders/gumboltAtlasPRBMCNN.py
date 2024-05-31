@@ -133,32 +133,32 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         post_zetas = torch.cat(post_samples, 1)
 
         # Compute cross-entropy b/w post_logits and post_samples
-        # entropy = - self._bce_loss(logits_q_z, post_zetas)
-        entropy = - self._bce_loss(logits_q_z, post_zetas[:,self._config.model.n_latent_nodes:])
+        entropy = - self._bce_loss(logits_q_z, post_zetas)
+        # entropy = - self._bce_loss(logits_q_z, post_zetas[:,self._config.model.n_latent_nodes:])
         entropy = torch.mean(torch.sum(entropy, dim=1), dim=0)
 
         # Compute positive phase (energy expval under posterior variables) 
         n_nodes_p = self.prior.nodes_per_partition
-        # pos_energy = self.energy_exp(post_zetas[:, :n_nodes_p],
-        #                              post_zetas[:, n_nodes_p:2*n_nodes_p],
-        #                              post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
-        #                              post_zetas[:, 3*n_nodes_p:])
-        pos_energy = self.energy_exp_cond(post_zetas[:, :n_nodes_p],
+        pos_energy = self.energy_exp(post_zetas[:, :n_nodes_p],
                                      post_zetas[:, n_nodes_p:2*n_nodes_p],
                                      post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
                                      post_zetas[:, 3*n_nodes_p:])
-
-        # Compute gradient computation of the logZ term
-        # p0_state, p1_state, p2_state, p3_state \
-        #     = self.sampler.block_gibbs_sampling(post_zetas[:, :n_nodes_p],
+        # pos_energy = self.energy_exp_cond(post_zetas[:, :n_nodes_p],
         #                              post_zetas[:, n_nodes_p:2*n_nodes_p],
         #                              post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
-        #                              post_zetas[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
+        #                              post_zetas[:, 3*n_nodes_p:])
+
+        # Compute gradient computation of the logZ term
         p0_state, p1_state, p2_state, p3_state \
-            = self.sampler.block_gibbs_sampling_cond(post_zetas[:, :n_nodes_p],
+            = self.sampler.block_gibbs_sampling(post_zetas[:, :n_nodes_p],
                                      post_zetas[:, n_nodes_p:2*n_nodes_p],
                                      post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
                                      post_zetas[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
+        # p0_state, p1_state, p2_state, p3_state \
+            # = self.sampler.block_gibbs_sampling_cond(post_zetas[:, :n_nodes_p],
+            #                          post_zetas[:, n_nodes_p:2*n_nodes_p],
+            #                          post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
+            #                          post_zetas[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
         
         # TODO: Solve code smell: beta=1.0/beta is very confusing
         #beta, _, _, _ = self.find_beta()
@@ -166,8 +166,8 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         #p0_state, p1_state, p2_state, p3_state = self.dwave_sampling(num_samples=self._config.engine.rbm_batch_size, measure_time=False, beta=1.0/beta)
 
         
-        # neg_energy = - self.energy_exp(p0_state, p1_state, p2_state, p3_state)
-        neg_energy = - self.energy_exp_cond(p0_state, p1_state, p2_state, p3_state)
+        neg_energy = - self.energy_exp(p0_state, p1_state, p2_state, p3_state)
+        # neg_energy = - self.energy_exp_cond(p0_state, p1_state, p2_state, p3_state)
 
         # Estimate of the kl-divergence
         kl_loss = entropy + pos_energy + neg_energy

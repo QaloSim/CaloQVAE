@@ -116,9 +116,7 @@ class EngineAtlas(EngineCaloV3):
                     slope_act_fct = self._config.engine.slope_activation_fct_final
                 
                 fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct, slope_act_fct)
-                # if self._config.reducedata:
-                #     in_data = self._reduceinv(in_data, true_energy, R=self.R)
-                #     fwd_output.output_activations = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
+               
                 batch_loss_dict = self._model.loss(in_data, fwd_output, true_energy)
 
                     
@@ -180,9 +178,8 @@ class EngineAtlas(EngineCaloV3):
                             # sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
                     # else:
                     #     sample_dwave_energies, sample_dwave_data = sample_energies, sample_data
-                        
+                    
                     self._update_histograms(in_data, fwd_output.output_activations, true_energy)
-                    # self._update_histograms(input_data[0]/1000, fwd_output.output_activations)
                     
                         
                 if (batch_idx % log_batch_idx) == 0:
@@ -224,8 +221,8 @@ class EngineAtlas(EngineCaloV3):
                             sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
                             self._model.sampler._batch_size = self._config.engine.rbm_batch_size
                             # sample_energies, sample_data = self._model.generate_samples()
-                            if self._config.usinglayers:
-                                sample_data = self.layerTo1D(sample_data)
+                            # if self._config.usinglayers:
+                                # sample_data = self.layerTo1D(sample_data)
                             sample_data = self._reduceinv(sample_data, sample_energies, R=self.R)
                         else:
                             # Multiply by 1000. to scale to MeV
@@ -346,20 +343,25 @@ class EngineAtlas(EngineCaloV3):
         return in_data, true_energy, in_data_flat
         # return torch.log1p((in_data/true_energy)/0.04), true_energy, in_data_flat #<------JQTM: log(1+reduced_energy/R) w/ R=0.05 for photons
 
-    def _reduce(self, in_data, true_energy, R=0.04):
+    def _reduce(self, in_data, true_energy, R=1e-7):
         """
-        log(1+reduced_energy/R)
+        CaloDiff Transformation Scheme
         """
-        
-        return torch.log1p((in_data/true_energy)/R)
+        ϵ = in_data/true_energy
+        x = R + (1-2*R)*ϵ
+        u = torch.log(x/(1-x)) - torch.log(torch.tensor([R/(1-R)]).to(x.device)) #torch.log(torch.tensor([δ/(1-δ)]))
+        return u
 
         
-    def _reduceinv(self, in_data, true_energy, R=0.04):
+    def _reduceinv(self, in_data, true_energy, R=1e-7):
         """
-        log(1+reduced_energy/R)
+        CaloDiff Transformation Scheme
         """
         
-        return (in_data.exp() - 1)*R*true_energy
+        x = (torch.sigmoid(in_data + torch.log(torch.tensor([R/(1-R)]).to(in_data.device)) ) - R)/(1-2*R) * true_energy
+        x[torch.isclose(x, torch.tensor([0]).to(dtype=x.dtype, device=x.device)) ] = 0.0
+        
+        return x
 
     
     def _update_histograms(self, in_data, output_activations, true_energy):
@@ -404,9 +406,11 @@ class EngineAtlas(EngineCaloV3):
             in_data_t = self._reduceinv(in_data, true_energy, R=self.R)/1000
             recon_data_t = self._reduceinv(output_activations, true_energy, R=self.R)/1000
             sample_data_t = self._reduceinv(sample_data, sample_energies, R=self.R)/1000
+            sample_dwave_data_t = self._reduceinv(sample_dwave_data, sample_dwave_energies, R=self.R)/1000.
             self._hist_handler.update(in_data_t.detach().cpu().numpy(), 
                                       recon_data_t.detach().cpu().numpy(), 
-                                      sample_data_t.detach().cpu().numpy())
+                                      sample_data_t.detach().cpu().numpy(),
+                                      sample_dwave_data_t.detach().cpu().numpy())
         else:
             self._hist_handler.update(in_data.detach().cpu().numpy(),
                                       output_activations.detach().cpu().numpy(),
@@ -545,7 +549,7 @@ class EngineAtlas(EngineCaloV3):
             for xx in data_loader:
                 in_data, true_energy, in_data_flat = self._preprocess(xx[0],xx[1])
                 if self._config.reducedata:
-                    in_data = self._reduce(in_data, true_energy, R=R)
+                    in_data = self._reduce(in_data, true_energy, R=self.R)
                 if "PRBMFCN" in self._config.model.model_type:
                     enIn = torch.cat((in_data, true_energy), dim=1)
                     beta, post_logits, post_samples = self.model.encoder(enIn, False)

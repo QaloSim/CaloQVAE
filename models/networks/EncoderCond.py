@@ -199,24 +199,91 @@ class EncoderBlockPBHv3(nn.Module):
         
         return x
     
-#     def _pos_enc(self, post_samples):
-#         post_samples = torch.cat(post_samples,1)
-#         M = post_samples.shape[1]
-
-#         pres = [(torch.arange(0,M).multiply(np.pi/M).cos().to(post_samples.device) * post_samples + torch.arange(0,M).multiply(np.pi/M).sin().to(post_samples.device) *(1 - post_samples).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M-1,1)]
-#         pos_enc = torch.cat(pres,2).transpose(1,2);
-#         res = pos_enc.sum([1,2])/(M-1)
-#         return res.unsqueeze(1)
-
     def _pos_enc(self, post_samples):
         post_samples = torch.cat(post_samples,1)
         M = post_samples.shape[1]
-        post_samples_cpu = post_samples.clone().detach().cpu()
 
-        pres = [(torch.arange(0,M).multiply(i*np.pi/M).cos() * post_samples_cpu + torch.arange(0,M).multiply(i*np.pi/M).sin() *(1 - post_samples_cpu).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M-1,1)]
+        pres = [(torch.arange(0,M).multiply(np.pi/M).cos().to(post_samples.device) * post_samples + torch.arange(0,M).multiply(np.pi/M).sin().to(post_samples.device) *(1 - post_samples).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M-1,1)]
         pos_enc = torch.cat(pres,2).transpose(1,2);
-        res = pos_enc.sum([1,2])
-        return res.unsqueeze(1).to(post_samples.device)
+        res = pos_enc.sum([1,2])/(M-1)
+        return res.unsqueeze(1)
+
+#     def _pos_enc(self, post_samples):
+#         post_samples = torch.cat(post_samples,1)
+#         M = post_samples.shape[1]
+#         post_samples_cpu = post_samples.clone().detach().cpu()
+
+#         pres = [(torch.arange(0,M).multiply(i*np.pi/M).cos() * post_samples_cpu + torch.arange(0,M).multiply(i*np.pi/M).sin() *(1 - post_samples_cpu).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M-1,1)] # np.arange(1,M-1,1)
+#         pos_enc = torch.cat(pres,2).transpose(1,2);
+#         res = pos_enc.sum([1,2])
+#         return res.unsqueeze(1).to(post_samples.device)
+    
+    
+class EncoderBlockPBHv4(nn.Module):
+    def __init__(self, num_input_nodes, n_latent_nodes):
+        super(EncoderBlockPBHv4, self).__init__()
+        self.num_input_nodes = num_input_nodes
+        self.n_latent_nodes = n_latent_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+        
+        self.seq1 = nn.Sequential(
+                   # nn.Linear(self.num_input_nodes, 24*24),
+                   # nn.Unflatten(1, (1,24, 24)),
+    
+                   PeriodicConv2d(45, 64, (3,5), 1, 0),
+                   nn.BatchNorm2d(64),
+                   nn.PReLU(64, 0.02),
+    
+                   PeriodicConv2d(64, 128, (3,5), 1, 0),
+                   nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+                )
+
+        self.seq2 = nn.Sequential(
+                           PeriodicConv2d(129, 256, (3,5), 1, 0),
+                           nn.BatchNorm2d(256),
+                           nn.PReLU(256, 0.02),
+
+                           PeriodicConv2d(256, self.n_latent_nodes, (3,4), 1, 0),
+                           nn.PReLU(self.n_latent_nodes, 1.0),
+                           nn.Flatten(),
+                        )
+        
+
+    def forward(self, x, x0, post_samples):
+        x = x.reshape(x.shape[0],self.z, self.r,self.phi) 
+        pos_enc_samples = self._pos_enc(post_samples)
+        x = x + pos_enc_samples.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())
+        x = self.seq1(x)
+        x0 = self.trans_energy(x0)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
+        x = self.seq2(x)
+        
+        return x
+    
+    def _pos_enc(self, post_samples):
+        post_samples = torch.cat(post_samples,1)
+        M = post_samples.shape[1]
+
+        pres = [(torch.arange(0,M).multiply(np.pi/M).cos().to(post_samples.device) * post_samples + torch.arange(0,M).multiply(np.pi/M).sin().to(post_samples.device) *(1 - post_samples).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M/4-1,1)]
+        pos_enc = torch.cat(pres,2).transpose(1,2);
+        res = pos_enc.sum([1,2])/(M-1)
+        return res.unsqueeze(1)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0):
+        return (torch.log(x0) - log_e_min)/(log_e_max - log_e_min)
+
+#     def _pos_enc(self, post_samples):
+#         post_samples = torch.cat(post_samples,1)
+#         M = post_samples.shape[1]
+#         post_samples_cpu = post_samples.clone().detach().cpu()
+
+#         pres = [(torch.arange(0,M).multiply(i*np.pi/M).cos() * post_samples_cpu + torch.arange(0,M).multiply(i*np.pi/M).sin() *(1 - post_samples_cpu).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M,M/4-1)]
+#         pos_enc = torch.cat(pres,2).transpose(1,2);
+#         res = pos_enc.sum([1,2])
+#         return res.unsqueeze(1).to(post_samples.device)
     
     
 class EncoderHierarchyPB_BinEv2(HierarchicalEncoder):
@@ -242,6 +309,9 @@ class EncoderHierarchyPB_BinEv2(HierarchicalEncoder):
         elif self.encArch == "SmallPBv3":
             for l in range(len(layers)-1):
                 moduleLayers.append(EncoderBlockPBHv3(layers[l], layers[l+1]))
+        elif self.encArch == "SmallPBv4":
+            for l in range(len(layers)-1):
+                moduleLayers.append(EncoderBlockPBHv4(layers[l], layers[l+1]))
 
         sequential = sequentialMultiInput(*moduleLayers)
         return sequential

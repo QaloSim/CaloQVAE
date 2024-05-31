@@ -3,7 +3,7 @@ debug: False
 load_data_from_pkl: 0
 
 save_state: 1
-load_state: 1
+load_state: 0
 save_hists: 1
 save_partition: 1
 freeze_vae: 1
@@ -32,7 +32,7 @@ task:
   - test
 
 defaults:
-  - model: atlasCondQVAE
+  - model: gumboltatlasPrbmcnn
   - data: atlasDGX
   - engine: dvaeatlas_training_peg
   - qpu: peggy
@@ -53,4 +53,4 @@ defaults:
 
 # engine: atlasPeggyBeta
 usinglayers: False
-reducedata: False
+reducedata: True

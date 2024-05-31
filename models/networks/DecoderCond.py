@@ -190,6 +190,65 @@ class DecoderCNNPBv3(BasicDecoderV3):
         x2 = self._layers3(xx0)
         return x1.reshape(x1.shape[0],self.z*self.r*self.phi), x2.reshape(x1.shape[0],self.z*self.r*self.phi)
     
+class DecoderCNNPBv4(BasicDecoderV3):
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
+        super(DecoderCNNPBv4, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+
+        # self.n_latent_nodes = self._config.model.n_latent_nodes
+        self.n_latent_nodes = self._config.model.n_latent_nodes_per_p * 4
+        
+        # self._node_sequence = [(2049, 800), (800, 700), (700, 600), (600, 550), (550, 500), (500, 6480)]
+        self._layers =  nn.Sequential(
+                   # nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+                   nn.Unflatten(1, (self.n_latent_nodes, 1,1)),
+
+                   PeriodicConvTranspose2d(self.n_latent_nodes, 1024, (3,5), 2, 0),
+                   nn.BatchNorm2d(1024),
+                   nn.PReLU(1024, 0.02),
+                   
+
+                   PeriodicConvTranspose2d(1024, 512, (3,5), 1, 0),
+                   nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+                                   )
+        
+        self._layers2 = nn.Sequential(
+                   PeriodicConvTranspose2d(513, 128, (3,5), 1, 0),
+                   nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+
+                   PeriodicConvTranspose2d(128, 45, (3,4), 1, 0),
+                   # nn.BatchNorm2d(45),
+                   nn.PReLU(45, 1.0),
+                                   )
+        
+        self._layers3 = nn.Sequential(
+                   PeriodicConvTranspose2d(513, 128, (3,5), 1, 0),
+                   nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+
+                   PeriodicConvTranspose2d(128, 45, (3,4), 1, 0),
+                   # nn.BatchNorm2d(45),
+                   nn.PReLU(45, 0.02),
+                                   )
+        
+    def forward(self, x, x0):
+                
+        x = self._layers(x)
+        x0 = self.trans_energy(x0)
+        xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(xx0)
+        return x1.reshape(x1.shape[0],self.z*self.r*self.phi), x2.reshape(x1.shape[0],self.z*self.r*self.phi)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0):
+        return (torch.log(x0) - log_e_min)/(log_e_max - log_e_min)
+    
     
 class PeriodicConvTranspose2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):

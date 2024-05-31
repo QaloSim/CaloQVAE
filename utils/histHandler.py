@@ -182,6 +182,7 @@ class HistHandler(object):
         
         gap = (max_val-min_val)/1000.
         ax.scatter(np.arange(min_val, max_val, gap), np.arange(min_val, max_val, gap), marker='.', c='r')
+        
         ax.set_xlabel("Input " + bin_ax.label, fontsize='15')
         ax.set_ylabel("Recon " + bin_ax.label, fontsize='15')
         ax.tick_params(axis='both', which='major', labelsize=15)
