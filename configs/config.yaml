@@ -10,11 +10,25 @@ freeze_vae: 1
 
 wandb_enabled: 1
 
+# run_path: "/home/jtoledo/CaloQVAE/outputs_sym/wandb/run-20240523_110549-24tm8rtu/files/GumBoltAtlasPCRBMCNN_atlas_default_latest.pth"
+
+#142
+# run_path: "/fast_scratch_1/QVAE/blazerjia/wandb/run-20240509_222631-z8dv19wc/files/GumBoltAtlasPCRBMCNN_atlas_default_best.pth"
+
+#244
+# run_path: "/fast_scratch_1/QVAE/blazerjia/wandb/run-20240515_161658-z8dv19wc/files/GumBoltAtlasPCRBMCNN_atlas_default_best.pth"
+
+# 293
+run_path: "/fast_scratch_1/QVAE/blazerjia/wandb/run-20240521_101208-z8dv19wc/files/GumBoltAtlasPCRBMCNN_atlas_default_best.pth"
+
+
+
+
 
 output_path: /fast_scratch_1/jtoledo/outputs
 device: gpu
 gpu_list:
-  - 6
+  - 4
 
 task:
   - train

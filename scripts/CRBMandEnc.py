@@ -56,12 +56,13 @@ from models.modelCreator import ModelCreator
 from utils.plotting.HighLevelFeatures import HighLevelFeatures as HLF
 
 hydra.core.global_hydra.GlobalHydra.instance().clear()
-initialize(version_base=None, config_path="./configs")
+initialize(version_base=None, config_path="../configs")
 
 ""
 # robust-tree-339 | CNN + cond + scaled data
 run_path = "/fast_scratch/sgonzalez/wandb/run-20240410_203900-8sntv0ve/files/GumBoltAtlasPCRBMCNN_atlas_default_best.pth"
 modelname = 'spring-disco-85'
+PATH = '/home/' + getpass.getuser() + '/CaloQVAE'
 
      
 datascaled = 'scaled'
@@ -146,6 +147,9 @@ def main():
     
 def draw_hist_per_energy(engine, dev, config, val_loader, modelname, range_len=106):
     
+    if not os.path.isdir(PATH + f'/figs/{modelname}/'):
+        os.makedirs(PATH + f'/figs/{modelname}/') 
+    
     partition_size = config.model.n_latent_nodes
     cmap = plt.cm.viridis
 
@@ -166,7 +170,7 @@ def draw_hist_per_energy(engine, dev, config, val_loader, modelname, range_len=1
             beta, post_logits, post_samples = engine.model.encoder(x_ind.to(dev), en_ind.to(dev), False)
             post_samples = torch.cat(post_samples, 1)
             
-            u = engine.model.convert_inc_eng_to_binary(en_ind)
+            u = engine.model.convert_inc_eng_to_binary(en_ind).to(dev)
             p1, p2, p3 = post_samples[:,0:partition_size], post_samples[:,partition_size:2*partition_size], post_samples[:,2*partition_size:3*partition_size]
             post_samples_energy = engine.model.stater.energy_samples(u, p1, p2, p3, 1.0 )
 
@@ -182,7 +186,7 @@ def draw_hist_per_energy(engine, dev, config, val_loader, modelname, range_len=1
     plt.xlabel("RBM Energy", fontsize=15)
     plt.ylabel("PDF", fontsize=15)
     plt.grid("True")
-    plt.savefig(f'/home/sgonzalez/CaloQVAE/figs/{modelname}/RBM_energy_per_inc_energy_{modelname}.png')
+    plt.savefig(PATH + f'/figs/{modelname}/RBM_energy_per_inc_energy_{modelname}.png')
     
     plt.figure(figsize=(8,6))
     plt.errorbar(mean_rbm_energy[1:,1]/1000, mean_rbm_energy[1:,0], yerr=mean_rbm_energy[1:,2], fmt='o', ecolor='lightgray', elinewidth=3, capsize=0, alpha=0.6, color="blue")
@@ -190,7 +194,7 @@ def draw_hist_per_energy(engine, dev, config, val_loader, modelname, range_len=1
     plt.xlabel("Incidence Energy (GeV)", fontsize=15)
     plt.ylabel("mean RBM energy", fontsize=15)
     plt.legend(framealpha=0.5, fontsize=15)
-    plt.savefig(f'/home/sgonzalez/CaloQVAE/figs/{modelname}/RBM_energy_per_inc_energy_mean_{modelname}.png')
+    plt.savefig(PATH + f'/figs/{modelname}/RBM_energy_per_inc_energy_mean_{modelname}.png')
     # plt.show()
     
     
@@ -245,7 +249,7 @@ def draw_sample(engine, dev, config, val_loader, modelname):
     plt.xlabel("Incidence Energy as input to decoder (GeV)", fontsize=15)
     plt.ylabel("MSE(input, prediction)", fontsize=15)
     plt.legend(framealpha=0.5, fontsize=15)
-    plt.savefig(f'/home/sgonzalez/CaloQVAE/figs/{modelname}/MSE_energy_per_inc_energy_mean_{modelname}.png')
+    plt.savefig(PATH + f'/figs/{modelname}/MSE_energy_per_inc_energy_mean_{modelname}.png')
     # plt.show()
     
     plt.figure(figsize=(8,6))
@@ -258,7 +262,7 @@ def draw_sample(engine, dev, config, val_loader, modelname):
     plt.xlabel("Incidence Energy as input to decoder (GeV)", fontsize=15)
     plt.ylabel("sparsity(input, prediction)", fontsize=15)
     plt.legend(framealpha=0.5, fontsize=15)
-    plt.savefig(f'/home/sgonzalez/CaloQVAE/figs/{modelname}/sparsity_energy_per_inc_energy_mean_{modelname}.png')
+    plt.savefig(PATH + f'/figs/{modelname}/sparsity_energy_per_inc_energy_mean_{modelname}.png')
     # plt.show()
     
     
@@ -302,7 +306,7 @@ def get_diff_btw_true_and_argmin_einc(engine, dev, config, val_loader, modelname
     plt.legend(['sparsity', 'shower'], framealpha=0.5, fontsize=15)
     # plt.xscale("log")
     # plt.yscale("log")
-    plt.savefig(f'/home/sgonzalez/CaloQVAE/figs/{modelname}/diff_energy_per_inc_energy_mean_{modelname}.png')
+    plt.savefig(PATH + f'/figs/{modelname}/diff_energy_per_inc_energy_mean_{modelname}.png')
     # plt.show()
     
     

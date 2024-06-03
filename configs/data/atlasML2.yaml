@@ -1,0 +1,53 @@
+data_type: atlas
+# _layers: 
+#   - voxels
+# particle_type: pion1
+# particle_type: pionEn5
+# dataset: dataset1pion
+_layers: 
+  - showers
+particle_type: electron-ds2
+dataset: dataset2
+
+frac_test_dataset: 0.1
+frac_train_dataset: 0.8
+
+particle: electron
+
+scaled: True
+#scaler_path: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_highStat_En_4_scaler.gz
+#scaler_amin: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_highStat_En_4_amin.npy
+scaler_path: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/dataset_2_1_scaler.gz
+scaler_amin: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/dataset_2_1_amin.npy
+#scaler_path: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/uniform_dataset_2_1_scaler.gz
+#scaler_amin: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/uniform_dataset_2_1_amin.npy
+
+atlas_input_photon1: /fast_scratch_1/caloqvae/data/atlas/photons1.hdf5
+atlas_input_photonEn0: /fast_scratch_1/caloqvae/data/atlas/photons_samples_highStat_En_0.hdf5
+atlas_input_photonEn1: /fast_scratch_1/caloqvae/data/atlas/photons_samples_highStat_En_1.hdf5
+atlas_input_photonEn2: /fast_scratch_1/caloqvae/data/atlas/photons_samples_highStat_En_2.hdf5
+atlas_input_photonEn3: /fast_scratch_1/caloqvae/data/atlas/photons_samples_highStat_En_3.hdf5
+atlas_input_photonEn4: /fast_scratch_1/caloqvae/data/atlas/photons_samples_highStat_En_4.hdf5
+atlas_input_photonEn5: /fast_scratch_1/caloqvae/data/atlas_scaled/photons_samples_highStat_En_5.hdf5
+atlas_input_photonEn6: /fast_scratch_1/caloqvae/data/atlas/photons_samples_highStat_En_6.hdf5
+atlas_input_photonEn7: /fast_scratch_1/caloqvae/data/atlas/photons_samples_highStat_En_7.hdf5
+atlas_input_pion1: /fast_scratch_1/caloqvae/data/atlas/pions1.hdf5
+atlas_input_pionEn0: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_0.hdf5
+atlas_input_pionEn1: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_1.hdf5
+atlas_input_pionEn2: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_2.hdf5
+atlas_input_pionEn3: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_3.hdf5
+#atlas_input_pionEn4: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_4.hdf5
+atlas_input_pionEn4: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_highStat_En_4.hdf5
+#atlas_input_pionEn5:/fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_5.hdf5
+atlas_input_pionEn5: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_highStat_En_5.hdf5
+atlas_input_pionEn6: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_6.hdf5
+atlas_input_pionEn7: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_7.hdf5
+#atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3/dataset_2_1.hdf5
+atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/dataset_2_1.hdf5
+#atlas_input_electron:/fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/uniform_dataset_2_1.hdf5
+
+binning_xml_electrons: /fast_scratch_1/caloqvae/data/atlas_dataset2and3/binning_dataset_2.xml
+binning_xml_photons:/fast_scratch_1/caloqvae/data/atlas/binning_dataset_1_photons.xml
+binning_xml_pions: /fast_scratch_1/caloqvae/data/atlas/binning_dataset_1_pions.xml
+
+entity: caloqvae
