@@ -47,7 +47,7 @@ atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/da
 #atlas_input_electron:/fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/uniform_dataset_2_1.hdf5
 
 binning_xml_electrons: /fast_scratch_1/caloqvae/data/atlas_dataset2and3/binning_dataset_2.xml
-binning_xml_photons:/fast_scratch_1/caloqvae/data/atlas/binning_dataset_1_photons.xml
+binning_xml_photons: /fast_scratch_1/caloqvae/data/atlas/binning_dataset_1_photons.xml
 binning_xml_pions: /fast_scratch_1/caloqvae/data/atlas/binning_dataset_1_pions.xml
 
 entity: caloqvae
