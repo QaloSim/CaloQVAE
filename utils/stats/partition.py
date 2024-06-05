@@ -334,4 +334,3 @@ def create_filenames_dict(run_path):
 #     _pattern_like = filenames[first_key][-1]
 #     pattern = f'RBM_{i}_' + _pattern_like.split('_')[-2] + f'_{keyword}.pth'
 #     return pattern
-

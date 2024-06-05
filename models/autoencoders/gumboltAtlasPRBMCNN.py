@@ -37,6 +37,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         super(GumBoltAtlasPRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasPRBMCNN"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        self._cov_mat = None
         
     def _create_prior(self):
         """Override _create_prior in GumBoltCaloV6.py
@@ -260,6 +261,29 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         
         partition_size = self._config.model.n_latent_nodes
         return dwave_samples[:,:partition_size], dwave_samples[:,partition_size:2*partition_size], dwave_samples[:,2*partition_size:3*partition_size], dwave_samples[:,3*partition_size:4*partition_size]
+    
+    def loss(self, input_data, fwd_out, true_energy):
+        # Overrides loss in gumboltCaloV5.py
+        logger.debug("loss")
+
+        kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
+
+        # Calculate ae_loss using inverse covariance matrix
+        delta = (input_data - fwd_out.output_activations).double()
+        
+        inv_cov_mat = self._cov_mat.to(torch.double).to(delta.device)
+        #inv_cov_mat = self._cov_mat.to(delta.device).double()
+        
+        ae_loss = torch.einsum('bi,ij,bj->b', delta, inv_cov_mat, delta).sum()
+        
+
+        hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none')
+        spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
+        sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
+        hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
+
+        return {"ae_loss": ae_loss, "kl_loss": kl_loss, "hit_loss": hit_loss,
+                "entropy": entropy, "pos_energy": pos_energy, "neg_energy": neg_energy}
     
     def generate_samples_qpu(self, num_samples=64, true_energy=None, measure_time=False, beta=1.0):
         """
