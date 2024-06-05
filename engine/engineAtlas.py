@@ -309,18 +309,26 @@ class EngineAtlas(EngineCaloV3):
 
     def _reduce(self, in_data, true_energy, R=0.04):
         """
-        log(1+reduced_energy/R)
+        log(1+reduced_energy/R) \a
         """
+        δ = torch.tensor([R]) # should be 10e-6
+        e_i = in_data / true_energy
+        x = δ + (1 - 2 * δ) * e_i
         
-        return torch.log1p((in_data/true_energy)/R)
+        return torch.log(x / (1 - x)) - torch.log(δ / (1 - δ))
 
         
     def _reduceinv(self, in_data, true_energy, R=0.04):
         """
         log(1+reduced_energy/R)
         """
-        
-        return (in_data.exp() - 1)*R*true_energy
+        # in_data = u_i
+        δ = torch.tensor([R]) # should be 10e-6
+        temp = torch.exp(in_data + torch.log(δ / (1 - δ)))
+        x = temp / (1 + temp)
+        ϵ = (x - δ) / (1- 2 * δ)
+                         
+        return ϵ * true_energy
 
     
     def _update_histograms(self, in_data, output_activations, true_energy):
