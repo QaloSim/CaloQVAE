@@ -10,6 +10,7 @@ sources/
 .gif
 venv_divae/
 outputs/
+outputs_sym/
 wandb/
 data/MNIST/
 MNIST/

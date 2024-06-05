@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 from data.dataManager import DataManager
 from utils.plotting.plotProvider import PlotProvider
 from utils.stats.partition import get_Zs, save_plot, create_filenames_dict
+from utils.stats.condrbm_partition import get_Zs_cond
 from utils.helpers import get_epochs, get_project_id
 from engine.engine import Engine
 from models.modelCreator import ModelCreator
@@ -53,12 +54,14 @@ def main(cfg=None):
     # Use mode='disabled' to prevent logging
     mode = 'online' if cfg.wandb_enabled else 'disabled'
     if cfg.load_state == 0:
-        wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
+#         wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode)
+        wandb.init(project="caloqvae", entity=cfg.data.entity, config=cfg, mode=mode)
         # wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
     else:
         os.environ["WANDB_DIR"] = cfg.run_path.split("wandb")[0]
         iden = get_project_id(cfg.run_path)
-        wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode, resume='allow', id=iden)
+#         wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode, resume='allow', id=iden)
+        wandb.init(project="caloqvae", entity=cfg.data.entity, config=cfg, mode=mode, resume='allow', id=iden)
 
     # run the ting
     run(config=cfg)
@@ -192,7 +195,10 @@ def run(config=None):
                                                   config.data.data_type,
                                                   config.tag, "latest"])
         run_path = os.path.join(wandb.run.dir, "{0}.pth".format(config_string))
-        lnZais_list, lnZrais_list, en_encoded_list = get_Zs(run_path, engine, dev, 10)
+        if 'PCRBM' in config.model.model_type:
+            lnZais_list, lnZrais_list, en_encoded_list = get_Zs_cond(run_path, engine, dev, 10)
+        else:
+            lnZais_list, lnZrais_list, en_encoded_list = get_Zs(run_path, engine, dev, 10)
         save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path)
 
     logger.info("run() finished successfully.")
