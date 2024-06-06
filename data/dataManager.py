@@ -3,6 +3,7 @@ Data Manager
 
 Author: Eric Drechsler (eric_drechsler@sfu.ca)
 """
+import h5py
 import torch
 import numpy as np
 import joblib
@@ -36,11 +37,17 @@ class DataManager(object):
         # Variables to be used in the scaling and inverse scaling
         self._amin_array = None
         self._transformer = None
+        self._cov_mat = None
         return
 
     @property
     def train_loader(self):
         return self._train_loader
+    
+    def _set_covmat(self):
+        f1 = h5py.File("/fast_scratch/QVAE/data/atlas/matrix.hdf5","r")
+        showers1 = np.array(f1.get("matrix_data"))
+        self._cov_mat = torch.tensor(showers1)
 
     @property
     def test_loader(self):

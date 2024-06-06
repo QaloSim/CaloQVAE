@@ -1,5 +1,5 @@
 """
-PyTorch implementation of a quadripartite Boltzmann machine with a 
+PyTorch implementation of a quadripartite Boltzmann machine with a
 Pegasus/Advantage QPU topology
 """
 import itertools
@@ -17,7 +17,7 @@ _QPU_PSIZE = 16
 
 class PegasusRBM(nn.Module):
     """
-    PyTorch implementation of a quadripartite Boltzmann machine with a 
+    PyTorch implementation of a quadripartite Boltzmann machine with a
     Pegasus/Advantage QPU topology
     """
     def __init__(self, nodes_per_partition: int, qpu: bool = True, **kwargs):
@@ -26,7 +26,7 @@ class PegasusRBM(nn.Module):
         Initialize an instance of a 4-partite PegasusRBM
 
         :param nodes_per_layer (int) : Number of nodes for each partition
-        :param qpu (bool) : Only allow connections present on the QPU 
+        :param qpu (bool) : Only allow connections present on the QPU
         """
         super(PegasusRBM, self).__init__(**kwargs)
 
@@ -110,9 +110,8 @@ class PegasusRBM(nn.Module):
         n_rows = math.ceil(math.sqrt(n_cells_per_layer))
         n_cols = n_rows
 
-        #device = DWaveSampler(solver={'topology__type': 'pegasus',  "chip_id":"Advantage_system6.3"})
         device = DWaveSampler(solver={'topology__type': 'pegasus',  "chip_id":"Advantage_system6.4"})
-        #device = DWaveSampler(solver={'topology__type': 'pegasus', "chip_id":"Advantage_system4.1"})
+        # device = DWaveSampler(solver={'topology__type': 'pegasus', "chip_id":"Advantage_system4.1"})
         self._qpu_sampler = device
         qpu_nodes = device.nodelist
 
@@ -169,7 +168,7 @@ class PegasusRBM(nn.Module):
 
         :param qubit_idx_dict (dict): Dict with partition no.s as keys and
         list of qubit idxs for each partition as values
-        ;param device (DWaveSampler): QPU device containing list of nodes and 
+        ;param device (DWaveSampler): QPU device containing list of nodes and
         edges
 
         :return weight_mask_dict (dict): Dict with partition combinations as
@@ -185,7 +184,7 @@ class PegasusRBM(nn.Module):
         for edge in device.edgelist:
             if edge[0] in idx_list and edge[1] in idx_list:
                 pruned_edge_list.append(edge)
-                
+
         # print(len(device.edgelist), len(pruned_edge_list))
         self._pruned_edge_list = pruned_edge_list
 
