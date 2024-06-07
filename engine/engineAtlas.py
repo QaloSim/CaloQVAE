@@ -22,8 +22,8 @@ from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from utils.plotting.HighLevelFeatures import HighLevelFeatures as HLF
-HLF_1_photons = HLF('photon', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_photons.xml')
-HLF_1_pions = HLF('pion', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_pions.xml')
+# HLF_1_photons = HLF('photon', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_photons.xml')
+# HLF_1_pions = HLF('pion', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_pions.xml')
 
 class EngineAtlas(EngineCaloV3):
 
@@ -31,6 +31,15 @@ class EngineAtlas(EngineCaloV3):
         logger.info("Setting up engine Atlas.")
         super(EngineAtlas, self).__init__(cfg, **kwargs)
         self.init_beta_QA()
+        if self._config.data.particle == 'pion':
+            self.HLF = HLF('pion', filename=self._config.data.binning_xml_pions)
+            self.HLF.relevantLayers = [1,2,3,4,5,6,7]
+        elif self._config.data.particle == 'photon':
+            self.HLF = HLF('photon', filename=self._config.data.binning_xml_photons)
+            self.HLF.relevantLayers = [1,2,3,4,5]
+        elif self._config.data.particle == 'electron':
+            self.HLF = HLF('electron', filename=self._config.data.binning_xml_electrons)
+            self.HLF.relevantLayers = [5,10,15,20,25,30,35,40,44]
         
     def init_beta_QA(self):
         self.beta_QA = self._config.qpu.init_beta_qa # 4.5
@@ -253,9 +262,12 @@ class EngineAtlas(EngineCaloV3):
 
 #                         logger.info(input_images[0].shape)
 
-                        batch_loss_dict["input"] = plot_calo_images(input_images, particle=self._config.data.particle)
-                        batch_loss_dict["recon"] = plot_calo_images(recon_images, particle=self._config.data.particle)
-                        batch_loss_dict["sample"] = plot_calo_images(sample_images, particle=self._config.data.particle)
+                        # batch_loss_dict["input"] = plot_calo_images(input_images, particle=self._config.data.particle)
+                        # batch_loss_dict["recon"] = plot_calo_images(recon_images, particle=self._config.data.particle)
+                        # batch_loss_dict["sample"] = plot_calo_images(sample_images, particle=self._config.data.particle)
+                        batch_loss_dict["input"] = plot_calo_images(input_images, self.HLF)
+                        batch_loss_dict["recon"] = plot_calo_images(recon_images, self.HLF)
+                        batch_loss_dict["sample"] = plot_calo_images(sample_images, self.HLF)
             
                         
                         if not is_training:

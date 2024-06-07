@@ -17,7 +17,7 @@ wandb_enabled: 1
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-20-30/wandb/run-20240518_152031-zhvzuxif/files/AtlasConditionalQVAE_atlas_default_latest.pth"
 
 #pegasus
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240518_152205-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_latest.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240518_152205-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_latest.pth"
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
