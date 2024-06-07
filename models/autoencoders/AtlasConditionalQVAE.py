@@ -14,7 +14,8 @@ from models.samplers.GibbsSampling import GS
 
 # from utils.stats.partition import Stats
 from utils.stats.cond_partition import Stats
-from utils.flux_biases import h_to_fluxbias #This should change to dwave's repo
+# from utils.flux_biases import h_to_fluxbias #This should change to dwave's repo
+from dwave.system.temperatures import h_to_fluxbias
 
 # DiVAE.models imports
 # from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
@@ -40,6 +41,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
         super(AtlasConditionalQVAE, self).__init__(**kwargs)
         self._model_type = "AtlasConditionalQVAE"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        self.prior_samples = []
         
     def _create_prior(self):
         """Override _create_prior in GumBoltCaloV6.py
@@ -167,38 +169,38 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
 #         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
 #         return out
 
-#     def loss(self, input_data, fwd_out, true_energy):
-#         """
-#         - Overrides loss in gumboltCRBMCNN.py
-#         """
-#         logger.debug("loss")
-        
-#         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-#         # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
-#         sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
-#         interpolation_param = self._config.model.interpolation_param
-#         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-#         ae_loss = torch.mean(torch.mean(ae_loss, dim=1), dim=0)
-        
-#         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
-#         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
-#         # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
-#         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
-#         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
-#         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
-#         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
+    def loss(self, input_data, fwd_out, true_energy):
+            """
+            - Overrides loss in gumboltCaloV5.py
+            """
+            logger.debug("loss")
 
-#         # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
-#         # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
-        
-        
-#         # if self._config.engine.modelhits:
-#         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-#                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-#         # else:
-#         #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-#         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-            
+            kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
+            # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
+            sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
+            interpolation_param = self._config.model.interpolation_param
+            ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
+            ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) * self._config.model.coefficient
+
+            #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
+            #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
+            # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
+            hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
+            spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
+            sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
+            hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
+
+            # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
+            # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
+
+
+            # if self._config.engine.modelhits:
+            return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+                    "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+            # else:
+            #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
+            #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):
         """Overrides kl_divergence in GumBolt.py
@@ -426,7 +428,10 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
                 elif i < int(key):
                     wKey = str(i) + key
                     s = s - torch.sum(prbm_weights[wKey], dim=0)/4. * beta
-            dwave_bias[key] = - prbm_bias[key]/2.0 * beta + s
+            if key == '0':
+                dwave_bias[key] = torch.zeros_like(prbm_bias[key])
+            else:
+                dwave_bias[key] = - prbm_bias[key]/2.0 * beta + s
         
         dwave_weights_np = {}
         for key in dwave_weights.keys():
@@ -485,7 +490,10 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
             true_e = torch.ones((num_samples, 1), device=prbm_weights['01'].device).detach() * true_energy
         # prior_samples = torch.cat([dwave_samples, true_e], dim=1)
         prior_samples = torch.cat([dwave_samples], dim=1)
-        self.prior_samples = prior_samples
+        if torch.is_tensor(self.prior_samples):
+            self.prior_samples = torch.cat([self.prior_samples, prior_samples], dim=0)
+        else:
+            self.prior_samples = prior_samples
             
         # output_hits, output_activations = self.decoder(prior_samples)
         output_hits, output_activations = self.decoder(prior_samples, true_e)
