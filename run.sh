@@ -1,6 +1,0 @@
-export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
-export WANDB_BASE_URL=http://localhost:8080
-export WANDB_API_KEY=local-3f6b38cc614d77884092e23a3081672b2c69ac12
-export DWAVE_API_TOKEN=DEV-fe6c3a20d7f433fc1da6525e8aafd838188f2be2
-export WANDB_DIR=/fast_scratch_1/caloqvae/dsogutlu
-python scripts/run.py
