@@ -142,7 +142,7 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     
                     # TESTING UNCONDITIONED DECODER
-                    batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
+                    batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] + batch_loss_dict["granularity_loss"]
                     #batch_loss_dict["loss"] = ae_gamma*(batch_loss_dict["ae_loss"] + batch_loss_dict["uncond_ae_loss"]) + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + (batch_loss_dict["hit_loss"] + batch_loss_dict["uncond_hit_loss"])
                     
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
@@ -154,7 +154,7 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["gamma"] = 1.0
                     batch_loss_dict["epoch"] = epoch
                     
-                    batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
+                    batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]+ batch_loss_dict["granularity_loss"]
                     batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
                     
                     if self._config.engine.sample_qpu:
@@ -250,10 +250,10 @@ class EngineAtlas(EngineCaloV3):
                     valid_loss_dict = self._validate()
                     
                     if "hit_loss" in valid_loss_dict.keys():
-                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"]
+                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"] + valid_loss_dict["hit_loss"] + valid_loss_dict["granularity_loss"]
                         valid_loss_dict["ahep_loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"] + valid_loss_dict["hit_loss"]
                     else:
-                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"]
+                        valid_loss_dict["loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["kl_loss"]+ valid_loss_dict["granularity_loss"]
                         valid_loss_dict["ahep_loss"] = valid_loss_dict["ae_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"]
                     # wandb.log(val_loss_dict)
                     # Check the loss over the validation set is 

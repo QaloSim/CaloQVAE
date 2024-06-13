@@ -179,15 +179,15 @@ def run(config=None):
                     print(name, param.requires_grad)
                 engine.optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, engine.model.parameters()), lr=config.engine.learning_rate)
                 dummy_variable = 1
+                
+        if config.save_state:
+            config_string = "_".join(str(i) for i in [config.model.model_type, 
+                                                    config.data.data_type,
+                                                    config.tag, "latest"])
+            modelCreator.save_state(config_string)
 
     if "test" in config.task:
         engine.fit(epoch=epoch, is_training=False, mode="test")
-
-    if config.save_state:
-        config_string = "_".join(str(i) for i in [config.model.model_type, 
-                                                  config.data.data_type,
-                                                  config.tag, "latest"])
-        modelCreator.save_state(config_string)
         
     if config.save_partition:
         config_string = "_".join(str(i) for i in [config.model.model_type, 

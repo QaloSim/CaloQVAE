@@ -3,10 +3,10 @@ debug: False
 load_data_from_pkl: 0
 
 save_state: 1
-load_state: 0
+load_state: 1
 save_hists: 1
 save_partition: 1
-freeze_vae: 1
+freeze_vae: 0
 
 wandb_enabled: 1
 
@@ -19,16 +19,16 @@ wandb_enabled: 1
 # run_path: "/fast_scratch_1/QVAE/blazerjia/wandb/run-20240515_161658-z8dv19wc/files/GumBoltAtlasPCRBMCNN_atlas_default_best.pth"
 
 # 293
-run_path: "/fast_scratch_1/QVAE/blazerjia/wandb/run-20240521_101208-z8dv19wc/files/GumBoltAtlasPCRBMCNN_atlas_default_best.pth"
+run_path: "/fast_scratch_1/caloqvae/QVAE/run-20240609_163342-ct/files/GumBoltAtlasPCRBMCNN_atlas_default_best.pth"
 
 
 
 
 
-output_path: /fast_scratch_1/jtoledo/outputs
+output_path: /fast_scratch_1/blazerjia/outputs
 device: gpu
 gpu_list:
-  - 4
+  - 0
 
 task:
   - train
@@ -37,7 +37,7 @@ task:
 
 defaults:
   - model: gumboltatlasPcrbmcnn
-  - data: atlasDGX
+  - data: atlasML2
   - engine: dvaeatlas_training_peg
 
 

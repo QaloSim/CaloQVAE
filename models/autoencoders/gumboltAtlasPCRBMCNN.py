@@ -229,7 +229,19 @@ class GumBoltAtlasPCRBMCNN(GumBoltAtlasPRBMCNN):
         return bin_engs
     
     
-    
+    def measure_single_granularity(self, data_tensor, index):
+        """
+        Measure the granularity of a calorimeter image given as a 1D array using PyTorch.
+        
+        Parameters:
+        data (array-like): 1D array representing the calorimeter image.
+        
+        Returns:
+        float: A measure of the granularity.
+        """
+        diffs = (data_tensor[:,index:] - data_tensor[:,:-index])
+        return diffs
+
     def loss(self, input_data, fwd_out, true_energy):
         """
         - Overrides loss in GumBoltAtlasCRBMCNN.py
@@ -250,7 +262,12 @@ class GumBoltAtlasPCRBMCNN(GumBoltAtlasPRBMCNN):
         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
+        #Granularity Loss
+        input_granularity = self.measure_single_granularity(input_data, 9)
+        output_granularity = self.measure_single_granularity(fwd_out.output_activations, 9)
+        granularity_loss = torch.pow(input_granularity - output_granularity, 2)
+        granularity_loss = torch.mean(torch.sum(granularity_loss, dim=1), dim=0)
+
         
-        
-        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss, "granularity_loss":granularity_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy,}
