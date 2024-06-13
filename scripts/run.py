@@ -58,7 +58,7 @@ def main(cfg=None):
         wandb.init(project="caloqvae", entity=cfg.data.entity, config=cfg, mode=mode)
         # wandb.init(project="caloqvae", entity="jtoledo", config=cfg, mode=mode)
     else:
-        os.environ["WANDB_DIR"] = cfg.run_path.split("wandb")[0]
+#        os.environ["WANDB_DIR"] = cfg.run_path.split("wandb")[0]
         iden = get_project_id(cfg.run_path)
 #         wandb.init(project="caloqvae", entity="qvae", config=cfg, mode=mode, resume='allow', id=iden)
         wandb.init(project="caloqvae", entity=cfg.data.entity, config=cfg, mode=mode, resume='allow', id=iden)
