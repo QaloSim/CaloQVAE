@@ -14,7 +14,7 @@ frac_train_dataset: 0.8
 
 particle: electron
 
-scaled: True
+scaled: False
 #scaler_path: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_highStat_En_4_scaler.gz
 #scaler_amin: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_highStat_En_4_amin.npy
 scaler_path: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/dataset_2_1_scaler.gz
@@ -42,8 +42,8 @@ atlas_input_pionEn4: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_hi
 atlas_input_pionEn5: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_highStat_En_5.hdf5
 atlas_input_pionEn6: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_6.hdf5
 atlas_input_pionEn7: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_7.hdf5
-#atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3/dataset_2_1.hdf5
-atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/dataset_2_1.hdf5
+atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3/dataset_2_1.hdf5
+#atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/dataset_2_1.hdf5
 #atlas_input_electron:/fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/uniform_dataset_2_1.hdf5
 
 binning_xml_electrons: /fast_scratch_1/caloqvae/data/atlas_dataset2and3/binning_dataset_2.xml

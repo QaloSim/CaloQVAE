@@ -350,6 +350,9 @@ class DecoderCNNPosCondSmall(BasicDecoderV3):
         self.num_output_nodes = num_output_nodes
         self.minEnergy = 256.0
         self.n_latent_nodes = self._config.model.n_latent_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
 
         self._layers =  nn.Sequential(
                    nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
@@ -393,14 +396,16 @@ class DecoderCNNPosCondSmall(BasicDecoderV3):
                                    )
         
     def forward(self, x, x0):
-        logger.debug("Decoder::decode")
                 
         x = self._layers(x)
-        xx0 = x0.unsqueeze(2).unsqueeze(3).repeat(1, x.size(1), x.size(2), x.size(3)).divide(1000.0) + x
+        x0 = self.trans_energy(x0)
+        xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
         x1 = self._layers2(xx0)
         x2 = self._layers3(xx0)
-        return x1, x2
+        return x1.reshape(x1.shape[0],self.z*self.r*self.phi), x2.reshape(x1.shape[0],self.z*self.r*self.phi)
 
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0):
+        return (torch.log(x0) - log_e_min)/(log_e_max - log_e_min)
 
 class Classifier(BasicDecoderV3):
     def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):

@@ -25,7 +25,7 @@ run_path: "/fast_scratch_1/QVAE/blazerjia/wandb/run-20240521_101208-z8dv19wc/fil
 
 
 
-output_path: /fast_scratch_1/jtoledo/outputs
+output_path: /fast_scratch_1/dsogutlu/outputs
 device: gpu
 gpu_list:
   - 4
@@ -37,9 +37,9 @@ task:
 
 defaults:
   - model: gumboltatlasPcrbmcnn
-  - data: atlasDGX
+  - data: atlasML2
   - engine: dvaeatlas_training_peg
 
 
 usinglayers: False
-reducedata: False
+reducedata: True

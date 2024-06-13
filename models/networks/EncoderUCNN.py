@@ -346,10 +346,14 @@ class EncoderBlockSmall(nn.Module):
 
     def forward(self, x, x0):
         x = self.seq1(x)
-        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item()).divide(1000.0)), 1)
+        x0 = self.trans_energy(x0)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
         x = self.seq2(x)
         
         return x
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0):
+        return (torch.log(x0) - log_e_min)/(log_e_max - log_e_min)
     
     
 class EncoderBlockSmallUnconditioned(nn.Module):
