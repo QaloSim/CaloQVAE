@@ -72,6 +72,8 @@ def run(config=None):
     """
     #create model handling object
     modelCreator = ModelCreator(cfg=config)
+    
+    
 
     #container for our Dataloaders
     dataMgr = DataManager(cfg=config)

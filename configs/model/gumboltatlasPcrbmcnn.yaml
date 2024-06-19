@@ -36,7 +36,7 @@ fullyconnected: False
 alpha: 0.0
 gamma: 0.0
 mse_weight: 0.5
-coefficient: 0.001
+coefficient: 0.6
 interpolation_param: 1.0
 bce_weights_power: 0.0
 rbmMethod: CD

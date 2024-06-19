@@ -367,9 +367,10 @@ class EngineAtlas(EngineCaloV3):
             in_data_t = self._reduceinv(in_data, true_energy, R=self.R)/1000
             recon_data_t = self._reduceinv(output_activations, true_energy, R=self.R)/1000
             sample_data_t = self._reduceinv(sample_data, sample_energies, R=self.R)/1000
+            sample_dwave_data_t = self._reduceinv(sample_dwave_data, sample_dwave_energies, R=self.R)/1000
             self._hist_handler.update(in_data_t.detach().cpu().numpy(), 
                                       recon_data_t.detach().cpu().numpy(), 
-                                      sample_data_t.detach().cpu().numpy())
+                                      sample_data_t.detach().cpu().numpy(), sample_dwave_data_t.detach().cpu().numpy())
         else:
             self._hist_handler.update(in_data.detach().cpu().numpy(),
                                       output_activations.detach().cpu().numpy(),
@@ -530,7 +531,7 @@ class EngineAtlas(EngineCaloV3):
             for xx in data_loader:
                 in_data, true_energy, in_data_flat = self._preprocess(xx[0],xx[1])
                 if self._config.reducedata:
-                    in_data = self._reduce(in_data, true_energy, R=R)
+                    in_data = self._reduce(in_data, true_energy, R=self.R)
                 # enIn = torch.cat((in_data, true_energy), dim=1)
                 # beta, post_logits, post_samples = self.model.encoder(enIn, False)
                 beta, post_logits, post_samples = self.model.encoder(in_data, true_energy, False)
