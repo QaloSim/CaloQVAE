@@ -24,7 +24,7 @@ output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 4
+  - 2
 
 task:
   - train

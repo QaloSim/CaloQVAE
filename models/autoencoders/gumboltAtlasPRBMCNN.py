@@ -24,6 +24,9 @@ from CaloQVAE.models.samplers import pgbs
 from models.networks.EncoderUCNN import EncoderUCNN
 from models.networks.basicCoders import DecoderCNNCond
 
+from models.networks.EncoderCond import EncoderHierarchyPB_BinEv2Off
+from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4
+
 import time
 
 from CaloQVAE import logging
@@ -74,6 +77,59 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         """
         return Stats(self.sampler)
     
+    def _create_encoder(self): #ADDED Jun 18
+        """
+        - Overrides _create_encoder in GumBoltCaloCRBM.py
+
+        Returns:
+            EncoderCNN instance
+        """
+        logger.debug("AtlasConditionalQVAE::_create_encoder")
+        
+        # return EncoderHierarchyPB_BinE(encArch=self._config.model.encodertype,
+        #     input_dimension=self._flat_input_size,
+        #     n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+        #     n_latent_nodes=self.n_latent_nodes,
+        #     skip_latent_layer=False,
+        #     smoother="Gumbel",
+        #     cfg=self._config)
+        return EncoderHierarchyPB_BinEv2Off(encArch=self._config.model.encodertype,
+            input_dimension=self._flat_input_size,
+            n_latent_hierarchy_lvls=self.n_latent_hierarchy_lvls,
+            n_latent_nodes=self.n_latent_nodes,
+            skip_latent_layer=False,
+            smoother="Gumbel",
+            cfg=self._config)
+        
+    def _create_decoder(self): #ADDED Jun 18
+        """
+        - Overrides _create_decoder in GumBoltCaloV5.py
+
+        Returns:
+            DecoderCNNCond instance
+        """
+        logger.debug("GumBoltAtlasCRBMCNN::_create_decoder")
+        logger.info(f'GumBoltAtlasCRBMCNN::decoder {self._config.model.decodertype}')
+        self._decoder_nodes[0] = (self._decoder_nodes[0][0]+1,
+                                  self._decoder_nodes[0][1])
+
+        if self._config.model.decodertype == "SmallPB":
+            return DecoderCNNPB(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPBv2":
+            return DecoderCNNPBv2(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPBv4":
+            return DecoderCNNPBv4(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+
+    
     def create_networks(self):
         logger.debug("Creating Network Structures")
         self.encoder=self._create_encoder()
@@ -117,6 +173,38 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
 #         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
 #         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
 #         return out
+
+    def loss(self, input_data, fwd_out, true_energy): #ADDED Jun 18
+        """
+        - Overrides loss in gumboltCaloV5.py
+        """
+        logger.debug("loss")
+
+        kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
+        # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
+        sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
+        interpolation_param = self._config.model.interpolation_param
+        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
+        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) * self._config.model.coefficient
+
+        #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
+        #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
+        # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
+        hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
+        spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
+        sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
+        hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
+
+        # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
+        # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
+
+
+        # if self._config.engine.modelhits:
+        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+        # else:
+        #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
+        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):
         """Overrides kl_divergence in GumBolt.py

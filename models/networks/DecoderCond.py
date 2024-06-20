@@ -212,27 +212,27 @@ class DecoderCNNPBv4(BasicDecoderV3):
                    nn.PReLU(1024, 0.02),
                    
 
-                   PeriodicConvTranspose2d(1024, 512, (3,5), 1, 0),
+                   PeriodicConvTranspose2d(1024, 512, (3,4), 1, 0),
                    nn.BatchNorm2d(512),
                    nn.PReLU(512, 0.02),
                                    )
         
         self._layers2 = nn.Sequential(
-                   PeriodicConvTranspose2d(513, 128, (3,5), 1, 0),
+                   PeriodicConvTranspose2d(513, 128, (3,3), 1, 1),
                    nn.BatchNorm2d(128),
                    nn.PReLU(128, 0.02),
 
-                   PeriodicConvTranspose2d(128, 45, (3,4), 1, 0),
+                   PeriodicConvTranspose2d(128, 45, (3,3), 1, 1),
                    # nn.BatchNorm2d(45),
                    nn.PReLU(45, 1.0),
                                    )
         
         self._layers3 = nn.Sequential(
-                   PeriodicConvTranspose2d(513, 128, (3,5), 1, 0),
+                   PeriodicConvTranspose2d(513, 128, (3,3), 1, 1),
                    nn.BatchNorm2d(128),
                    nn.PReLU(128, 0.02),
 
-                   PeriodicConvTranspose2d(128, 45, (3,4), 1, 0),
+                   PeriodicConvTranspose2d(128, 45, (3,3), 1, 1),
                    # nn.BatchNorm2d(45),
                    nn.PReLU(45, 0.02),
                                    )
@@ -258,7 +258,7 @@ class PeriodicConvTranspose2d(nn.Module):
 
     def forward(self, x):
         # Pad input tensor with periodic boundary conditions
-        x = F.pad(x, (self.padding, self.padding, self.padding, self.padding), mode='circular')
+        x = F.pad(x, (self.padding, self.padding, 0, 0), mode='circular')
         # Apply convolution
         x = self.conv(x)
         return x
