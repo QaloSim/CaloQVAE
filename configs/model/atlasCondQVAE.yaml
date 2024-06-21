@@ -1,4 +1,4 @@
-model_type: AtlasConditionalQVAE
+model_type: AtlasConditionalQVAEv2
 activation_fct: relu
 beta_smoothing_fct: 5
 output_smoothing_fct: 60
@@ -25,7 +25,7 @@ n_latent_nodes_per_p: 512
 
 encodertype: SmallPBv4
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: SmallPBv4
+decodertype: SmallPBHEv1
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
 
 encoder_pb_hierarchy: 0

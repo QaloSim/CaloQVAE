@@ -6,13 +6,26 @@ Decoder
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import LeakyReLU, ReLU
 
 # from models.networks.networks import Network, NetworkV2, NetworkV3
 from models.networks.basicCoders import BasicDecoderV3
 
+# get the hits and activation functions for the hierarchial decoder
+from utils.dists.gumbelmod import GumbelMod
+
 #logging module with handmade settings.
 # from CaloQVAE import logging
 # logger = logging.getLogger(__name__)
+
+class sequentialMultiInput(nn.Sequential):
+    def forward(self, *inputs):
+        for module in self._modules.values():
+            if type(inputs) == tuple:
+                inputs = module(*inputs)
+            else:
+                inputs = module(inputs)
+        return inputs
 
 class DecoderCNNPB(BasicDecoderV3):
 # class DecoderCNNPB(nn.Module):
@@ -212,27 +225,27 @@ class DecoderCNNPBv4(BasicDecoderV3):
                    nn.PReLU(1024, 0.02),
                    
 
-                   PeriodicConvTranspose2d(1024, 512, (3,5), 1, 0),
+                   PeriodicConvTranspose2d(1024, 512, (3,4), 1, 0),
                    nn.BatchNorm2d(512),
                    nn.PReLU(512, 0.02),
                                    )
         
         self._layers2 = nn.Sequential(
-                   PeriodicConvTranspose2d(513, 128, (3,5), 1, 0),
+                   PeriodicConvTranspose2d(513, 128, (3,3), 1, 1),
                    nn.BatchNorm2d(128),
                    nn.PReLU(128, 0.02),
 
-                   PeriodicConvTranspose2d(128, 45, (3,4), 1, 0),
+                   PeriodicConvTranspose2d(128, 45, (3,3), 1, 1),
                    # nn.BatchNorm2d(45),
                    nn.PReLU(45, 1.0),
                                    )
         
         self._layers3 = nn.Sequential(
-                   PeriodicConvTranspose2d(513, 128, (3,5), 1, 0),
+                   PeriodicConvTranspose2d(513, 128, (3,3), 1, 1),
                    nn.BatchNorm2d(128),
                    nn.PReLU(128, 0.02),
 
-                   PeriodicConvTranspose2d(128, 45, (3,4), 1, 0),
+                   PeriodicConvTranspose2d(128, 45, (3,3), 1, 1),
                    # nn.BatchNorm2d(45),
                    nn.PReLU(45, 0.02),
                                    )
@@ -248,6 +261,124 @@ class DecoderCNNPBv4(BasicDecoderV3):
     
     def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0):
         return (torch.log(x0) - log_e_min)/(log_e_max - log_e_min)
+
+class DecoderCNNPBv4_HEMOD(BasicDecoderV3):
+    def __init__(self, num_input_nodes, num_output_nodes, output_activation_fct=nn.Identity(), **kwargs):
+        super(DecoderCNNPBv4_HEMOD, self).__init__(**kwargs)
+        self._output_activation_fct = output_activation_fct
+        self.num_input_nodes = num_input_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+        self.hierarchal_outputs = num_output_nodes
+        self.output_layers = int(self.hierarchal_outputs / 144)
+        
+        # self._node_sequence = [(2049, 800), (800, 700), (700, 600), (600, 550), (550, 500), (500, 6480)]
+        self._layers =  nn.Sequential(
+                   # nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+                   nn.Unflatten(1, (self.num_input_nodes, 1,1)),
+
+                   PeriodicConvTranspose2d(self.num_input_nodes, 1024, (3,5), 2, 0),
+                   nn.BatchNorm2d(1024),
+                   nn.PReLU(1024, 0.02),
+                   
+
+                   PeriodicConvTranspose2d(1024, 512, (3,4), 1, 0),
+                   nn.BatchNorm2d(512),
+                   nn.PReLU(512, 0.02),
+                                   )
+        
+        self._layers2 = nn.Sequential(
+                   PeriodicConvTranspose2d(513, 128, (3,3), 1, 1),
+                   nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+
+                   PeriodicConvTranspose2d(128, self.output_layers, (3,3), 1, 1),
+                   # nn.BatchNorm2d(45),
+                   nn.PReLU(self.output_layers, 1.0),
+                                   )
+        
+        self._layers3 = nn.Sequential(
+                   PeriodicConvTranspose2d(513, 128, (3,3), 1, 1),
+                   nn.BatchNorm2d(128),
+                   nn.PReLU(128, 0.02),
+
+                   PeriodicConvTranspose2d(128, self.output_layers, (3,3), 1, 1),
+                   # nn.BatchNorm2d(45),
+                   nn.PReLU(self.output_layers, 0.02),
+                                   )
+        
+    def forward(self, x, x0):
+        # print("t1: ", x.shape)
+        x = self._layers(x)
+        # print("t2: ", x.shape)
+        x0 = self.trans_energy(x0)
+        xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).repeat(1,1,torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(xx0)
+        # need channels * height * width = self.hierarchal_outputs = 1620
+        return x1.reshape(x1.shape[0], self.hierarchal_outputs), x2.reshape(x1.shape[0], self.hierarchal_outputs)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 15 * 1.2812657528661318):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+
+class DecoderCNNPB_HEv1(BasicDecoderV3):
+    def __init__(self, encArch = 'Large', num_output_nodes=None, **kwargs):
+        self.encArch = encArch
+        super(DecoderCNNPB_HEv1, self).__init__(**kwargs)
+        self._hit_smoothing_dist_mod = GumbelMod()
+        self._inference_energy_activation_fct = ReLU()
+        # self.device = x.device # add something like this to reduce computation time
+        self._create_hierarchy_network()
+
+    def _training_activation_fct(self, slope):
+        return LeakyReLU(slope)
+
+    def _create_hierarchy_network(self, level: int = 0):
+        self.latent_nodes = 2048
+        self.layer_step = 11*144
+        self.hierarchiel_lvls = 4
+
+        inp_layers = [self.latent_nodes + i * self.layer_step for i in range(self.hierarchiel_lvls)] 
+        out_layers = 4 * [self.layer_step]
+        out_layers[3] += (6480 - 4 * self.layer_step)
+        self.raw_layers = [layers - self.latent_nodes for layers in inp_layers] + [6480]
+        # print(self.raw_layers)
+
+        self.moduleLayers = nn.ModuleList([])
+        for i in range(len(inp_layers)):
+            self.moduleLayers.append(DecoderCNNPBv4_HEMOD(inp_layers[i], out_layers[i]))
+
+        # not used
+        sequential = sequentialMultiInput(*self.moduleLayers)
+        return sequential
+    
+    def forward(self, x, x0, act_fct_slope, x_raw):
+        self.sub_values = []
+        self.x1, self.x2 = torch.tensor([]).to(x.device), torch.tensor([]).to(x.device) # store hits and activation tensors
+        for lvl in range(self.hierarchiel_lvls):
+            cur_net = self.moduleLayers[lvl]
+            output_hits, output_activations = cur_net(x, x0)
+            beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+            # if self._config.engine.modelhits:
+            if self.training:
+                # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+                # out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+                # print(self.raw_layers[lvl+1])
+                outputs = activation_fct_annealed(output_activations) * torch.where(x_raw[:, self.raw_layers[lvl]:self.raw_layers[lvl+1]] > 0, 1., 0.)
+            else:
+                outputs = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training=False)
+            z = outputs
+            self.sub_values.append([output_hits, output_activations])
+            if lvl == self.hierarchiel_lvls - 1:
+                for vals in self.sub_values:
+                    self.x1 = torch.cat((self.x1, vals[0]), dim=1)
+                    self.x2 = torch.cat((self.x2, vals[1]), dim=1)
+            else:
+                x = torch.cat((x, z), dim=1)
+        return self.x1, self.x2
     
     
 class PeriodicConvTranspose2d(nn.Module):
@@ -258,7 +389,7 @@ class PeriodicConvTranspose2d(nn.Module):
 
     def forward(self, x):
         # Pad input tensor with periodic boundary conditions
-        x = F.pad(x, (self.padding, self.padding, self.padding, self.padding), mode='circular')
+        x = F.pad(x, (self.padding, self.padding, 0, 0), mode='circular')
         # Apply convolution
         x = self.conv(x)
         return x

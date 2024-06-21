@@ -28,7 +28,7 @@ class PeriodicConv2d(nn.Module):
 
     def forward(self, x):
         # Pad input tensor with periodic boundary conditions
-        x = F.pad(x, (self.padding, self.padding, self.padding, self.padding), mode='circular')
+        x = F.pad(x, (self.padding, self.padding, 0, 0), mode='circular')
         # Apply convolution
         x = self.conv(x)
         return x
@@ -232,17 +232,17 @@ class EncoderBlockPBHv4(nn.Module):
                    # nn.Linear(self.num_input_nodes, 24*24),
                    # nn.Unflatten(1, (1,24, 24)),
     
-                   PeriodicConv2d(45, 64, (3,5), 1, 0),
+                   PeriodicConv2d(45, 64, (3,4), 1, 1),
                    nn.BatchNorm2d(64),
                    nn.PReLU(64, 0.02),
     
-                   PeriodicConv2d(64, 128, (3,5), 1, 0),
+                   PeriodicConv2d(64, 128, (3,3), (1,2), 1),
                    nn.BatchNorm2d(128),
                    nn.PReLU(128, 0.02),
                 )
 
         self.seq2 = nn.Sequential(
-                           PeriodicConv2d(129, 256, (3,5), 1, 0),
+                           PeriodicConv2d(129, 256, (3,3), (1,2), 1),
                            nn.BatchNorm2d(256),
                            nn.PReLU(256, 0.02),
 

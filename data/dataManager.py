@@ -240,7 +240,7 @@ class DataManager(object):
         # nparr = np.where(data > 0., data, np.inf)
         nparr = np.where(data > 0., data, np.nan)
 #         logger.info(nparr.shape)
-        
+        # print(nparr.shape)
         for j in range(nparr.shape[1]):
             amin = self._amin_array[j]
             if amin < 0. and not np.isnan(amin) and not np.isinf(amin):
