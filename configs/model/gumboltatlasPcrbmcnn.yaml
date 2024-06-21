@@ -28,7 +28,7 @@ pe: 1
 # pe: 2
 encodertype: Small
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: Small
+decodertype: Deniz
 # Small, SmallUnconditioned, SmallPosEnc
 
 fullyconnected: False

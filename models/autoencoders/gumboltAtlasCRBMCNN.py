@@ -18,7 +18,7 @@ from models.rbm.chimerav2 import QimeraRBM
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 # from models.networks.EncoderCNN import EncoderCNN
 from models.networks.EncoderUCNN import EncoderUCNN, EncoderUCNNH, EncoderUCNNHPosEnc
-from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall
+from models.networks.basicCoders import DecoderCNN, Classifier, DecoderCNNCond, DecoderCNNCondSmall, DecoderCNNUnconditioned, DecoderCNNPosCondSmall, DecoderDeniz
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
@@ -125,6 +125,11 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallPosEnc":
             return DecoderCNNPosCondSmall(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct, #<--- try identity
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "Deniz":
+            return DecoderDeniz(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct, #<--- try identity
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
