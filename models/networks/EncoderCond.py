@@ -299,17 +299,17 @@ class EncoderBlockPBHv4_0(nn.Module):
                    # nn.Linear(self.num_input_nodes, 24*24),
                    # nn.Unflatten(1, (1,24, 24)),
     
-                   PeriodicConv2d(45, 64, (5,5), 1, 1),
+                   PeriodicConv2d(45, 64, (3,4), 1, 1),
                    nn.BatchNorm2d(64),
                    nn.PReLU(64, 0.02),
     
-                   PeriodicConv2d(64, 128, (5,5), 1, 1),
+                   PeriodicConv2d(64, 128, (3,3), (1,2), 1),
                    nn.BatchNorm2d(128),
                    nn.PReLU(128, 0.02),
                 )
 
         self.seq2 = nn.Sequential(
-                           PeriodicConv2d(129, 256, (5,5), 1, 1),
+                           PeriodicConv2d(129, 256, (3,3), (1,2), 1),
                            nn.BatchNorm2d(256),
                            nn.PReLU(256, 0.02),
 

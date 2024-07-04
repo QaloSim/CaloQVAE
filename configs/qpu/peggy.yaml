@@ -8,3 +8,7 @@ power: 4.0
 thrs_const: 1.5
 adaptive: 1
 num_reads: 128
+
+
+cond: True
+tol: 0.00000001
