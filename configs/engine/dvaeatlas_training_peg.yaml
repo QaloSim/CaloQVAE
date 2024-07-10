@@ -26,7 +26,7 @@ slope_activation_fct: 0.05
 slope_activation_fct_final: 0.
 slope_activation_fct_anneal: 1
 
-n_train_batch_size: 64
+n_train_batch_size: 128
 n_test_batch_size: 1024
 n_valid_batch_size: 1024
 rbm_batch_size: 1024

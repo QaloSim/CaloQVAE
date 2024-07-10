@@ -336,15 +336,28 @@ class DecoderCNNPB_HEv1(BasicDecoderV3):
         return LeakyReLU(slope)
 
     def _create_hierarchy_network(self, level: int = 0):
-        self.latent_nodes = 2048
-        self.layer_step = 11*144
-        self.hierarchiel_lvls = 4
+        self.latent_nodes = self._config.model.n_latent_nodes_per_p * 4
+        # change these variables for different HE decoder structures
+        self.n_layers_per_subdec = 5
+        self.layer_step = self.n_layers_per_subdec*144
+         # varies depending on if last layer is > or < layer step
+        self.hierarchical_lvls = 9
 
-        inp_layers = [self.latent_nodes + i * self.layer_step for i in range(self.hierarchiel_lvls)] 
-        out_layers = 4 * [self.layer_step]
-        out_layers[3] += (6480 - 4 * self.layer_step)
-        self.raw_layers = [layers - self.latent_nodes for layers in inp_layers] + [6480]
+        inp_layers = [self.latent_nodes + i * self.layer_step for i in range(self.hierarchical_lvls)] 
+        out_layers = self.hierarchical_lvls * [self.layer_step]
+
+        out_layers[self.hierarchical_lvls - 1] += (6480 - self.hierarchical_lvls * self.layer_step)
         # print(self.raw_layers)
+
+        # Unbalanced Hierachical Decoder
+        inp_layers[0:5] = [self.latent_nodes]
+        out_layers[0:5] = [sum(out_layers[0:5])]
+        self.raw_layers = [layers - self.latent_nodes for layers in inp_layers] + [6480]
+        
+        # Check Layers
+        print("Layer Inputs: ", inp_layers)
+        print("Layer Outputs: ", out_layers)
+        print("Raw Layer Indices: ", self.raw_layers)
 
         self.moduleLayers = nn.ModuleList([])
         for i in range(len(inp_layers)):
@@ -357,7 +370,8 @@ class DecoderCNNPB_HEv1(BasicDecoderV3):
     def forward(self, x, x0, act_fct_slope, x_raw):
         self.sub_values = []
         self.x1, self.x2 = torch.tensor([]).to(x.device), torch.tensor([]).to(x.device) # store hits and activation tensors
-        for lvl in range(self.hierarchiel_lvls):
+        # Instead of in range(self.hierarchical_lvls) just use len(self.moduleLayers) to deal with unbalanced hierarchical decoders
+        for lvl in range(len(self.moduleLayers)):
             cur_net = self.moduleLayers[lvl]
             output_hits, output_activations = cur_net(x, x0)
             beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
@@ -372,7 +386,7 @@ class DecoderCNNPB_HEv1(BasicDecoderV3):
                 outputs = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training=False)
             z = outputs
             self.sub_values.append([output_hits, output_activations])
-            if lvl == self.hierarchiel_lvls - 1:
+            if lvl == len(self.moduleLayers) - 1:
                 for vals in self.sub_values:
                     self.x1 = torch.cat((self.x1, vals[0]), dim=1)
                     self.x2 = torch.cat((self.x2, vals[1]), dim=1)
