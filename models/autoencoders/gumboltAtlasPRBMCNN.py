@@ -41,6 +41,8 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         super(GumBoltAtlasPRBMCNN, self).__init__(**kwargs)
         self._model_type = "GumBoltAtlasPRBMCNN"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        self.prior_samples_qpu = []
+        self.prior_samples = []
         
     def _create_prior(self):
         """Override _create_prior in GumBoltCaloV6.py
@@ -570,7 +572,11 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
             true_e = torch.ones((num_samples, 1), device=prbm_weights['01'].device).detach() * true_energy
         # prior_samples = torch.cat([dwave_samples, true_e], dim=1)
         prior_samples = torch.cat([dwave_samples], dim=1)
-        self.prior_samples = prior_samples
+        # self.prior_samples = prior_samples
+        if torch.is_tensor(self.prior_samples_qpu):
+            self.prior_samples_qpu = torch.cat([self.prior_samples_qpu, prior_samples], dim=0)
+        else:
+            self.prior_samples_qpu = prior_samples
             
         # output_hits, output_activations = self.decoder(prior_samples)
         output_hits, output_activations = self.decoder(prior_samples, true_e)
@@ -748,6 +754,10 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
             # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
             #                            true_e], dim=1)
             prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
+            if torch.is_tensor(self.prior_samples):
+                self.prior_samples = torch.cat([self.prior_samples, prior_samples], dim=0)
+            else:
+                self.prior_samples = prior_samples
 
             hits, activations = self.decoder(prior_samples, true_e)
             beta = torch.tensor(self._config.model.beta_smoothing_fct,

@@ -18,8 +18,8 @@ encoder_hidden_nodes:
 # n_latent_nodes: 512
 #for PB
 n_latent_hierarchy_lvls: 3
-n_latent_nodes: 512
-n_latent_nodes_per_p: 512
+n_latent_nodes: 1024
+n_latent_nodes_per_p: 1024
 # n_latent_nodes: 302
 # n_latent_nodes_per_p: 302
 
@@ -38,5 +38,5 @@ gamma: 0.0
 mse_weight: 0.5
 coefficient: 0.01
 interpolation_param: 1.0
-bce_weights_power: 0.5
+bce_weights_power: 0.0
 rbmMethod: CD

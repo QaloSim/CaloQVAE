@@ -41,6 +41,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
         super(AtlasConditionalQVAE, self).__init__(**kwargs)
         self._model_type = "AtlasConditionalQVAE"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        self.prior_samples_qpu = []
         self.prior_samples = []
         
     def _create_prior(self):
@@ -202,6 +203,51 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
             #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
 
     
+#     def kl_divergence(self, post_logits, post_samples, is_training=True):
+#         """Overrides kl_divergence in GumBolt.py
+
+#         :param post_logits (list) : List of f(logit_i|x, e) for each hierarchy
+#                                     layer i. Each element is a tensor of size
+#                                     (batch_size * n_nodes_per_hierarchy_layer)
+#         :param post_zetas (list) : List of q(zeta_i|x, e) for each hierarchy
+#                                    layer i. Each element is a tensor of size
+#                                    (batch_size * n_nodes_per_hierarchy_layer)
+#         """
+#         # Concatenate all hierarchy levels
+#         logits_q_z = torch.cat(post_logits, 1)
+#         post_zetas = torch.cat(post_samples, 1)
+
+#         # Compute cross-entropy b/w post_logits and post_samples
+#         # entropy = - self._bce_loss(logits_q_z, post_zetas)
+#         entropy = - self._bce_loss(logits_q_z, post_zetas[:,self._config.model.n_latent_nodes:])
+#         entropy = torch.mean(torch.sum(entropy, dim=1), dim=0)
+
+#         # Compute positive phase (energy expval under posterior variables) 
+#         n_nodes_p = self.prior.nodes_per_partition
+#         pos_energy = self.energy_exp_cond(post_zetas[:, :n_nodes_p],
+#                                      post_zetas[:, n_nodes_p:2*n_nodes_p],
+#                                      post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
+#                                      post_zetas[:, 3*n_nodes_p:])
+
+#         # Compute gradient computation of the logZ term
+#         p0_state, p1_state, p2_state, p3_state \
+#             = self.sampler.block_gibbs_sampling_cond(post_zetas[:, :n_nodes_p],
+#                                      post_zetas[:, n_nodes_p:2*n_nodes_p],
+#                                      post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
+#                                      post_zetas[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
+        
+#         #beta, _, _, _ = self.find_beta()
+#         #beta = 7.5
+#         #p0_state, p1_state, p2_state, p3_state = self.dwave_sampling(num_samples=self._config.engine.rbm_batch_size, measure_time=False, beta=1.0/beta)
+
+        
+#         # neg_energy = - self.energy_exp(p0_state, p1_state, p2_state, p3_state)
+#         neg_energy = - self.energy_exp_cond(p0_state, p1_state, p2_state, p3_state)
+
+#         # Estimate of the kl-divergence
+#         kl_loss = entropy + pos_energy + neg_energy
+#         return kl_loss, entropy, pos_energy, neg_energy
+
     def kl_divergence(self, post_logits, post_samples, is_training=True):
         """Overrides kl_divergence in GumBolt.py
 
@@ -223,17 +269,19 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
 
         # Compute positive phase (energy expval under posterior variables) 
         n_nodes_p = self.prior.nodes_per_partition
-        pos_energy = self.energy_exp_cond(post_zetas[:, :n_nodes_p],
-                                     post_zetas[:, n_nodes_p:2*n_nodes_p],
-                                     post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
-                                     post_zetas[:, 3*n_nodes_p:])
+        #detach from encoder params
+        ps_pos = post_zetas.detach()
+        pos_energy = self.energy_exp_cond(ps_pos[:, :n_nodes_p],
+                                     ps_pos[:, n_nodes_p:2*n_nodes_p],
+                                     ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
+                                     ps_pos[:, 3*n_nodes_p:])
 
         # Compute gradient computation of the logZ term
         p0_state, p1_state, p2_state, p3_state \
-            = self.sampler.block_gibbs_sampling_cond(post_zetas[:, :n_nodes_p],
-                                     post_zetas[:, n_nodes_p:2*n_nodes_p],
-                                     post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
-                                     post_zetas[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
+            = self.sampler.block_gibbs_sampling_cond(ps_pos[:, :n_nodes_p],
+                                     ps_pos[:, n_nodes_p:2*n_nodes_p],
+                                     ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
+                                     ps_pos[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
         
         #beta, _, _, _ = self.find_beta()
         #beta = 7.5
@@ -488,10 +536,10 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
             true_e = torch.ones((num_samples, 1), device=dwave_weights['01'].device).detach() * true_energy
         # prior_samples = torch.cat([dwave_samples, true_e], dim=1)
         prior_samples = torch.cat([dwave_samples], dim=1)
-        if torch.is_tensor(self.prior_samples):
-            self.prior_samples = torch.cat([self.prior_samples, prior_samples], dim=0)
+        if torch.is_tensor(self.prior_samples_qpu):
+            self.prior_samples_qpu = torch.cat([self.prior_samples_qpu, prior_samples], dim=0)
         else:
-            self.prior_samples = prior_samples
+            self.prior_samples_qpu = prior_samples
             
         # output_hits, output_activations = self.decoder(prior_samples)
         output_hits, output_activations = self.decoder(prior_samples, true_e)
@@ -574,6 +622,10 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
             # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
             #                            true_e], dim=1)
             prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
+            if torch.is_tensor(self.prior_samples):
+                self.prior_samples = torch.cat([self.prior_samples, prior_samples], dim=0)
+            else:
+                self.prior_samples = prior_samples
 
             hits, activations = self.decoder(prior_samples, true_e)
             beta = torch.tensor(self._config.model.beta_smoothing_fct,

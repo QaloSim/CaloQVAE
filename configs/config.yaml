@@ -19,14 +19,14 @@ wandb_enabled: 1
 #pegasus
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240518_152205-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_latest.pth"
 
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-06-19/21-57-11/wandb/run-20240619_215713-vxgkius3/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-07-10/13-39-38/wandb/run-20240710_133939-2covlenw/files/AtlasConditionalQVAE_atlas_default_30.pth"
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 1
+  - 0
 
 task:
   - train
