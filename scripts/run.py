@@ -177,16 +177,22 @@ def run(config=None):
                 dummy_variable = 1
                 
         if "train" in config.task:
-            engine.fit(epoch=epoch, is_training=True, mode="train")
+            engine.model.train()
+            with torch.no_grad():
+                engine.fit(epoch=epoch, is_training=True, mode="train")
 
         if "validate" in config.task:
-            engine.fit(epoch=epoch, is_training=False, mode="validate")
+            engine.model.eval()
+            with torch.no_grad():
+                engine.fit(epoch=epoch, is_training=False, mode="validate")
             
         if epoch % 10 == 0:
             engine._save_model(name=str(epoch))
 
     if "test" in config.task:
-        engine.fit(epoch=epoch, is_training=False, mode="test")
+        engine.model.eval()
+        with torch.no_grad():
+            engine.fit(epoch=epoch, is_training=False, mode="test")
 
     if config.save_state:
         config_string = "_".join(str(i) for i in [config.model.model_type, 

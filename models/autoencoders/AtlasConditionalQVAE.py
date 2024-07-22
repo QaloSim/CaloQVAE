@@ -269,8 +269,11 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
 
         # Compute positive phase (energy expval under posterior variables) 
         n_nodes_p = self.prior.nodes_per_partition
-        #detach from encoder params
-        ps_pos = post_zetas.detach()
+        if self._config.model.bool_bp_pos_energy:
+            #detach from encoder params
+            ps_pos = post_zetas
+        else:
+            ps_pos = post_zetas.clone().detach()
         pos_energy = self.energy_exp_cond(ps_pos[:, :n_nodes_p],
                                      ps_pos[:, n_nodes_p:2*n_nodes_p],
                                      ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
