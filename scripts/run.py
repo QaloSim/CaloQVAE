@@ -205,7 +205,7 @@ def run(config=None):
                                                   config.data.data_type,
                                                   config.tag, "latest"])
         run_path = os.path.join(wandb.run.dir, "{0}.pth".format(config_string))
-        lnZais_list, lnZrais_list, en_encoded_list = get_Zs(run_path, engine, dev, 10)
+        lnZais_list, lnZrais_list, en_encoded_list = get_Zs(run_path, engine, dev, 10, config.data)
         save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path)
 
     logger.info("run() finished successfully.")

@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 from data.dataManager import DataManager
 from utils.plotting.plotProvider import PlotProvider
-from utils.stats.partition import get_Zs, save_plot
+from utils.stats.cond_partition import get_Zs, save_plot
 from utils.helpers import get_project_id
 from engine.engine import Engine
 from models.modelCreator import ModelCreator
@@ -143,7 +143,7 @@ def run(config=None):
     config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
     modelCreator.load_state(config.run_path, dev)
 
-    lnZais_list, lnZrais_list, en_encoded_list = get_Zs(config.run_path, engine, dev, 10)
+    lnZais_list, lnZrais_list, en_encoded_list = get_Zs(config.run_path, engine, dev, 10, config.data)
     save_plot(lnZais_list, lnZrais_list, en_encoded_list, config.run_path)
 
     logger.info("run() finished successfully.")
