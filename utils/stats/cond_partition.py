@@ -194,7 +194,7 @@ class Stats():
     
     
 
-def get_Zs(run_path, engine, dev, step = 10, data="atlasML2"):
+def get_Zs(run_path, engine, dev, step = 10, data="caloqvae"):
     fn = create_filenames_dict(run_path, data)
     # rbm_path = run_path.split('files')[0] + 'files/RBM/'
     lnZais_list = []
@@ -241,8 +241,8 @@ def save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path):
     np.savez(path + 'PartitionData.npz', array1=np.array(lnZais_list), array2=np.array(lnZrais_list), array3 = np.array(en_encoded_list))
     
     
-def create_filenames_dict(run_path, data="atlasML2"):
-    if data=="atlasML2":
+def create_filenames_dict(run_path, data="caloqvae"):
+    if data=="caloqvae":
         filenames = {}
         file = run_path.split("/")[-3]
         filenames[file] = list(np.sort(os.listdir(run_path.split("files")[0] + f'files/RBM/')))

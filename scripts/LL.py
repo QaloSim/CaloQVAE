@@ -143,7 +143,7 @@ def run(config=None):
     config_string = "_".join(str(i) for i in [config.model.model_type, config.data.data_type, config.tag])
     modelCreator.load_state(config.run_path, dev)
 
-    lnZais_list, lnZrais_list, en_encoded_list = get_Zs(config.run_path, engine, dev, 10, config.data)
+    lnZais_list, lnZrais_list, en_encoded_list = get_Zs(config.run_path, engine, dev, 10, config.data.entity)
     save_plot(lnZais_list, lnZrais_list, en_encoded_list, config.run_path)
 
     logger.info("run() finished successfully.")
