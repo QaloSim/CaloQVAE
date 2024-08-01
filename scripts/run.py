@@ -178,8 +178,7 @@ def run(config=None):
                 
         if "train" in config.task:
             engine.model.train()
-            with torch.no_grad():
-                engine.fit(epoch=epoch, is_training=True, mode="train")
+            engine.fit(epoch=epoch, is_training=True, mode="train")
 
         if "validate" in config.task:
             engine.model.eval()

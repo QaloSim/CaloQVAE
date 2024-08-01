@@ -43,6 +43,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
         self.prior_samples_qpu = []
         self.prior_samples = []
+        self.beta_list = []
         
     def _create_prior(self):
         """Override _create_prior in GumBoltCaloV6.py
@@ -438,7 +439,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
         return dwave_samples[:,:partition_size], dwave_samples[:,partition_size:2*partition_size], dwave_samples[:,2*partition_size:3*partition_size], dwave_samples[:,3*partition_size:4*partition_size]
     
     
-    def generate_samples_qpu_cond(self, num_samples=64, true_energy=None, measure_time=False, beta=1.0, thrsh=20):
+    def generate_samples_qpu_cond(self, num_samples=64, true_energy=None, measure_time=False, beta=1.0, thrsh=20, t=1.0):
         """
         generate_samples()
         
@@ -506,23 +507,29 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
         
         h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model(beta)
         #############################
-        # if measure_time:
-        #     # start = time.process_time()
-        #     start = time.perf_counter()
-            # response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False)
-        #     self.sampling_time_qpu.append([time.perf_counter() - start, num_samples])
-        #     # self.sampling_time_qpu.append([time.process_time() - start, num_samples])
-        # else:
+     
         response_list = []
         u = self.encoder.binary_energy(true_energy).to(dtype=torch.float32)
+        self.beta_list.append(0)
         for x,u_x in zip(true_energy, u):
+            #############
+            beta0, beta_list, rbm_energy_list, dwave_energy_list, thrsh_met =self.find_beta(num_reads=128, beta_init=4.29, lr=0.01, num_epochs = 30, delta = 4.0, method = 2, TOL=True, const = 1.0, adaptive = True)
+            self.beta_list.append(beta0)
+            beta = 1/beta0
+            ###############
             fb = self.gen_fb(1.0/beta, x, thrsh=thrsh, cond=self._config.qpu.cond, TOL=self._config.qpu.tol)
-            # h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model_cond(u_x.unsqueeze(0), beta)
-            response_list.append( self._qpu_sampler.sample_ising(h, J, num_reads=1, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb))
+            h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model_cond(u_x.unsqueeze(0), beta)
+            response_list.append( self._qpu_sampler.sample_ising(h, J, num_reads=1, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb, label="Gen 1 cond sample"))
+            # response_list.append( self._qpu_sampler.sample_ising(h, J, num_reads=1, answer_mode='raw', auto_scale=False)) #####
+            # time.sleep(t)
             
         response_array = np.concatenate([response_list[i].record["sample"] for i in range(len(response_list))])
 
-        dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples_cond(response_array, qubit_idxs)
+        # response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False)
+        # response_array = response.record["sample"]
+        
+        dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response_array, qubit_idxs)
+        # dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples_cond(response_array, qubit_idxs)
         # dwave_samples, dwave_energies = response.record['sample'], response.record['energy']
         dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(dwave_weights['01'].device)
         
@@ -820,7 +827,8 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
                 rbm_energies = rbm_energies.detach().cpu().numpy()
 
 
-            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_reads, auto_scale=False)
+            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_reads, auto_scale=False, label="beta eff est")
+            response = response.record["sample"]
             dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
             # dwave_samples, dwave_energies = response.record['sample'], response.record['energy']
 
@@ -888,6 +896,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
 
 
             response = self._qpu_sampler.sample_ising(h, J, num_reads=num_reads, auto_scale=False)
+            response = response.record["sample"]
             dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
             # dwave_samples, dwave_energies = response.record['sample'], response.record['energy']
 

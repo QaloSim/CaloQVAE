@@ -152,6 +152,9 @@ class EngineAtlas(EngineCaloV3):
                     
                     batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
                     
+                    batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
+                    batch_loss_dict["ah_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
+                    
                     batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                     batch_loss_dict["loss"].backward()
                     
@@ -159,13 +162,14 @@ class EngineAtlas(EngineCaloV3):
                     # Trying this to free up memory on the GPU and run validation during a training epoch
                     # - hopefully backprop will work with the code above - didn't work
                     # batch_loss_dict["loss"].detach()
+                    if batch_loss_dict["ahep_loss"] < -10:
+                        self.model._config.model.bool_bp_pos_energy = False
                 else:
                     batch_loss_dict["gamma"] = 1.0
                     batch_loss_dict["epoch"] = epoch
                     
                     batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
-                    batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
-                    batch_loss_dict["ah_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
+                    
                     
                     for key, value in batch_loss_dict.items():
                         try:
@@ -303,8 +307,6 @@ class EngineAtlas(EngineCaloV3):
                                                                   self._config.tag, f'best'])
                         self._model_creator.save_state(config_string)
                         
-                    if valid_loss_dict["ae_loss"] + valid_loss_dict["hit_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"] < -10:
-                        self.model._config.model.bool_bp_pos_energy = False
                         
         if not is_training:
             val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}
