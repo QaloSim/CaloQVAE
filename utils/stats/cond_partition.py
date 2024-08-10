@@ -247,7 +247,8 @@ def create_filenames_dict(run_path, data="caloqvae"):
         file = run_path.split("/")[-3]
         filenames[file] = list(np.sort(os.listdir(run_path.split("files")[0] + f'files/RBM/')))
         filenames["size"] = int(len(filenames[file])/3)
-        filenames["prefix"] = run_path.split("outputs_sym")[0] + "outputs_sym"
+        # filenames["prefix"] = run_path.split("outputs_sym")[0] + "outputs_sym"
+        filenames["prefix"] = run_path.split("wandb")[0] + "wandb"
     else:
         filenames = {}
         files = os.listdir(run_path.split("wandb")[0] + "wandb")

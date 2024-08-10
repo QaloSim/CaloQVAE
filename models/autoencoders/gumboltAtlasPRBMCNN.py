@@ -936,7 +936,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         # Initialize the values of biases and couplers. The next lines are critical
         # maps the RBM coupling values into dwave's couplings h, J. In particular,
         # J is a dictionary, each key is an edge in Pegasus
-        h = {qubit_idx:bias for qubit_idx, bias in zip(qubit_idxs, biases)}
+        h = {qubit_idx:bias.detach().cpu().item() for qubit_idx, bias in zip(qubit_idxs, biases)}
         J = {}
         for edge in prbm_edgelist:
             partition_edge_0 = self.find_partition_key(edge[0], idx_dict)
