@@ -17,7 +17,11 @@ wandb_enabled: 1
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-20-30/wandb/run-20240518_152031-zhvzuxif/files/AtlasConditionalQVAE_atlas_default_latest.pth"
 
 #pegasus
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240518_152205-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_latest.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240518_152205-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_latest.pth"
+
+# zephyr-luian1
+# robust-serenity-216
+run_path: "/home/luian1/CaloQVAE/outputs_sym/wandb/run-20240716_092439-ja6l8prq/files/AtlasConditionalQVAE3D_atlas_default_latest.pth"
 
 
 output_path: /fast_scratch_1/luian1/outputs
@@ -32,7 +36,7 @@ task:
   - test
 
 defaults:
-  - model: atlasCondQVAE
+  - model: atlasCondQVAE3D
   - data: atlasML2
   - engine: dvaeatlas_training_peg
   - qpu: peggy

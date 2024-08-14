@@ -15,7 +15,7 @@ def rbm_energy_hist(engine, model_config, val_loader, reducedata=False):
         for xx in val_loader:
             in_data, true_energy, in_data_flat = engine._preprocess(xx[0],xx[1])
             if reducedata:
-                in_data = engine._reduce(in_data, true_energy, R=R)
+                in_data = engine._reduce(in_data, true_energy, R=engine.R)
             # enIn = torch.cat((in_data, true_energy), dim=1)
             # beta, post_logits, post_samples = engine.model.encoder(enIn, False)
             beta, post_logits, post_samples = engine.model.encoder(in_data, true_energy, False)
@@ -43,7 +43,7 @@ def rbm_energy_hist_cond(engine, model_config, val_loader, reducedata=False):
         for xx in val_loader:
             in_data, true_energy, in_data_flat = engine._preprocess(xx[0],xx[1])
             if reducedata:
-                in_data = engine._reduce(in_data, true_energy, R=R)
+                in_data = engine._reduce(in_data, true_energy, R=engine.R)
             # enIn = torch.cat((in_data, true_energy), dim=1)
             # beta, post_logits, post_samples = engine.model.encoder(enIn, False)
             beta, post_logits, post_samples = engine.model.encoder(in_data, true_energy, False)
@@ -73,7 +73,7 @@ def rbm_energy_hist_fcn(engine, model_config, val_loader, reducedata=False):
         for xx in val_loader:
             in_data, true_energy, in_data_flat = engine._preprocess(xx[0],xx[1])
             if reducedata:
-                in_data = engine._reduce(in_data, true_energy, R=R)
+                in_data = engine._reduce(in_data, true_energy, R=engine.R)
             enIn = torch.cat((in_data, true_energy), dim=1)
             beta, post_logits, post_samples = engine.model.encoder(enIn, False)
             # beta, post_logits, post_samples = engine.model.encoder(in_data, true_energy, False)
@@ -122,13 +122,12 @@ def plot_RBM_energy(energy_encoded_data, energy_rbm_data, _wandb=True, title=Non
     
 def generate_rbm_energy_hist(engine, model_config, val_loader, _wandb=True):
     if "PRBMCNN" in model_config.model_type:
-        energy_encoded_data, energy_rbm_data = rbm_energy_hist(engine, model_config, val_loader)
+        energy_encoded_data, energy_rbm_data = rbm_energy_hist(engine, model_config, val_loader, reducedata=engine._config.reducedata)
         image = plot_RBM_energy(energy_encoded_data, energy_rbm_data, _wandb)
     elif "PRBMFCN" in model_config.model_type:
-        energy_encoded_data, energy_rbm_data = rbm_energy_hist_fcn(engine, model_config, val_loader)
+        energy_encoded_data, energy_rbm_data = rbm_energy_hist_fcn(engine, model_config, val_loader, reducedata=engine._config.reducedata)
         image = plot_RBM_energy(energy_encoded_data, energy_rbm_data, _wandb)
     elif "QVAE" in model_config.model_type:    
-        energy_encoded_data, energy_rbm_data = rbm_energy_hist_cond(engine, model_config, val_loader)
+        energy_encoded_data, energy_rbm_data = rbm_energy_hist_cond(engine, model_config, val_loader, reducedata=engine._config.reducedata)
         image = plot_RBM_energy(energy_encoded_data, energy_rbm_data, _wandb)
     return image
-        

@@ -1,4 +1,4 @@
-model_type: AtlasConditionalQVAEv2
+model_type: AtlasConditionalQVAE3D
 activation_fct: relu
 beta_smoothing_fct: 5
 output_smoothing_fct: 60
@@ -23,9 +23,9 @@ n_latent_hierarchy_lvls: 3
 n_latent_nodes: 302
 n_latent_nodes_per_p: 302
 
-encodertype: SmallPB3Dv1
+encodertype: SmallPB3Dv2
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: SmallPB3Dv1
+decodertype: SmallPB3Dv2
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
 
 encoder_pb_hierarchy: 0

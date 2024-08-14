@@ -272,8 +272,9 @@ class EncoderBlockPBHv4(nn.Module):
         res = pos_enc.sum([1,2])/(M-1)
         return res.unsqueeze(1)
     
-    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0):
-        return (torch.log(x0) - log_e_min)/(log_e_max - log_e_min)
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 15 * 1.2812657528661318):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
 
 #     def _pos_enc(self, post_samples):
 #         post_samples = torch.cat(post_samples,1)
@@ -284,7 +285,166 @@ class EncoderBlockPBHv4(nn.Module):
 #         pos_enc = torch.cat(pres,2).transpose(1,2);
 #         res = pos_enc.sum([1,2])
 #         return res.unsqueeze(1).to(post_samples.device)
+
+class PeriodicConv3d(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):
+        super(PeriodicConv3d, self).__init__()
+        self.padding = padding
+        # try 3x3x3 cubic convolution
+        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size, stride=stride, padding=0, dilation=dilation, groups=groups, bias=bias)
+    def forward(self, x):
+        # Pad input tensor with periodic boundary and circle-center conditions
+        if self.padding == 1:
+            mid = x.shape[-1] // 2
+            shift = torch.cat((x[..., [-1], mid:], x[..., [-1], :mid]), -1)
+            x = torch.cat((x, shift), dim=-2)
+        x = F.pad(x, (self.padding, self.padding, 0, 0, 0, 0), mode='circular')
+        # Apply convolution
+        x = self.conv(x)
+        return x
+
+class EncoderBlockPBH3Dv1(nn.Module):
+    def __init__(self, num_input_nodes, n_latent_nodes):
+        super(EncoderBlockPBH3Dv1, self).__init__()
+        self.num_input_nodes = num_input_nodes
+        self.n_latent_nodes = n_latent_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+        
+        self.seq1 = nn.Sequential(
+                   # nn.Linear(self.num_input_nodes, 24*24),
+                   # nn.Unflatten(1, (1,24, 24)),
     
+                   PeriodicConv3d(1, 64, (5,3,5), (2,1,1), 1),
+                   nn.BatchNorm3d(64),
+                   nn.PReLU(64, 0.02),
+    
+                   PeriodicConv3d(64, 128, (5,3,3), (2,1,2), 1),
+                   nn.BatchNorm3d(128),
+                   nn.PReLU(128, 0.02),
+                )
+
+        self.seq2 = nn.Sequential(
+                           PeriodicConv3d(129, 256, (5,3,3), (2,1,2), 0),
+                           nn.BatchNorm3d(256),
+                           nn.PReLU(256, 0.02),
+
+                           PeriodicConv3d(256, self.n_latent_nodes, (3,3,3), (1,1,1), 0),
+                           nn.PReLU(self.n_latent_nodes, 1.0),
+                           nn.Flatten(),
+                        )
+        
+
+    def forward(self, x, x0, post_samples):
+        # 1 channel of a 3d object / shower
+        x = x.reshape(x.shape[0], 1, self.z, self.r,self.phi) 
+        pos_enc_samples = self._pos_enc(post_samples)
+        x = x + pos_enc_samples.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())
+        x = self.seq1(x)
+            
+        x0 = self.trans_energy(x0)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
+        x = self.seq2(x)
+        
+        return x
+    
+    def _pos_enc(self, post_samples):
+        post_samples = torch.cat(post_samples,1)
+        M = post_samples.shape[1]
+
+        pres = [(torch.arange(0,M).multiply(np.pi/M).cos().to(post_samples.device) * post_samples + torch.arange(0,M).multiply(np.pi/M).sin().to(post_samples.device) *(1 - post_samples).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M/4-1,1)]
+        pos_enc = torch.cat(pres,2).transpose(1,2);
+        res = pos_enc.sum([1,2])/(M-1)
+        return res.unsqueeze(1)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 15 * 1.2812657528661318):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+
+#     def _pos_enc(self, post_samples):
+#         post_samples = torch.cat(post_samples,1)
+#         M = post_samples.shape[1]
+#         post_samples_cpu = post_samples.clone().detach().cpu()
+
+#         pres = [(torch.arange(0,M).multiply(i*np.pi/M).cos() * post_samples_cpu + torch.arange(0,M).multiply(i*np.pi/M).sin() *(1 - post_samples_cpu).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M,M/4-1)]
+#         pos_enc = torch.cat(pres,2).transpose(1,2);
+#         res = pos_enc.sum([1,2])
+#         return res.unsqueeze(1).to(post_samples.device)
+
+
+class EncoderBlockPBH3Dv2(nn.Module):
+    def __init__(self, num_input_nodes, n_latent_nodes):
+        super(EncoderBlockPBH3Dv2, self).__init__()
+        self.num_input_nodes = num_input_nodes
+        self.n_latent_nodes = n_latent_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+        
+        self.seq1 = nn.Sequential(
+                   # nn.Linear(self.num_input_nodes, 24*24),
+                   # nn.Unflatten(1, (1,24, 24)),
+    
+                   PeriodicConv3d(1, 32, (3,3,3), (2,1,1), 1),
+                   nn.BatchNorm3d(32),
+                   nn.PReLU(32, 0.02),
+    
+                   PeriodicConv3d(32, 64, (3,3,3), (2,1,1), 1),
+                   nn.BatchNorm3d(64),
+                   nn.PReLU(64, 0.02),
+
+                   PeriodicConv3d(64, 128, (3,3,3), (1,1,2), 1),
+                   nn.BatchNorm3d(128),
+                   nn.PReLU(128, 0.02),
+                )
+
+        self.seq2 = nn.Sequential(
+                           PeriodicConv3d(129, 256, (3,3,3), (2,1,2), 0),
+                           nn.BatchNorm3d(256),
+                           nn.PReLU(256, 0.02),
+
+                           PeriodicConv3d(256, self.n_latent_nodes, (3,3,3), (1,2,1), 0),
+                           nn.PReLU(self.n_latent_nodes, 1.0),
+                           nn.Flatten(),
+                        )
+        
+
+    def forward(self, x, x0, post_samples):
+        # 1 channel of a 3d object / shower
+        x = x.reshape(x.shape[0], 1, self.z, self.r,self.phi) 
+        pos_enc_samples = self._pos_enc(post_samples)
+        x = x + pos_enc_samples.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())
+        x = self.seq1(x)
+            
+        x0 = self.trans_energy(x0)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
+        x = self.seq2(x)
+        
+        return x
+    
+    def _pos_enc(self, post_samples):
+        post_samples = torch.cat(post_samples,1)
+        M = post_samples.shape[1]
+
+        pres = [(torch.arange(0,M).multiply(np.pi/M).cos().to(post_samples.device) * post_samples + torch.arange(0,M).multiply(np.pi/M).sin().to(post_samples.device) *(1 - post_samples).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M/4-1,1)]
+        pos_enc = torch.cat(pres,2).transpose(1,2);
+        res = pos_enc.sum([1,2])/(M-1)
+        return res.unsqueeze(1)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 15 * 1.2812657528661318):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+
+#     def _pos_enc(self, post_samples):
+#         post_samples = torch.cat(post_samples,1)
+#         M = post_samples.shape[1]
+#         post_samples_cpu = post_samples.clone().detach().cpu()
+
+#         pres = [(torch.arange(0,M).multiply(i*np.pi/M).cos() * post_samples_cpu + torch.arange(0,M).multiply(i*np.pi/M).sin() *(1 - post_samples_cpu).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M,M/4-1)]
+#         pos_enc = torch.cat(pres,2).transpose(1,2);
+#         res = pos_enc.sum([1,2])
+#         return res.unsqueeze(1).to(post_samples.device)
     
 class EncoderHierarchyPB_BinEv2(HierarchicalEncoder):
     def __init__(self, encArch = 'Large', **kwargs):
@@ -312,6 +472,12 @@ class EncoderHierarchyPB_BinEv2(HierarchicalEncoder):
         elif self.encArch == "SmallPBv4":
             for l in range(len(layers)-1):
                 moduleLayers.append(EncoderBlockPBHv4(layers[l], layers[l+1]))
+        elif self.encArch == "SmallPB3Dv1":
+            for l in range(len(layers)-1):
+                moduleLayers.append(EncoderBlockPBH3Dv1(layers[l], layers[l+1]))
+        elif self.encArch == "SmallPB3Dv2":
+            for l in range(len(layers)-1):
+                moduleLayers.append(EncoderBlockPBH3Dv2(layers[l], layers[l+1]))
 
         sequential = sequentialMultiInput(*moduleLayers)
         return sequential

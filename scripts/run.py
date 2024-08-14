@@ -138,7 +138,7 @@ def run(config=None):
     engine.device=dev    
     #instantiate and register optimisation algorithm
     engine.optimiser = torch.optim.Adam(model.parameters(),
-                                        lr=config.engine.learning_rate)
+                                        lr=config.engine.learning_rate, weight_decay=config.engine.weight_decay)
     #add the model instance to the engine namespace
     engine.model = model
     # add the modelCreator instance to engine namespace

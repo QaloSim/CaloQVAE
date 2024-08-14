@@ -194,8 +194,8 @@ class Stats():
     
     
 
-def get_Zs(run_path, engine, dev, step = 10):
-    fn = create_filenames_dict(run_path)
+def get_Zs(run_path, engine, dev, step = 10, data="caloqvae"):
+    fn = create_filenames_dict(run_path, data)
     # rbm_path = run_path.split('files')[0] + 'files/RBM/'
     lnZais_list = []
     lnZrais_list = []
@@ -241,23 +241,31 @@ def save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path):
     np.savez(path + 'PartitionData.npz', array1=np.array(lnZais_list), array2=np.array(lnZrais_list), array3 = np.array(en_encoded_list))
     
     
-def create_filenames_dict(run_path):
-    filenames = {}
-    files = os.listdir(run_path.split("wandb")[0] + "wandb")
-    trueInd = [ "run" in file for file in files]
-    for i, file in enumerate(files):
-        if trueInd[i] and "latest" not in file:
-            try:
-                filenames[file] = list(np.sort(os.listdir(run_path.split("wandb")[0] + f'wandb/{file}/files/RBM/')))
-            except:
-                logger.warning(f'Directory {run_path.split("wandb")[0]}' + f'wandb/{file}/files/RBM/ might not exist.')
-                
-    
-    list_of_files = []
-    for key in filenames.keys():
-        list_of_files = list_of_files + filenames[key]
-    filenames["size"] = int(len(list_of_files)/3)
-    filenames["prefix"] = run_path.split("wandb")[0] + "wandb"
+def create_filenames_dict(run_path, data="caloqvae"):
+    if data=="caloqvae":
+        filenames = {}
+        file = run_path.split("/")[-3]
+        filenames[file] = list(np.sort(os.listdir(run_path.split("files")[0] + f'files/RBM/')))
+        filenames["size"] = int(len(filenames[file])/3)
+        # filenames["prefix"] = run_path.split("outputs_sym")[0] + "outputs_sym"
+        filenames["prefix"] = run_path.split("wandb")[0] + "wandb"
+    else:
+        filenames = {}
+        files = os.listdir(run_path.split("wandb")[0] + "wandb")
+        trueInd = [ "run" in file for file in files]
+        for i, file in enumerate(files):
+            if trueInd[i] and "latest" not in file:
+                try:
+                    filenames[file] = list(np.sort(os.listdir(run_path.split("wandb")[0] + f'wandb/{file}/files/RBM/')))
+                except:
+                    logger.warning(f'Directory {run_path.split("wandb")[0]}' + f'wandb/{file}/files/RBM/ might not exist.')
+
+
+        list_of_files = []
+        for key in filenames.keys():
+            list_of_files = list_of_files + filenames[key]
+        filenames["size"] = int(len(list_of_files)/3)
+        filenames["prefix"] = run_path.split("wandb")[0] + "wandb"
     return filenames
 
 def get_right_dir(i, filenames):

@@ -14,7 +14,8 @@ from models.samplers.GibbsSampling import GS
 
 # from utils.stats.partition import Stats
 from utils.stats.cond_partition import Stats
-from utils.flux_biases import h_to_fluxbias #This should change to dwave's repo
+# from utils.flux_biases import h_to_fluxbias #This should change to dwave's repo
+from dwave.system.temperatures import h_to_fluxbias
 
 # DiVAE.models imports
 # from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
@@ -23,7 +24,7 @@ from CaloQVAE.models.rbm import pegasusRBM, zephyrRBM
 from CaloQVAE.models.samplers import pgbs
 
 from models.networks.EncoderCond import EncoderHierarchyPB_BinEv2
-from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1
+from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2
 
 import time
 
@@ -31,14 +32,14 @@ from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 
-class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
+class AtlasConditionalQVAE3D(GumBoltAtlasPRBMCNN):
     """
     GumBolt
     """
 
     def __init__(self, **kwargs):
-        super(AtlasConditionalQVAEv2, self).__init__(**kwargs)
-        self._model_type = "AtlasConditionalQVAEv2"
+        super(AtlasConditionalQVAE3D, self).__init__(**kwargs)
+        self._model_type = "AtlasConditionalQVAE3D"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
         
     def _create_prior(self):
@@ -144,17 +145,22 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3Dv2":
+            return DecoderCNNPB3Dv2(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
 
-    
+
 #     def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
 #         """
 #         - Overrides forward in GumBoltAtlasCRBMCNN.py
-        
+
 #         Returns:
 #             out: output container 
 #         """
 #         logger.debug("forward")
-        
+
 #         #see definition for explanation
 #         out=self._output_container.clear()
 #         x, x0 = xx
@@ -163,16 +169,16 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
 #         self.act_fct_slope = act_fct_slope
 # 	    #Step 1: Feed data through encoder
 #         # in_data = torch.cat([x[0], x[1]], dim=1)
-        
+
 #         out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training, beta_smoothing_fct)
 #         # out.post_samples = self.encoder(x, x0, is_training)
 #         post_samples = out.post_samples
 #         post_samples = torch.cat(out.post_samples, 1)
 # #         post_samples = torch.cat([post_samples, x[1]], dim=1)
-        
+
 #         output_hits, output_activations = self.decoder(post_samples, x0, act_fct_slope, x)
 #         # labels = self.classifier(output_hits)
-        
+
 #         out.output_hits = output_hits
 
 #         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
@@ -185,7 +191,7 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
 #         else:
 #             out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
 #         return out
-    
+
 #     def loss(self, input_data, fwd_out, true_energy):
 #         """
 #         - Overrides loss in gumboltCRBMCNN.py
@@ -197,7 +203,7 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
 #         interpolation_param = self._config.model.interpolation_param
 #         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
 #         ae_loss = torch.mean(torch.mean(ae_loss, dim=1), dim=0)
-        
+
 #         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
 #         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
 #         # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
@@ -208,8 +214,8 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
 
 #         # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
 #         # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
-        
-        
+
+
 #         # if self._config.engine.modelhits:
 #         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
 #                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
@@ -911,4 +917,4 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
         batch_samples = torch.mm(dense_matrix, torch.tensor(response).transpose(0,1).float()).transpose(0,1)
 
         return batch_samples.numpy(), 0, 0
-    
+

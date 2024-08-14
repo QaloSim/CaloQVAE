@@ -23,7 +23,7 @@ from CaloQVAE.models.rbm import pegasusRBM, zephyrRBM
 from CaloQVAE.models.samplers import pgbs
 
 from models.networks.EncoderCond import EncoderHierarchyPB_BinEv2
-from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1
+from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2
 
 import time
 
@@ -31,14 +31,14 @@ from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 
-class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
+class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
     """
     GumBolt
     """
 
     def __init__(self, **kwargs):
-        super(AtlasConditionalQVAEv2, self).__init__(**kwargs)
-        self._model_type = "AtlasConditionalQVAEv2"
+        super(AtlasConditionalQVAE3DHD, self).__init__(**kwargs)
+        self._model_type = "AtlasConditionalQVAE3DHD"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
         
     def _create_prior(self):
@@ -144,48 +144,57 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3Dv2":
+            return DecoderCNNPB_HEv1(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
 
-    
-#     def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
-#         """
-#         - Overrides forward in GumBoltAtlasCRBMCNN.py
-        
-#         Returns:
-#             out: output container 
-#         """
-#         logger.debug("forward")
-        
-#         #see definition for explanation
-#         out=self._output_container.clear()
-#         x, x0 = xx
 
-#         self.x_raw = x
-#         self.act_fct_slope = act_fct_slope
-# 	    #Step 1: Feed data through encoder
-#         # in_data = torch.cat([x[0], x[1]], dim=1)
-        
-#         out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training, beta_smoothing_fct)
-#         # out.post_samples = self.encoder(x, x0, is_training)
-#         post_samples = out.post_samples
-#         post_samples = torch.cat(out.post_samples, 1)
-# #         post_samples = torch.cat([post_samples, x[1]], dim=1)
-        
-#         output_hits, output_activations = self.decoder(post_samples, x0, act_fct_slope, x)
-#         # labels = self.classifier(output_hits)
-        
-#         out.output_hits = output_hits
+    def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
+        """
+        - Overrides forward in GumBoltAtlasCRBMCNN.py
 
-#         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-#         # if self._config.engine.modelhits:
-#         if self.training:
-#             # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-#             activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-#             # out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-#             out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
-#         else:
-#             out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-#         return out
-    
+        Returns:
+            out: output container 
+        """
+        logger.debug("forward")
+
+        #see definition for explanation
+        out=self._output_container.clear()
+        x, x0 = xx
+
+        self.x_raw = x
+        self.act_fct_slope = act_fct_slope
+	    #Step 1: Feed data through encoder
+        # in_data = torch.cat([x[0], x[1]], dim=1)
+
+        out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training, beta_smoothing_fct)
+        # out.post_samples = self.encoder(x, x0, is_training)
+        post_samples = out.post_samples
+        post_samples = torch.cat(out.post_samples, 1)
+
+        # Regularization adding noise before decoder input
+        # post_samples = post_samples + torch.normal(0, self._config.model.dec_noise_std, size=post_samples.shape, device=post_samples.device)
+        
+#         post_samples = torch.cat([post_samples, x[1]], dim=1)
+
+        output_hits, output_activations = self.decoder(post_samples, x0, act_fct_slope, x)
+        # labels = self.classifier(output_hits)
+
+        out.output_hits = output_hits
+
+        beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+        # if self._config.engine.modelhits:
+        if self.training:
+            # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+            # out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+            out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
+        else:
+            out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+        return out
+
 #     def loss(self, input_data, fwd_out, true_energy):
 #         """
 #         - Overrides loss in gumboltCRBMCNN.py
@@ -197,7 +206,7 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
 #         interpolation_param = self._config.model.interpolation_param
 #         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
 #         ae_loss = torch.mean(torch.mean(ae_loss, dim=1), dim=0)
-        
+
 #         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
 #         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
 #         # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
@@ -208,8 +217,8 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
 
 #         # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
 #         # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
-        
-        
+
+
 #         # if self._config.engine.modelhits:
 #         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
 #                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
@@ -271,17 +280,22 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
 
         # Compute positive phase (energy expval under posterior variables) 
         n_nodes_p = self.prior.nodes_per_partition
-        pos_energy = self.energy_exp_cond(post_zetas[:, :n_nodes_p],
-                                     post_zetas[:, n_nodes_p:2*n_nodes_p],
-                                     post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
-                                     post_zetas[:, 3*n_nodes_p:])
+        if self._config.model.bool_bp_pos_energy:
+            #detach from encoder params
+            ps_pos = post_zetas
+        else:
+            ps_pos = post_zetas.clone().detach()
+        pos_energy = self.energy_exp_cond(ps_pos[:, :n_nodes_p],
+                                     ps_pos[:, n_nodes_p:2*n_nodes_p],
+                                     ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
+                                     ps_pos[:, 3*n_nodes_p:])
 
         # Compute gradient computation of the logZ term
         p0_state, p1_state, p2_state, p3_state \
-            = self.sampler.block_gibbs_sampling_cond(post_zetas[:, :n_nodes_p],
-                                     post_zetas[:, n_nodes_p:2*n_nodes_p],
-                                     post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
-                                     post_zetas[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
+            = self.sampler.block_gibbs_sampling_cond(ps_pos[:, :n_nodes_p],
+                                     ps_pos[:, n_nodes_p:2*n_nodes_p],
+                                     ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
+                                     ps_pos[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
         
         #beta, _, _, _ = self.find_beta()
         #beta = 7.5
@@ -563,100 +577,100 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
             if idx in qubit_idxs[key]:
                 return key
     
-    # def generate_samples_cond(self, num_samples: int = 128, true_energy=None, measure_time=False):
-    #     """Generate data samples by decoding RBM samples
+    def generate_samples_cond(self, num_samples: int = 128, true_energy=None, measure_time=False):
+        """Generate data samples by decoding RBM samples
 
-    #     :param num_samples (int): No. of data samples to generate in one shot
-    #     :param true_energy (int): Default None, Incident energy of the particle
+        :param num_samples (int): No. of data samples to generate in one shot
+        :param true_energy (int): Default None, Incident energy of the particle
 
-    #     :return true_energies (torch.Tensor): Incident energies of the particle
-    #     for each sample (num_samples,)
-    #     :return samples (torch.Tensor): Data samples, (num_samples, *)
-    #     """
-    #     n_iter = max(num_samples//self.sampler.batch_size, 1)
-    #     true_es, samples = [], []
-    #     u = self.encoder.binary_energy(true_energy).to(dtype=torch.float32)
+        :return true_energies (torch.Tensor): Incident energies of the particle
+        for each sample (num_samples,)
+        :return samples (torch.Tensor): Data samples, (num_samples, *)
+        """
+        n_iter = max(num_samples//self.sampler.batch_size, 1)
+        true_es, samples = [], []
+        u = self.encoder.binary_energy(true_energy).to(dtype=torch.float32)
 
-    #     for _ in range(n_iter):
-    #         if measure_time:
-    #             # start = time.process_time()
-    #             start = time.perf_counter()
-    #             p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(p0=u)
-    #             torch.cuda.current_stream().synchronize()
-    #             self.sampling_time_gpu.append([time.perf_counter() - start, self.sampler.batch_size])
-    #             # self.sampling_time_gpu.append([time.process_time() - start, self.sampler.batch_size])
-    #         else:
-    #             p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(p0=u)
+        for _ in range(n_iter):
+            if measure_time:
+                # start = time.process_time()
+                start = time.perf_counter()
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(p0=u)
+                torch.cuda.current_stream().synchronize()
+                self.sampling_time_gpu.append([time.perf_counter() - start, self.sampler.batch_size])
+                # self.sampling_time_gpu.append([time.process_time() - start, self.sampler.batch_size])
+            else:
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(p0=u)
 
-    #         if true_energy is None:
-    #             # true_e ~ U[1, 100]
-    #             true_e = (torch.rand((p0_state.size(0), 1),
-    #                                  device=p0_state.device) * 99.) + 1.
-    #         else:
-    #             # true_e = true_energy
-    #             true_e = torch.ones((p0_state.size(0), 1),
-    #                                 device=p0_state.device) * true_energy
-    #         # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
-    #         #                            true_e], dim=1)
-    #         prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
+            if true_energy is None:
+                # true_e ~ U[1, 100]
+                true_e = (torch.rand((p0_state.size(0), 1),
+                                     device=p0_state.device) * 99.) + 1.
+            else:
+                # true_e = true_energy
+                true_e = torch.ones((p0_state.size(0), 1),
+                                    device=p0_state.device) * true_energy
+            # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
+            #                            true_e], dim=1)
+            prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
 
-    #         hits, activations = self.decoder(prior_samples, true_e, self.act_fct_slope, self.x_raw)
-    #         beta = torch.tensor(self._config.model.beta_smoothing_fct,
-    #                             dtype=torch.float, device=hits.device)
-    #         sample = self._inference_energy_activation_fct(activations) \
-    #             * self._hit_smoothing_dist_mod(hits, beta, False)
+            hits, activations = self.decoder(prior_samples, true_e, self.act_fct_slope, self.x_raw)
+            beta = torch.tensor(self._config.model.beta_smoothing_fct,
+                                dtype=torch.float, device=hits.device)
+            sample = self._inference_energy_activation_fct(activations) \
+                * self._hit_smoothing_dist_mod(hits, beta, False)
 
-    #         true_es.append(true_e)
-    #         samples.append(sample)
+            true_es.append(true_e)
+            samples.append(sample)
 
-    #     return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
+        return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
 
-    # def generate_samples(self, num_samples: int = 128, true_energy=None, measure_time=False):
-    #     """Generate data samples by decoding RBM samples
+    def generate_samples(self, num_samples: int = 128, true_energy=None, measure_time=False):
+        """Generate data samples by decoding RBM samples
 
-    #     :param num_samples (int): No. of data samples to generate in one shot
-    #     :param true_energy (int): Default None, Incident energy of the particle
+        :param num_samples (int): No. of data samples to generate in one shot
+        :param true_energy (int): Default None, Incident energy of the particle
 
-    #     :return true_energies (torch.Tensor): Incident energies of the particle
-    #     for each sample (num_samples,)
-    #     :return samples (torch.Tensor): Data samples, (num_samples, *)
-    #     """
-    #     n_iter = max(num_samples//self.sampler.batch_size, 1)
-    #     true_es, samples = [], []
+        :return true_energies (torch.Tensor): Incident energies of the particle
+        for each sample (num_samples,)
+        :return samples (torch.Tensor): Data samples, (num_samples, *)
+        """
+        n_iter = max(num_samples//self.sampler.batch_size, 1)
+        true_es, samples = [], []
 
-    #     for _ in range(n_iter):
-    #         if measure_time:
-    #             # start = time.process_time()
-    #             start = time.perf_counter()
-    #             p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
-    #             torch.cuda.current_stream().synchronize()
-    #             self.sampling_time_gpu.append([time.perf_counter() - start, self.sampler.batch_size])
-    #             # self.sampling_time_gpu.append([time.process_time() - start, self.sampler.batch_size])
-    #         else:
-    #             p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
+        for _ in range(n_iter):
+            if measure_time:
+                # start = time.process_time()
+                start = time.perf_counter()
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
+                torch.cuda.current_stream().synchronize()
+                self.sampling_time_gpu.append([time.perf_counter() - start, self.sampler.batch_size])
+                # self.sampling_time_gpu.append([time.process_time() - start, self.sampler.batch_size])
+            else:
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
 
-    #         if true_energy is None:
-    #             # true_e ~ U[1, 100]
-    #             true_e = (torch.rand((p0_state.size(0), 1),
-    #                                  device=p0_state.device) * 99.) + 1.
-    #         else:
-    #             # true_e = true_energy
-    #             true_e = torch.ones((p0_state.size(0), 1),
-    #                                 device=p0_state.device) * true_energy
-    #         # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
-    #         #                            true_e], dim=1)
-    #         prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
+            if true_energy is None:
+                # true_e ~ U[1, 100]
+                true_e = (torch.rand((p0_state.size(0), 1),
+                                     device=p0_state.device) * 99.) + 1.
+            else:
+                # true_e = true_energy
+                true_e = torch.ones((p0_state.size(0), 1),
+                                    device=p0_state.device) * true_energy
+            # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
+            #                            true_e], dim=1)
+            prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
 
-    #         hits, activations = self.decoder(prior_samples, true_e, self.act_fct_slope, self.x_raw)
-    #         beta = torch.tensor(self._config.model.beta_smoothing_fct,
-    #                             dtype=torch.float, device=hits.device)
-    #         sample = self._inference_energy_activation_fct(activations) \
-    #             * self._hit_smoothing_dist_mod(hits, beta, False)
+            hits, activations = self.decoder(prior_samples, true_e, self.act_fct_slope, self.x_raw)
+            beta = torch.tensor(self._config.model.beta_smoothing_fct,
+                                dtype=torch.float, device=hits.device)
+            sample = self._inference_energy_activation_fct(activations) \
+                * self._hit_smoothing_dist_mod(hits, beta, False)
 
-    #         true_es.append(true_e)
-    #         samples.append(sample)
+            true_es.append(true_e)
+            samples.append(sample)
 
-    #     return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
+        return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
 
     def ising_energy(self, p0_state, p1_state, p2_state, p3_state, weight_dict, bias_dict):
             """Energy expectation value under the 4-partite BM
@@ -911,4 +925,4 @@ class AtlasConditionalQVAEv2(GumBoltAtlasPRBMCNN):
         batch_samples = torch.mm(dense_matrix, torch.tensor(response).transpose(0,1).float()).transpose(0,1)
 
         return batch_samples.numpy(), 0, 0
-    
+
