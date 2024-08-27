@@ -42,6 +42,7 @@ from models.autoencoders.gumboltAtlasCRBMCNNV2 import GumBoltAtlasCRBMCNNV2
 from models.autoencoders.gumboltAtlasPRBMCNN_nohits import GumBoltAtlasPRBMCNNnohits
 from models.autoencoders.gumboltAtlasPRBMCNN_nohits import GumBoltAtlasPRBMCNNnohits
 from models.autoencoders.AtlasConditionalQVAE import AtlasConditionalQVAE
+from models.autoencoders.AtlasConditionalQVAE3D import AtlasConditionalQVAE3D
 
 _MODEL_DICT={
     "AE": AutoEncoder, 
@@ -71,6 +72,7 @@ _MODEL_DICT={
     "GumBoltAtlasCRBMCNNV2": GumBoltAtlasCRBMCNNV2,
     "GumBoltAtlasPRBMCNNnohits": GumBoltAtlasPRBMCNNnohits,
     "AtlasConditionalQVAE": AtlasConditionalQVAE,
+    "AtlasConditionalQVAE3D": AtlasConditionalQVAE3D,
 }
 
 class ModelCreator(object):

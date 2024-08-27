@@ -162,8 +162,8 @@ class EngineAtlas(EngineCaloV3):
                     # Trying this to free up memory on the GPU and run validation during a training epoch
                     # - hopefully backprop will work with the code above - didn't work
                     # batch_loss_dict["loss"].detach()
-                    if batch_loss_dict["ahep_loss"] < -10:
-                        self.model._config.model.bool_bp_pos_energy = False
+                    # if batch_loss_dict["ahep_loss"] < -10:
+                        # self.model._config.model.bool_bp_pos_energy = False
                 else:
                     batch_loss_dict["gamma"] = 1.0
                     batch_loss_dict["epoch"] = epoch

@@ -152,7 +152,7 @@ def run(config=None):
         modelCreator.load_state(config.run_path, dev)
         # _epoch = get_epochs(config.run_path)
         # temp solution to get total number of epochs this model has been trained on
-        fn = create_filenames_dict(config.run_path)
+        fn = create_filenames_dict(config.run_path, config.data.entity)
         _epoch = fn["size"]
         # if config.freeze_vae:
         #     for name, param in engine.model.named_parameters():

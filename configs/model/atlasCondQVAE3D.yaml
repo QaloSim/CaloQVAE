@@ -1,0 +1,44 @@
+model_type: AtlasConditionalQVAE3D
+activation_fct: relu
+beta_smoothing_fct: 5
+output_smoothing_fct: 60
+decoder_hidden_nodes:
+  - 800
+  - 700
+  - 600
+  - 550  
+  - 500
+encoder_hidden_nodes:
+  - 500
+  - 450
+  - 400
+  - 350
+  - 300
+# n_latent_hierarchy_lvls: 4
+# n_latent_nodes: 512
+#for PB
+n_latent_hierarchy_lvls: 3
+n_latent_nodes: 512
+n_latent_nodes_per_p: 512
+# n_latent_nodes: 302
+# n_latent_nodes_per_p: 302
+
+encodertype: SmallPB3Dv2
+#Large, Small, SmallUnconditioned, SmallPosEnc
+decodertype: SmallPB3Dv2
+# Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
+
+encoder_pb_hierarchy: 0
+encoder_pb_hierarchy_bin: 1
+
+fullyconnected: False
+topology: pegasus
+# topology: zephyr
+alpha: 0.0
+gamma: 0.0
+mse_weight: 0.5
+coefficient: 0.01
+interpolation_param: 1.0
+bce_weights_power: 0.0
+rbmMethod: CD
+bool_bp_pos_energy: True

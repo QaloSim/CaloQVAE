@@ -270,11 +270,11 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
 
         # Compute positive phase (energy expval under posterior variables) 
         n_nodes_p = self.prior.nodes_per_partition
-        if self._config.model.bool_bp_pos_energy:
+        # if self._config.model.bool_bp_pos_energy:
             #detach from encoder params
-            ps_pos = post_zetas
-        else:
-            ps_pos = post_zetas.clone().detach()
+        ps_pos = post_zetas
+        # else:
+            # ps_pos = post_zetas.clone().detach()
         pos_energy = self.energy_exp_cond(ps_pos[:, :n_nodes_p],
                                      ps_pos[:, n_nodes_p:2*n_nodes_p],
                                      ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
@@ -513,9 +513,9 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
         self.beta_list.append(0)
         for x,u_x in zip(true_energy, u):
             #############
-            beta0, beta_list, rbm_energy_list, dwave_energy_list, thrsh_met =self.find_beta(num_reads=128, beta_init=4.29, lr=0.01, num_epochs = 30, delta = 4.0, method = 2, TOL=True, const = 1.0, adaptive = True)
-            self.beta_list.append(beta0)
-            beta = 1/beta0
+            # beta0, beta_list, rbm_energy_list, dwave_energy_list, thrsh_met =self.find_beta(num_reads=128, beta_init=4.29, lr=0.01, num_epochs = 30, delta = 4.0, method = 2, TOL=True, const = 1.0, adaptive = True)
+            # self.beta_list.append(beta0)
+            # beta = 1/beta0
             ###############
             fb = self.gen_fb(1.0/beta, x, thrsh=thrsh, cond=self._config.qpu.cond, TOL=self._config.qpu.tol)
             h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model_cond(u_x.unsqueeze(0), beta)

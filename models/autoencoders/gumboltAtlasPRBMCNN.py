@@ -722,42 +722,42 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
         """
         n_iter = max(num_samples//self.sampler.batch_size, 1)
         true_es, samples = [], []
+        with torch.no_grad():
+            for _ in range(n_iter):
+                if measure_time:
+                    # start = time.process_time()
+                    start = time.perf_counter()
+                    p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
+                    torch.cuda.current_stream().synchronize()
+                    self.sampling_time_gpu.append([time.perf_counter() - start, self.sampler.batch_size])
+                    # self.sampling_time_gpu.append([time.process_time() - start, self.sampler.batch_size])
+                else:
+                    p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
 
-        for _ in range(n_iter):
-            if measure_time:
-                # start = time.process_time()
-                start = time.perf_counter()
-                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
-                torch.cuda.current_stream().synchronize()
-                self.sampling_time_gpu.append([time.perf_counter() - start, self.sampler.batch_size])
-                # self.sampling_time_gpu.append([time.process_time() - start, self.sampler.batch_size])
-            else:
-                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling()
+                if true_energy is None:
+                    # true_e ~ U[1, 100]
+                    true_e = (torch.rand((p0_state.size(0), 1),
+                                         device=p0_state.device) * 99.) + 1.
+                else:
+                    # true_e = true_energy
+                    true_e = torch.ones((p0_state.size(0), 1),
+                                        device=p0_state.device) * true_energy
+                # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
+                #                            true_e], dim=1)
+                prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
+                if torch.is_tensor(self.prior_samples):
+                    self.prior_samples = torch.cat([self.prior_samples, prior_samples], dim=0)
+                else:
+                    self.prior_samples = prior_samples
 
-            if true_energy is None:
-                # true_e ~ U[1, 100]
-                true_e = (torch.rand((p0_state.size(0), 1),
-                                     device=p0_state.device) * 99.) + 1.
-            else:
-                # true_e = true_energy
-                true_e = torch.ones((p0_state.size(0), 1),
-                                    device=p0_state.device) * true_energy
-            # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
-            #                            true_e], dim=1)
-            prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
-            if torch.is_tensor(self.prior_samples):
-                self.prior_samples = torch.cat([self.prior_samples, prior_samples], dim=0)
-            else:
-                self.prior_samples = prior_samples
+                hits, activations = self.decoder(prior_samples, true_e)
+                beta = torch.tensor(self._config.model.beta_smoothing_fct,
+                                    dtype=torch.float, device=hits.device)
+                sample = self._inference_energy_activation_fct(activations) \
+                    * self._hit_smoothing_dist_mod(hits, beta, False)
 
-            hits, activations = self.decoder(prior_samples, true_e)
-            beta = torch.tensor(self._config.model.beta_smoothing_fct,
-                                dtype=torch.float, device=hits.device)
-            sample = self._inference_energy_activation_fct(activations) \
-                * self._hit_smoothing_dist_mod(hits, beta, False)
-
-            true_es.append(true_e)
-            samples.append(sample)
+                true_es.append(true_e)
+                samples.append(sample)
 
         return torch.cat(true_es, dim=0), torch.cat(samples, dim=0)
     
