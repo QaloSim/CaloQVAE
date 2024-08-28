@@ -27,10 +27,10 @@ run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-16/18-37-54/wandb/run-
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
-num_workers: 16
+num_workers: 0
 device: gpu
 gpu_list:
-  - 4
+  - 1
 
 task:
   - train
