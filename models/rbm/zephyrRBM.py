@@ -55,12 +55,12 @@ class ZephyrRBM(nn.Module):
             str_key = ''.join([str(key[i]) for i in range(len(key))])
             self._weight_dict[str_key] = nn.Parameter(
                 torch.randn(self._nodes_per_partition,
-                            self._nodes_per_partition), requires_grad=True)
+                            self._nodes_per_partition), requires_grad=True) * 0.1
 
         # Dict of RBM biases for each partition
         for i in range(self._n_partitions):
             self._bias_dict[str(i)] = nn.Parameter(
-                torch.randn(self._nodes_per_partition), requires_grad=True)
+                torch.randn(self._nodes_per_partition), requires_grad=True) * 0.1
 
         # if qpu:
         self._qubit_idx_dict, device = self.gen_qubit_idx_dict()
@@ -70,7 +70,7 @@ class ZephyrRBM(nn.Module):
         else:
             for key in itertools.combinations(range(self._n_partitions), 2):
                 str_key = ''.join([str(key[i]) for i in range(len(key))])
-                self._weight_mask_dict[str_key] = torch.ones(self._nodes_per_partition, self._nodes_per_partition, requires_grad=False)
+                self._weight_mask_dict[str_key] = nn.Parameter(torch.ones(self._nodes_per_partition, self._nodes_per_partition), requires_grad=False)
 
     @property
     def nodes_per_partition(self):

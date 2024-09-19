@@ -710,7 +710,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
             if idx in qubit_idxs[key]:
                 return key
     
-    def generate_samples(self, num_samples: int = 128, true_energy=None, measure_time=False):
+    def generate_samples(self, num_samples: int = 128, true_energy=None, measure_time=False, cat_priors=False):
         """Generate data samples by decoding RBM samples
 
         :param num_samples (int): No. of data samples to generate in one shot
@@ -745,7 +745,7 @@ class GumBoltAtlasPRBMCNN(GumBoltAtlasCRBMCNN):
                 # prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state,
                 #                            true_e], dim=1)
                 prior_samples = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1)
-                if torch.is_tensor(self.prior_samples):
+                if torch.is_tensor(self.prior_samples) and cat_priors:
                     self.prior_samples = torch.cat([self.prior_samples, prior_samples], dim=0)
                 else:
                     self.prior_samples = prior_samples
