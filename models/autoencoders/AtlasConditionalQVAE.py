@@ -439,7 +439,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
         return dwave_samples[:,:partition_size], dwave_samples[:,partition_size:2*partition_size], dwave_samples[:,2*partition_size:3*partition_size], dwave_samples[:,3*partition_size:4*partition_size]
     
     
-    def generate_samples_qpu_cond(self, num_samples=64, true_energy=None, measure_time=False, beta=1.0, thrsh=20, t=1.0):
+    def generate_samples_qpu_cond(self, num_samples=64, true_energy=None, measure_time=False, beta=1.0, thrsh=20, t=1.0, est_beta=True):
         """
         generate_samples()
         
@@ -513,9 +513,10 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
         self.beta_list.append(0)
         for x,u_x in zip(true_energy, u):
             #############
-            beta0, beta_list, rbm_energy_list, dwave_energy_list, thrsh_met =self.find_beta_cond([x.item()], x.device, thrsh=thrsh, num_reads=256, beta_init=4.29, lr=0.01, num_epochs = 30, delta = 4.0, method = 2, TOL=True, const = 1.0, adaptive = True)
-            self.beta_list.append(beta0)
-            beta = 1/beta0
+            if est_beta:
+                beta0, beta_list, rbm_energy_list, dwave_energy_list, thrsh_met =self.find_beta_cond([x.item()], x.device, thrsh=thrsh, num_reads=256, beta_init=4.29, lr=0.01, num_epochs = 30, delta = 4.0, method = 2, TOL=True, const = 1.0, adaptive = True)
+                self.beta_list.append(beta0)
+                beta = 1/beta0
             ###############
             fb = self.gen_fb(1.0/beta, x, thrsh=thrsh, TOL=self._config.qpu.tol)
             # h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model_cond(u_x.unsqueeze(0), beta)
@@ -1077,6 +1078,105 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
                 beta = np.max([2.0, beta * np.power(mean_dwave_energy/mean_rbm_energy, delta)])
             
             if TOL and np.abs(mean_rbm_energy - mean_dwave_energy) < const * 2.0 * np.std(dwave_energies) * np.std(rbm_energies) / ( np.sqrt(num_reads) * (np.std(dwave_energies) + np.std(rbm_energies))):
+                thrsh_met = 1
+                break
+        beta = beta_list[-1]
+        return beta, beta_list, rbm_energy_list, dwave_energies_list, thrsh_met
+    
+    def lognuniform(self, low=7, high=12, size=None, base=np.e):
+        return np.floor(np.power(base, np.random.uniform(low, high, size)))
+    
+    def find_beta_condv2(self, en_list, dev, thrsh=25, num_reads=128, beta_init=10.0, lr=0.01, num_epochs = 20, delta = 2.0, method = 1, TOL=True, const = 1.0, adaptive = True, t=0.0):
+        delta_init = delta
+        lr_init = lr
+        
+        beta = beta_init
+        beta_list = []
+        rbm_energy_list = []
+        dwave_energies_list = []
+        mean_rbm_energy_list = []
+        mean_dwave_energy_list = []
+        training_results = {}
+        
+        thrsh_met = 0
+        if en_list == None:
+            true_energy = torch.tensor([self.lognuniform() for i in range(num_reads)]).unsqueeze(1).to(dev)
+        else:
+            true_energy = torch.tensor(en_list).repeat(num_reads,1).to(dev)
+        u = self.encoder.binary_energy(true_energy).to(dtype=torch.float32)
+        # x = next(iter(true_energy))
+        self.u = u
+        self.part1= []
+        self.conv_crit = []
+
+        for epoch in range(num_epochs+1):
+            _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
+            h, J, qubit_idxs, idx_dict, _, _ = self.ising_model(1.0 / beta)
+            if epoch == 0:
+                p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(p0=u)
+                p0_ising = p0_state * 2 - 1
+                p1_ising = p1_state * 2 - 1
+                p2_ising = p2_state * 2 - 1
+                p3_ising = p3_state * 2 - 1
+                rbm_energies = self.ising_energy(p0_ising, p1_ising, p2_ising, p3_ising, dwave_weights_rbm, dwave_bias_rbm)
+                rbm_energies = rbm_energies.detach().cpu().numpy()
+
+
+            # fb = self.gen_fb(1.0/beta, x, thrsh=thrsh, TOL=self._config.qpu.tol)
+            response_list = []
+            # u = self.encoder.binary_energy(true_energy).to(dtype=torch.float32)
+            # self.beta_list.append(0)
+            for i,(x,u_x) in enumerate(zip(true_energy, u)):
+                # #############
+                # if est_beta:
+                #     beta0, beta_list, rbm_energy_list, dwave_energy_list, thrsh_met =self.find_beta_cond([x.item()], x.device, thrsh=thrsh, num_reads=256, beta_init=4.29, lr=0.01, num_epochs = 30, delta = 4.0, method = 2, TOL=True, const = 1.0, adaptive = True)
+                #     self.beta_list.append(beta0)
+                #     beta = 1/beta0
+                # ###############
+                fb = self.gen_fb(1.0/beta, x, thrsh=thrsh, TOL=self._config.qpu.tol)
+                # h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model_cond(u_x.unsqueeze(0), beta)
+                # h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model(beta)
+                if i >=5:
+                    response_list.append( self._qpu_sampler.sample_ising(h, J, num_reads=1, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb, label="Gen 1 cond sample"))
+                # response_list.append( self._qpu_sampler.sample_ising(h, J, num_reads=1, answer_mode='raw', auto_scale=False)) #####
+                time.sleep(t)
+
+            response = np.concatenate([response_list[i].record["sample"] for i in range(len(response_list))])
+            
+            # response = self._qpu_sampler.sample_ising(h, J, num_reads=num_reads, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb, label="Gen 1 cond sample")
+            
+            # response = response.record["sample"]
+            dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
+
+            nonpl = len(idx_dict['0'])
+            dwave_1, dwave_2, dwave_3, dwave_4 = dwave_samples[:,0:nonpl], dwave_samples[:,nonpl:2*nonpl], dwave_samples[:,2*nonpl:3*nonpl], dwave_samples[:,3*nonpl:4*nonpl]
+            dwave_1_t = torch.tensor(dwave_1).to(p0_ising.device).float()
+            dwave_2_t = torch.tensor(dwave_2).to(p0_ising.device).float()
+            dwave_3_t = torch.tensor(dwave_3).to(p0_ising.device).float()
+            dwave_4_t = torch.tensor(dwave_4).to(p0_ising.device).float()
+            dwave_energies = self.ising_energy(dwave_1_t, dwave_2_t, dwave_3_t, dwave_4_t, dwave_weights_rbm, dwave_bias_rbm)
+            dwave_energies = dwave_energies.detach().cpu().numpy()
+            mean_rbm_energy = np.mean(rbm_energies)
+            mean_dwave_energy = np.mean(dwave_energies)
+
+            rbm_energy_list.append(rbm_energies)
+            dwave_energies_list.append(dwave_energies)
+            mean_rbm_energy_list.append(mean_rbm_energy)
+            mean_dwave_energy_list.append(mean_dwave_energy)
+            beta_list.append(beta)
+            logger.info(f'Epoch {epoch}: beta = {beta}')
+            self.part1.append(dwave_1)
+            if method == 1:
+                if adaptive:
+                    lr = np.max([lr_init, np.power(beta,2)/np.var(dwave_energies)])
+                beta = beta - lr * (mean_dwave_energy - mean_rbm_energy)
+            else:
+                if adaptive:
+                    delta = np.max([delta_init, np.abs(mean_dwave_energy)/np.var(dwave_energies)])
+                beta = np.max([2.0, beta * np.power(mean_dwave_energy/mean_rbm_energy, delta)])
+            conv_crit = const * 2.0 * np.std(dwave_energies) * np.std(rbm_energies) / ( np.sqrt(num_reads) * (np.std(dwave_energies) + np.std(rbm_energies)))
+            self.conv_crit.append(conv_crit)
+            if TOL and np.abs(mean_rbm_energy - mean_dwave_energy) < conv_crit:
                 thrsh_met = 1
                 break
         beta = beta_list[-1]
