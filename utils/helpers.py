@@ -10,6 +10,7 @@ from matplotlib.colors import LogNorm
 import pandas as pd
 import gif
 import json
+import time
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
@@ -65,4 +66,8 @@ def get_project_id(path):
     b = [ ".wandb" in file for file in files]
     idx = (np.array(range(len(files))) * np.array(b)).sum()
     iden = files[idx].split("-")[1].split(".")[0]
-    return iden
+    seed = int(time.time() * 1000) % (2**32 - 1)
+    characters = list('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
+    rng = np.random.RandomState(seed)
+    random_string = ''.join(rng.choice(characters, 8))
+    return random_string

@@ -306,8 +306,8 @@ class EngineAtlas(EngineCaloV3):
                         self._model_creator.save_state(config_string)
 
                     # Disconnect pos_energy back prop to encoder (one and done -> False)
-                    if valid_loss_dict["ae_loss"] + valid_loss_dict["hit_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"] < self.model._config.model.th_bp_pos_energy:
-                        self.model._config.model.bool_bp_pos_energy = False
+#                     if valid_loss_dict["ae_loss"] + valid_loss_dict["hit_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"] < self.model._config.model.th_bp_pos_energy:
+#                         self.model._config.model.bool_bp_pos_energy = False
                     # else:
                     #     self.model._config.model.bool_bp_pos_energy = True
                         

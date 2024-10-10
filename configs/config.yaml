@@ -3,10 +3,10 @@ debug: False
 load_data_from_pkl: 0
 
 save_state: 1
-load_state: 0
+load_state: 1
 save_hists: 1
 save_partition: 1
-freeze_vae: 1
+freeze_vae: 0
 
 wandb_enabled: 1
 
@@ -21,10 +21,10 @@ wandb_enabled: 1
 
 # zephyr-luian1
 # robust-serenity-216
-run_path: "/home/luian1/CaloQVAE/outputs_sym/wandb/run-20240716_092439-ja6l8prq/files/AtlasConditionalQVAE3D_atlas_default_latest.pth"
+run_path: '/fast_scratch_1/caloqvae/blazerjia/wandb/run-20241005_014138-rkrljva3/files/AtlasConditionalQVAE3D_atlas_default_best.pth'
 
 
-output_path: /fast_scratch_1/luian1/outputs
+output_path: /fast_scratch_1/blazerjia/outputs
 num_workers: 16
 device: gpu
 gpu_list:
