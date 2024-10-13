@@ -18,10 +18,10 @@ encoder_hidden_nodes:
 # n_latent_nodes: 512
 #for PB
 n_latent_hierarchy_lvls: 3
-n_latent_nodes: 512
-n_latent_nodes_per_p: 512
-# n_latent_nodes: 302
-# n_latent_nodes_per_p: 302
+# n_latent_nodes: 512
+# n_latent_nodes_per_p: 512
+n_latent_nodes: 302
+n_latent_nodes_per_p: 302
 
 encodertype: SmallPB3Dv2
 #Large, Small, SmallUnconditioned, SmallPosEnc
@@ -32,8 +32,8 @@ encoder_pb_hierarchy: 0
 encoder_pb_hierarchy_bin: 1
 
 fullyconnected: False
-topology: pegasus
-# topology: zephyr
+# topology: pegasus
+topology: zephyr
 alpha: 0.0
 gamma: 0.0
 mse_weight: 0.5

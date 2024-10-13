@@ -514,7 +514,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
         for x,u_x in zip(true_energy, u):
             #############
             if est_beta:
-                beta0, beta_list, rbm_energy_list, dwave_energy_list, thrsh_met =self.find_beta_cond([x.item()], x.device, thrsh=thrsh, num_reads=256, beta_init=4.29, lr=0.01, num_epochs = 30, delta = 4.0, method = 2, TOL=True, const = 1.0, adaptive = True)
+                beta0, beta_list, rbm_energy_list, dwave_energy_list, thrsh_met =self.find_beta_cond([x.item()], x.device, thrsh=thrsh, num_reads=256, beta_init=1/beta, lr=0.01, num_epochs = 30, delta = 4.0, method = 2, TOL=True, const = 1.0, adaptive = True)
                 self.beta_list.append(beta0)
                 beta = 1/beta0
             ###############
@@ -1046,7 +1046,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
             fb = self.gen_fb(1.0/beta, x, thrsh=thrsh, TOL=self._config.qpu.tol)
             # h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias = self.ising_model_cond(u_x.unsqueeze(0), beta)
             
-            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_reads, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb, label="Gen 1 cond sample")
+            response = self._qpu_sampler.sample_ising(h, J, num_reads=num_reads, answer_mode='raw', auto_scale=False, flux_drift_compensation=False, flux_biases=fb, label="Gen cond sample")
             response = response.record["sample"]
             dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
 

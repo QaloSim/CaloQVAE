@@ -15,13 +15,14 @@ wandb_enabled: 1
 
 # #zephyr
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-20-30/wandb/run-20240518_152031-zhvzuxif/files/AtlasConditionalQVAE_atlas_default_latest.pth"
+run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-10-04/14-10-35/wandb/run-20241004_141036-oxw8je9r/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
 
 #pegasus
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240518_152205-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_latest.pth"
 
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-15/18-39-39/wandb/run-20240817_193745-3in69i3s/files/AtlasConditionalQVAE3D_atlas_default_150.pth"
 
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-15/18-47-19/wandb/run-20240815_184720-1valeubk/files/AtlasConditionalQVAE3D_atlas_default_80.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-15/18-47-19/wandb/run-20240817_194429-1valeubk/files/AtlasConditionalQVAE3D_atlas_default_210.pth"
 
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-16/18-37-54/wandb/run-20240818_130637-frfzrs9j/files/AtlasConditionalQVAE3D_atlas_default_140.pth"
 
@@ -30,14 +31,14 @@ wandb_enabled: 1
 # fully connected
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-30/19-52-39/wandb/run-20240830_195240-1nv2akol/files/AtlasConditionalQVAE3D_atlas_default_70.pth"
 
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-09-03/19-07-34/wandb/run-20240903_190735-gcbwc4g1/files/AtlasConditionalQVAE3D_atlas_default_120.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-09-03/19-07-34/wandb/run-20240903_190735-gcbwc4g1/files/AtlasConditionalQVAE3D_atlas_default_120.pth"
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 4
+  - 2
 
 task:
   - train

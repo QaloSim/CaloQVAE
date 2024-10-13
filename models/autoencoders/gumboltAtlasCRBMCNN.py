@@ -217,7 +217,7 @@ class GumBoltAtlasCRBMCNN(GumBoltCaloCRBM):
             # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
             activation_fct_annealed = self._training_activation_fct(act_fct_slope)
             # out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-            out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
+            out.output_activations = activation_fct_annealed(output_activations) # * torch.where(x > 0, 1., 0.)
         else:
             out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         # else:
