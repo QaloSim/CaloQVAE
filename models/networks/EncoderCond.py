@@ -10,6 +10,7 @@ import torch.nn as nn
 from models.networks.hierarchicalEncoder import HierarchicalEncoder
 import torch.nn.functional as F
 import numpy as np
+from einops import rearrange
 
 class sequentialMultiInput(nn.Sequential):
     def forward(self, *inputs):
@@ -375,6 +376,12 @@ class EncoderHierarchyPB_BinEv2(HierarchicalEncoder):
         elif self.encArch == "SmallPB3Dv2":
             for l in range(len(layers)-1):
                 moduleLayers.append(EncoderBlockPBH3Dv2(layers[l], layers[l+1]))
+        elif self.encArch == "SmallPB3Dv3":
+            for l in range(len(layers)-1):
+                moduleLayers.append(EncoderBlockPBH3Dv3(layers[l], layers[l+1]))
+        elif self.encArch == "SmallPB3Dv4":
+            for l in range(len(layers)-1):
+                moduleLayers.append(EncoderBlockPBH3Dv4(layers[l], layers[l+1]))
 
         sequential = sequentialMultiInput(*moduleLayers)
         return sequential
@@ -715,3 +722,203 @@ class EncoderBlockPBH3Dv2(nn.Module):
 #         pos_enc = torch.cat(pres,2).transpose(1,2);
 #         res = pos_enc.sum([1,2])
 #         return res.unsqueeze(1).to(post_samples.device)
+
+
+class PeriodicConv3d_v2(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):
+        super(PeriodicConv3d_v2, self).__init__()
+        self.padding = padding
+        # try 3x3x3 cubic convolution
+        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size, stride=stride, padding=0, dilation=dilation, groups=groups, bias=bias)
+    def forward(self, x):
+        # Pad input tensor with periodic boundary and circle-center conditions
+        if self.padding == 1:
+            mid = x.shape[-2] // 2
+            shift = torch.cat((x[..., mid:, [0]], x[..., :mid, [0]]), -2)
+            x = torch.cat((shift,x), dim=-1)
+        x = F.pad(x, (0, 0, self.padding, self.padding, 0, 0), mode='circular')
+        # Apply convolution
+        x = self.conv(x)
+        return x
+
+class EncoderBlockPBH3Dv3(nn.Module):
+    def __init__(self, num_input_nodes, n_latent_nodes):
+        super(EncoderBlockPBH3Dv3, self).__init__()
+        self.num_input_nodes = num_input_nodes
+        self.n_latent_nodes = n_latent_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+        
+        self.seq1 = nn.Sequential(
+                   # nn.Linear(self.num_input_nodes, 24*24),
+                   # nn.Unflatten(1, (1,24, 24)),
+    
+                   PeriodicConv3d_v2(1, 32, (3,3,3), (2,1,1), 1),
+                   nn.BatchNorm3d(32),
+                   nn.PReLU(32, 0.02),
+    
+                   PeriodicConv3d_v2(32, 64, (3,3,3), (2,1,1), 1),
+                   nn.BatchNorm3d(64),
+                   nn.PReLU(64, 0.02),
+
+                   PeriodicConv3d_v2(64, 128, (3,3,3), (1,2,1), 1),
+                   nn.BatchNorm3d(128),
+                   nn.PReLU(128, 0.02),
+                )
+
+        self.seq2 = nn.Sequential(
+                           PeriodicConv3d_v2(129, 256, (3,3,3), (2,2,1), 0),
+                           nn.BatchNorm3d(256),
+                           nn.PReLU(256, 0.02),
+
+                           PeriodicConv3d_v2(256, self.n_latent_nodes, (3,3,3), (1,2,2), 0),
+                           nn.PReLU(self.n_latent_nodes, 1.0),
+                           nn.Flatten(),
+                        )
+        
+
+    def forward(self, x, x0, post_samples):
+        # 1 channel of a 3d object / shower
+        x = x.reshape(x.shape[0], 1, self.z, self.phi, self.r) 
+        pos_enc_samples = self._pos_enc(post_samples)
+        x = x + pos_enc_samples.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())
+        x = self.seq1(x)
+            
+        x0 = self.trans_energy(x0)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
+        x = self.seq2(x)
+        
+        return x
+    
+    def _pos_enc(self, post_samples):
+        post_samples = torch.cat(post_samples,1)
+        M = post_samples.shape[1]
+
+        pres = [(torch.arange(0,M).multiply(np.pi/M).cos().to(post_samples.device) * post_samples + torch.arange(0,M).multiply(np.pi/M).sin().to(post_samples.device) *(1 - post_samples).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M/4-1,1)]
+        pos_enc = torch.cat(pres,2).transpose(1,2);
+        res = pos_enc.sum([1,2])/(M-1)
+        return res.unsqueeze(1)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 1.0):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+    
+    
+#####LinAtt
+
+class PreNorm(nn.Module):
+    def __init__(self, dim, fn):
+        super().__init__()
+        self.fn = fn
+        self.norm = nn.GroupNorm(1, dim)
+
+    def forward(self, x):
+        x = self.norm(x)
+        return self.fn(x)
+    
+class Residual(nn.Module):
+    def __init__(self, fn):
+        super().__init__()
+        self.fn = fn
+
+    def forward(self, x, *args, **kwargs):
+        return self.fn(x, *args, **kwargs) + x
+
+
+class LinearAttention(nn.Module):
+    def __init__(self, dim, heads=1, dim_head=32, cylindrical = False):
+        super().__init__()
+        self.scale = dim_head**-0.5
+        self.heads = heads
+        hidden_dim = dim_head * heads
+
+        if(cylindrical):
+            # self.to_qkv = CylindricalConv(dim, hidden_dim * 3, kernel_size = 1, bias=False)
+            # self.to_out = nn.Sequential(CylindricalConv(hidden_dim, dim, kernel_size = 1), nn.GroupNorm(1,dim))
+            self.to_qkv = PeriodicConv3d(dim, hidden_dim * 3, kernel_size = 1, bias=False)
+            self.to_out = nn.Sequential(PeriodicConv3d(hidden_dim, dim, kernel_size = 1), nn.GroupNorm(1,dim))
+        else: 
+            self.to_qkv = nn.Conv3d(dim, hidden_dim * 3, kernel_size = 1, bias=False)
+            self.to_out = nn.Sequential(nn.Conv3d(hidden_dim, dim, kernel_size = 1), nn.GroupNorm(1,dim))
+
+    def forward(self, x):
+        b, c, l, h, w = x.shape
+        qkv = self.to_qkv(x).chunk(3, dim=1)
+        q, k, v = map(
+            lambda t: rearrange(t, "b (h c) x y z -> b h c (x y z)", h=self.heads), qkv
+        )
+
+        q = q.softmax(dim=-2)
+        k = k.softmax(dim=-1)
+
+        q = q * self.scale
+        context = torch.einsum("b h d n, b h e n -> b h d e", k, v)
+
+        out = torch.einsum("b h d e, b h d n -> b h e n", context, q)
+        out = rearrange(out, "b h c (x y z) -> b (h c) x y z", h=self.heads, x=l, y=h, z = w)
+        return self.to_out(out)
+
+class EncoderBlockPBH3Dv4(nn.Module):
+    def __init__(self, num_input_nodes, n_latent_nodes):
+        super(EncoderBlockPBH3Dv4, self).__init__()
+        self.num_input_nodes = num_input_nodes
+        self.n_latent_nodes = n_latent_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+        
+        self.seq1 = nn.Sequential(
+                   # nn.Linear(self.num_input_nodes, 24*24),
+                   # nn.Unflatten(1, (1,24, 24)),
+    
+                   PeriodicConv3d_v2(1, 32, (3,3,3), (2,1,1), 1),
+                   nn.GroupNorm(1,32),
+                   nn.SiLU(32),
+    
+                   PeriodicConv3d_v2(32, 64, (3,3,3), (2,1,1), 1),
+                   nn.GroupNorm(1,64),
+                   nn.SiLU(64),
+
+                   PeriodicConv3d_v2(64, 128, (3,3,3), (1,2,1), 1),
+                   nn.GroupNorm(1,128),
+                   nn.SiLU(128),
+                   Residual(PreNorm(128, LinearAttention(128, cylindrical = True))),
+                )
+
+        self.seq2 = nn.Sequential(
+                           PeriodicConv3d_v2(129, 256, (3,3,3), (2,2,1), 0),
+                           nn.GroupNorm(1,256),
+                           nn.SiLU(256),
+
+                           PeriodicConv3d_v2(256, self.n_latent_nodes, (3,3,3), (1,2,2), 0),
+                           nn.PReLU(self.n_latent_nodes, 1.0),
+                           nn.Flatten(),
+                        )
+        
+
+    def forward(self, x, x0, post_samples):
+        # 1 channel of a 3d object / shower
+        x = x.reshape(x.shape[0], 1, self.z, self.phi, self.r) 
+        pos_enc_samples = self._pos_enc(post_samples)
+        x = x + pos_enc_samples.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())
+        x = self.seq1(x)
+            
+        x0 = self.trans_energy(x0)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
+        x = self.seq2(x)
+        
+        return x
+    
+    def _pos_enc(self, post_samples):
+        post_samples = torch.cat(post_samples,1)
+        M = post_samples.shape[1]
+
+        pres = [(torch.arange(0,M).multiply(np.pi/M).cos().to(post_samples.device) * post_samples + torch.arange(0,M).multiply(np.pi/M).sin().to(post_samples.device) *(1 - post_samples).abs()).divide(np.sqrt(M)).unsqueeze(2) for i in np.arange(1,M/4-1,1)]
+        pos_enc = torch.cat(pres,2).transpose(1,2);
+        res = pos_enc.sum([1,2])/(M-1)
+        return res.unsqueeze(1)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 1.0):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
