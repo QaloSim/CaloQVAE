@@ -836,8 +836,8 @@ class LinearAttention(nn.Module):
         if(cylindrical):
             # self.to_qkv = CylindricalConv(dim, hidden_dim * 3, kernel_size = 1, bias=False)
             # self.to_out = nn.Sequential(CylindricalConv(hidden_dim, dim, kernel_size = 1), nn.GroupNorm(1,dim))
-            self.to_qkv = PeriodicConv3d(dim, hidden_dim * 3, kernel_size = 1, bias=False)
-            self.to_out = nn.Sequential(PeriodicConv3d(hidden_dim, dim, kernel_size = 1), nn.GroupNorm(1,dim))
+            self.to_qkv = PeriodicConv3d_v2(dim, hidden_dim * 3, kernel_size = 1, bias=False)
+            self.to_out = nn.Sequential(PeriodicConv3d_v2(hidden_dim, dim, kernel_size = 1), nn.GroupNorm(1,dim))
         else: 
             self.to_qkv = nn.Conv3d(dim, hidden_dim * 3, kernel_size = 1, bias=False)
             self.to_out = nn.Sequential(nn.Conv3d(hidden_dim, dim, kernel_size = 1), nn.GroupNorm(1,dim))
@@ -869,27 +869,30 @@ class EncoderBlockPBH3Dv4(nn.Module):
         self.phi = 16
         
         self.seq1 = nn.Sequential(
-                   # nn.Linear(self.num_input_nodes, 24*24),
-                   # nn.Unflatten(1, (1,24, 24)),
     
                    PeriodicConv3d_v2(1, 32, (3,3,3), (2,1,1), 1),
                    nn.GroupNorm(1,32),
                    nn.SiLU(32),
+                   LinearAttention(32, cylindrical = True),
     
                    PeriodicConv3d_v2(32, 64, (3,3,3), (2,1,1), 1),
                    nn.GroupNorm(1,64),
                    nn.SiLU(64),
+                   LinearAttention(64, cylindrical = True),
 
                    PeriodicConv3d_v2(64, 128, (3,3,3), (1,2,1), 1),
                    nn.GroupNorm(1,128),
                    nn.SiLU(128),
-                   Residual(PreNorm(128, LinearAttention(128, cylindrical = True))),
+                   # Residual(PreNorm(128, LinearAttention(128, cylindrical = True))),
+                   LinearAttention(128, cylindrical = True),
                 )
 
         self.seq2 = nn.Sequential(
                            PeriodicConv3d_v2(129, 256, (3,3,3), (2,2,1), 0),
                            nn.GroupNorm(1,256),
                            nn.SiLU(256),
+                           # Residual(PreNorm(256, LinearAttention(256, cylindrical = True))),
+                           LinearAttention(256, cylindrical = True),
 
                            PeriodicConv3d_v2(256, self.n_latent_nodes, (3,3,3), (1,2,2), 0),
                            nn.PReLU(self.n_latent_nodes, 1.0),

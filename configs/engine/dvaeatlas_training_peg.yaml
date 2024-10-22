@@ -31,7 +31,7 @@ n_test_batch_size: 1024
 n_valid_batch_size: 1024
 rbm_batch_size: 1024
 
-n_gibbs_sampling_steps: 3000
+n_gibbs_sampling_steps: 500
 
 n_val_batches: 3
 n_valid_per_epoch: 5

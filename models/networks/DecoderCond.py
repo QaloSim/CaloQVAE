@@ -892,11 +892,13 @@ class DecoderCNNPB3Dv4(BasicDecoderV3): #use this one
                    nn.GroupNorm(1,512),
                    # self.dropout,
                    nn.SiLU(512),
+                   LinearAttention(512, cylindrical = False),
 
                    PeriodicConvTranspose3d(512, 128, (5,3,3), (2,1,1), 0),
                    nn.GroupNorm(1,128),
                    nn.SiLU(128),
-                   Residual(PreNorm(128, LinearAttention(128, cylindrical = True))),
+                   # Residual(PreNorm(128, LinearAttention(128, cylindrical = False))),
+                   LinearAttention(128, cylindrical = False),
                                    )
         
         self._layers2 = nn.Sequential(
@@ -904,12 +906,14 @@ class DecoderCNNPB3Dv4(BasicDecoderV3): #use this one
                    nn.GroupNorm(1,64),
                    # self.dropout,
                    nn.SiLU(64),
-                   Residual(PreNorm(64, LinearAttention(64, cylindrical = True))),
+                   # Residual(PreNorm(64, LinearAttention(64, cylindrical = False))),
+                   LinearAttention(64, cylindrical = False),
 
                    PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
                    nn.GroupNorm(1,32),
                    # self.dropout,
-                   nn.PReLU(32, 1.0),
+                   nn.SiLU(32),
+                   LinearAttention(32, cylindrical = False),
 
                    PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
                    # nn.BatchNorm3d(45),
@@ -921,12 +925,14 @@ class DecoderCNNPB3Dv4(BasicDecoderV3): #use this one
                    nn.GroupNorm(1,64),
                    # self.dropout,
                    nn.SiLU(64),
-                   Residual(PreNorm(64, LinearAttention(64, cylindrical = True))),
+                   # Residual(PreNorm(64, LinearAttention(64, cylindrical = False))),
+                   LinearAttention(64, cylindrical = False),
 
                    PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
                    nn.GroupNorm(1,32),
                    # self.dropout,
                    nn.SiLU(32),
+                   LinearAttention(32, cylindrical = False),
 
                    PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
                    # nn.BatchNorm3d(45),

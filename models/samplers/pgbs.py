@@ -184,3 +184,36 @@ class PGBS:
         :return batch_size of the BGS samples
         """
         return self._batch_size
+    
+    def gradient_rbm(self, post_samples, n_nodes_p, rbmMethod):
+        #Gen data for gradient
+        post_zetas = torch.cat(post_samples, 1)
+        data_mean = post_zetas.mean(dim=0)
+        torch.clamp_(data_mean, min=1e-4, max=(1. - 1e-4))
+
+        p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_cond(post_zetas[:, :n_nodes_p],
+                                             post_zetas[:, n_nodes_p:2*n_nodes_p],
+                                             post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
+                                             post_zetas[:, 3*n_nodes_p:], method=rbmMethod)
+
+        data_gen = torch.cat([p0_state,p1_state,p2_state,p3_state], dim=1).mean(dim=0)
+        torch.clamp_(data_gen, min=1e-4, max=(1. - 1e-4));
+        
+        # compute gradient
+        self.grad = {"bias": {}, "weight":{}}
+        for i in range(4):
+            self.grad["bias"][str(i)] = data_mean[n_nodes_p*i:n_nodes_p*(i+1)] - data_gen[n_nodes_p*i:n_nodes_p*(i+1)]
+
+        for i in range(3):
+            for j in [0,1,2,3]:
+                if j > i:
+                    self.grad["weight"][str(i)+str(j)] = (data_mean[n_nodes_p*i:n_nodes_p*(i+1)].unsqueeze(1) @ data_mean[n_nodes_p*j:n_nodes_p*(j+1)].unsqueeze(0) - data_gen[n_nodes_p*i:n_nodes_p*(i+1)].unsqueeze(1) @ data_gen[n_nodes_p*j:n_nodes_p*(j+1)].unsqueeze(0)) * self._prbm._weight_mask_dict[str(i)+str(j)]
+    
+    def update_params(self, lr=0.001):
+        for i in range(4):
+            self._prbm.bias_dict[str(i)] = self._prbm.bias_dict[str(i)] + lr * grad["bias"][str(i)]
+
+        for i in range(3):
+            for j in [0,1,2,3]:
+                if j > i:
+                    self._prbm.weight_dict[str(i)+str(j)] = self._prbm.weight_dict[str(i)+str(j)] + lr * grad["weight"][str(i)+str(j)]
