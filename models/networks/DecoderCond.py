@@ -510,6 +510,83 @@ class DecoderCNNPB3Dv3(BasicDecoderV3): #use this one
         # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
         return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
     
+class DecoderCNNPB3Dv5(BasicDecoderV3): #use this one
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
+        super(DecoderCNNPB3Dv5, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+
+        # self.n_latent_nodes = self._config.model.n_latent_nodes
+        self.n_latent_nodes = self._config.model.n_latent_nodes_per_p * 4
+
+        # dropout for regularization
+        self.dropout = nn.Dropout3d(self._config.model.dropout_prob)
+        
+        # self._node_sequence = [(2049, 800), (800, 700), (700, 600), (600, 550), (550, 500), (500, 6480)]
+        self._layers =  nn.Sequential(
+                   # nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+                   nn.Unflatten(1, (self.n_latent_nodes, 1, 1, 1)),
+
+                   PeriodicConvTranspose3d(self.n_latent_nodes, 512, (3,3,2), (2,1,1), 0),
+                   nn.BatchNorm3d(512),
+                   # self.dropout,
+                   nn.PReLU(512, 0.02),
+                   
+
+                   PeriodicConvTranspose3d(512, 128, (5,3,3), (2,1,1), 0),
+                   nn.BatchNorm3d(128),
+                   nn.PReLU(128, 0.02),
+                                   )
+        
+        self._layers2 = nn.Sequential(
+                   PeriodicConvTranspose3d(128, 64, (3,3,2), (2,1,1), 1),
+                   nn.BatchNorm3d(64),
+                   # self.dropout,
+                   nn.PReLU(64, 0.02),
+
+                   PeriodicConvTranspose3d(64, 32, (5,3,3), (2,1,1), 1),
+                   nn.BatchNorm3d(32),
+                   # self.dropout,
+                   nn.PReLU(32, 0.02),
+
+                   PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 1),
+                   # nn.BatchNorm3d(45),
+                   nn.PReLU(1, 1.0)
+                                   )
+        
+        self._layers3 = nn.Sequential(
+                   PeriodicConvTranspose3d(128, 64, (3,3,2), (2,1,1), 1),
+                   nn.BatchNorm3d(64),
+                   self.dropout,
+                   nn.PReLU(64, 0.02),
+
+                   PeriodicConvTranspose3d(64, 32, (5,3,3), (2,1,1), 1),
+                   nn.BatchNorm3d(32),
+                   self.dropout,
+                   nn.PReLU(32, 0.02),
+
+                   PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 1),
+                   # nn.BatchNorm3d(45),
+                   self.dropout,
+                   nn.PReLU(1, 0.02),
+                                   )
+        
+    def forward(self, x, x0):
+                
+        x = self._layers(x)
+        x0 = self.trans_energy(x0)
+        xx0 = x + x0.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,x.shape[2],x.shape[3],x.shape[4])
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(xx0)
+        return x1.reshape(x1.shape[0],self.z*self.r*self.phi), x2.reshape(x1.shape[0],self.z*self.r*self.phi)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 1.0):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+    
 
 class DecoderCNNPBv4_HEMOD(BasicDecoderV3):
     def __init__(self, num_input_nodes, num_output_nodes, output_activation_fct=nn.Identity(), **kwargs):

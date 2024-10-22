@@ -23,9 +23,9 @@ n_latent_hierarchy_lvls: 3
 n_latent_nodes: 302
 n_latent_nodes_per_p: 302
 
-encodertype: SmallPB3Dv3
+encodertype: SmallPB3Dv5
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: SmallPB3Dv3
+decodertype: SmallPB3Dv5
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
 
 encoder_pb_hierarchy: 0
@@ -42,3 +42,4 @@ interpolation_param: 1.0
 bce_weights_power: 0.0
 rbmMethod: CD
 bool_bp_pos_energy: True
+dropout_prob: 0.2
