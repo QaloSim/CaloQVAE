@@ -372,7 +372,7 @@ class EngineAtlas(EngineCaloV3):
         """
         ϵ = in_data/true_energy
         x = R + (1-2*R)*ϵ
-        u = torch.log(x/(1-x)) - torch.log(torch.tensor([R/(1-R)]).to(x.device)) #torch.log(torch.tensor([δ/(1-δ)]))
+        u = torch.log(x*(1-R)/(R*(1-x))) # - torch.log(torch.tensor([R/(1-R)]).to(x.device)) #torch.log(torch.tensor([δ/(1-δ)]))
         return u
 
         

@@ -209,7 +209,7 @@ class PGBS:
                 if j > i:
                     self.grad["weight"][str(i)+str(j)] = (data_mean[n_nodes_p*i:n_nodes_p*(i+1)].unsqueeze(1) @ data_mean[n_nodes_p*j:n_nodes_p*(j+1)].unsqueeze(0) - data_gen[n_nodes_p*i:n_nodes_p*(i+1)].unsqueeze(1) @ data_gen[n_nodes_p*j:n_nodes_p*(j+1)].unsqueeze(0)) * self._prbm._weight_mask_dict[str(i)+str(j)]
     
-    def update_params(self, lr=0.001):
+    def update_params(self, lr=0.01):
         for i in range(4):
             self._prbm.bias_dict[str(i)] = self._prbm.bias_dict[str(i)] + lr * grad["bias"][str(i)]
 
