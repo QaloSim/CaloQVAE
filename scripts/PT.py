@@ -121,7 +121,7 @@ logger.info(f"Output path: {new_folder}")
 if config["Threshold_scan"]:
     threshold_min = config["Threshold_scan_Min"]
     threshold_max = config["Threshold_scan_Max"]
-    threshold_step = config["Threshold_scan_Step"]
+    threshold_step = config["Threshold_scan_Step_Length"]
     logger.info(f"Threshold scan: enabled.")
 else:
     logger.info(f"Threshold scan: disabled")
@@ -183,7 +183,7 @@ first_n_patterns = config["n_top_patterns"]
 if len(summed_dict_gen) >= first_n_patterns:
     n_steps = first_n_patterns
     X = np.arange(0, n_steps)
-    plt.yscale('log')
+    # plt.yscale('log')
 
     plt.step(X + 1, organized_possibilities_target[:n_steps], where='post', label='Target', color = 'black')
     plt.step(X + 1, organized_possibilities_gen[:n_steps], where='post', label='Gen', alpha=0.9)
@@ -211,7 +211,7 @@ json.dump(pattern_occurrence_dict, open(os.path.join(new_folder, "pattern_occurr
 
 # %%
 if config["Threshold_scan"]:
-    logger.info(f"Scanning thresholds from {threshold_min} to {threshold_max} with step {threshold_step}...")
+    logger.info(f"Scanning thresholds from {threshold_min} to {threshold_max} with step length {threshold_step}...")
     thresholds = []
     entropies_target = []
     entropies_gen_gen = []

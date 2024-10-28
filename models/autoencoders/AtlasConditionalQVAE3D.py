@@ -24,7 +24,7 @@ from CaloQVAE.models.rbm import pegasusRBM, zephyrRBM
 from CaloQVAE.models.samplers import pgbs
 
 from models.networks.EncoderCond import EncoderHierarchyPB_BinEv2
-from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2, DecoderCNNPB3Dv3
+from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2, DecoderCNNPB3DADDv1,DecoderCNNPB3DATTv1
 
 import time
 
@@ -155,6 +155,16 @@ class AtlasConditionalQVAE3D(GumBoltAtlasPRBMCNN):
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3DADDv1":
+            return DecoderCNNPB3DADDv1(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3DATTv1":
+            return DecoderCNNPB3DATTv1(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
     def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
             """
             - Overrides forward in GumBoltCaloCRBMCNN.py
@@ -181,131 +191,43 @@ class AtlasConditionalQVAE3D(GumBoltAtlasPRBMCNN):
             # labels = self.classifier(output_hits)
 
             out.output_hits = output_hits
-
             beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
             # if self._config.engine.modelhits:
             if self.training:
-                # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
                 activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-                # out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-                out.output_activations = activation_fct_annealed(output_activations) 
-#                 * torch.where(x > 0, 1., 0.)
+                out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
             else:
-                out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-            # else:
-            #     if is_training:
-            #         # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
-            #         activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-            #         out.output_activations = activation_fct_annealed(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
-            #     else:
-            #         out.output_activations = self._inference_energy_activation_fct(output_activations) *torch.ones(output_hits.size(), device=output_hits.device)
-            #     # out.output_activations = self._energy_activation_fct(output_activations) * torch.ones(output_hits.size(), device=output_hits.device)
+                out.output_activations = self._inference_energy_activation_fct(output_activations)* self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+
             return out
 
-#     def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
-#         """
-#         - Overrides forward in GumBoltAtlasCRBMCNN.py
-
-#         Returns:
-#             out: output container 
-#         """
-#         logger.debug("forward")
-
-#         #see definition for explanation
-#         out=self._output_container.clear()
-#         x, x0 = xx
-
-#         self.x_raw = x
-#         self.act_fct_slope = act_fct_slope
-# 	    #Step 1: Feed data through encoder
-#         # in_data = torch.cat([x[0], x[1]], dim=1)
-
-#         out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training, beta_smoothing_fct)
-#         # out.post_samples = self.encoder(x, x0, is_training)
-#         post_samples = out.post_samples
-#         post_samples = torch.cat(out.post_samples, 1)
-# #         post_samples = torch.cat([post_samples, x[1]], dim=1)
-
-#         output_hits, output_activations = self.decoder(post_samples, x0, act_fct_slope, x)
-#         # labels = self.classifier(output_hits)
-
-#         out.output_hits = output_hits
-
-#         beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-#         # if self._config.engine.modelhits:
-#         if self.training:
-#             # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-#             activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-#             # out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-#             out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
-#         else:
-#             out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
-#         return out
-
-#     def loss(self, input_data, fwd_out, true_energy):
-#         """
-#         - Overrides loss in gumboltCRBMCNN.py
-#         """
-#         logger.debug("loss")
-#         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-#         # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
-#         sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
-#         interpolation_param = self._config.model.interpolation_param
-#         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-#         ae_loss = torch.mean(torch.mean(ae_loss, dim=1), dim=0)
-
-#         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
-#         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
-#         # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
-#         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
-#         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
-#         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
-#         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
-
-#         # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
-#         # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
-
-
-#         # if self._config.engine.modelhits:
-#         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-#                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-#         # else:
-#         #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-#         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 15 * 1.2812657528661318):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+#         return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+        return x0/1000000 * 10 + 1
+    
     def loss(self, input_data, fwd_out, true_energy):
         """
         - Overrides loss in gumboltCaloV5.py
         """
         logger.debug("loss")
 
-        kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-        # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
+        kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)  
+        
         sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
         interpolation_param = self._config.model.interpolation_param
-        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) * self._config.model.coefficient
-
-        #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
-        #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
-        # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
+        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*(input_data-7.5))
+        true_energy_weight = self.trans_energy(true_energy).squeeze(dim=1)
+        ae_loss = torch.mean(torch.dot(torch.sum(ae_loss, dim=1) , true_energy_weight), dim=0) * self._config.model.coefficient
+        
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
 
-        # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
-        # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
-
-
-        # if self._config.engine.modelhits:
         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        # else:
-        #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
 
-    
     def kl_divergence(self, post_logits, post_samples, is_training=True):
         """Overrides kl_divergence in GumBolt.py
 

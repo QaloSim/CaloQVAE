@@ -1,6 +1,6 @@
 Target_Path: "/fast_scratch_1/caloqvae/test_data/dataset_2_2.hdf5"
-Generated_Path: '/fast_scratch_1/caloqvae/syn_data/dataset2_synthetic_robust-serenity-216en150.hdf5'
-Output_Path: '/home/blazerjia/HRVAE/CaloQVAE/outputs'
+Generated_Path: /fast_scratch_1/caloqvae/syn_data/dataset2_synthetic_polar-moon-405-initial.hdf5
+Output_Path: '/home/blazerjia/SPVAE/CaloQVAE/outputs'
 
 z_length: 3
 ring_range: [1,16]
@@ -12,7 +12,7 @@ n_top_patterns: 20
 
 Threshold_scan: True
 Threshold_scan_Min: 0.0
-Threshold_scan_Max: 100
-Threshold_scan_Step: 10
+Threshold_scan_Max: 2000
+Threshold_scan_Step_Length: 100
 
 
