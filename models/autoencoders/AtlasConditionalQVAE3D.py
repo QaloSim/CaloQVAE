@@ -165,46 +165,45 @@ class AtlasConditionalQVAE3D(GumBoltAtlasPRBMCNN):
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
-    def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
-            """
-            - Overrides forward in GumBoltCaloCRBMCNN.py
+#     def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):
+#             """
+#             - Overrides forward in GumBoltCaloCRBMCNN.py
 
-            Returns:
-                out: output container 
-            """
-            logger.debug("forward")
+#             Returns:
+#                 out: output container 
+#             """
+#             logger.debug("forward")
 
-            #see definition for explanation
-            out=self._output_container.clear()
-            x, x0 = xx
+#             #see definition for explanation
+#             out=self._output_container.clear()
+#             x, x0 = xx
 
-            #Step 1: Feed data through encoder
-            # in_data = torch.cat([x[0], x[1]], dim=1)
+#             #Step 1: Feed data through encoder
+#             # in_data = torch.cat([x[0], x[1]], dim=1)
 
-            out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training, beta_smoothing_fct)
-            # out.post_samples = self.encoder(x, x0, is_training)
-            post_samples = out.post_samples
-            post_samples = torch.cat(out.post_samples, 1)
-    #         post_samples = torch.cat([post_samples, x[1]], dim=1)
+#             out.beta, out.post_logits, out.post_samples = self.encoder(x, x0, is_training, beta_smoothing_fct)
+#             # out.post_samples = self.encoder(x, x0, is_training)
+#             post_samples = out.post_samples
+#             post_samples = torch.cat(out.post_samples, 1)
+#     #         post_samples = torch.cat([post_samples, x[1]], dim=1)
 
-            output_hits, output_activations = self.decoder(post_samples, x0)
-            # labels = self.classifier(output_hits)
+#             output_hits, output_activations = self.decoder(post_samples, x0)
+#             # labels = self.classifier(output_hits)
 
-            out.output_hits = output_hits
-            beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
-            # if self._config.engine.modelhits:
-            if self.training:
-                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
-                out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
-            else:
-                out.output_activations = self._inference_energy_activation_fct(output_activations)* self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+#             out.output_hits = output_hits
+#             beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+#             # if self._config.engine.modelhits:
+#             if self.training:
+#                 activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+#                 out.output_activations = activation_fct_annealed(output_activations) * torch.where(x > 0, 1., 0.)
+#             else:
+#                 out.output_activations = self._inference_energy_activation_fct(output_activations)* self._hit_smoothing_dist_mod(output_hits, beta, is_training)
 
-            return out
+#             return out
 
     def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 15 * 1.2812657528661318):
-        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
-#         return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
-        return x0/1000000 * 10 + 1
+#         s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
     
     def loss(self, input_data, fwd_out, true_energy):
         """
@@ -216,9 +215,15 @@ class AtlasConditionalQVAE3D(GumBoltAtlasPRBMCNN):
         
         sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
         interpolation_param = self._config.model.interpolation_param
-        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*(input_data-7.5))
-        true_energy_weight = self.trans_energy(true_energy).squeeze(dim=1)
-        ae_loss = torch.mean(torch.dot(torch.sum(ae_loss, dim=1) , true_energy_weight), dim=0) * self._config.model.coefficient
+        batch_mean = torch.mean(input_data[input_data>0.01],dim=0)
+        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * (torch.exp(self._config.model.pos_mse_weight*(input_data-batch_mean)) + torch.exp(-self._config.model.neg_mse_weight*(input_data-batch_mean)))
+
+        # Reweight the events with the incidental energy in AE loss.
+        if self._config.model.weighted_ae_loss:
+            true_energy_weight = self.trans_energy(true_energy).squeeze(dim=1)
+            ae_loss = torch.mean(torch.dot(torch.sum(ae_loss, dim=1) , true_energy_weight), dim=0) * self._config.model.coefficient
+        else:
+            ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) * self._config.model.coefficient
         
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]

@@ -25,7 +25,7 @@ n_latent_nodes_per_p: 302
 
 encodertype: SmallPB3Dv2
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: SmallPB3Dv3
+decodertype: SmallPB3DATTv1
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
 
 encoder_pb_hierarchy: 0
@@ -36,8 +36,10 @@ fullyconnected: False
 topology: zephyr
 alpha: 0.0
 gamma: 0.0
-mse_weight: 0.5
-coefficient: 0.01
+weighted_ae_loss: True
+pos_mse_weight: 1.1
+neg_mse_weight: 0.01
+coefficient: 0.0001
 interpolation_param: 1.0
 bce_weights_power: 0.0
 rbmMethod: CD

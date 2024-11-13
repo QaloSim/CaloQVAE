@@ -14,6 +14,8 @@ from models.networks.basicCoders import BasicDecoderV3
 # get the hits and activation functions for the hierarchial decoder
 from utils.dists.gumbelmod import GumbelMod
 
+from einops import rearrange
+
 #logging module with handmade settings.
 # from CaloQVAE import logging
 # logger = logging.getLogger(__name__)
@@ -428,10 +430,8 @@ class DecoderCNNPB3Dv2(BasicDecoderV3):
         x2 = self._layers3(xx0)
         return x1.reshape(x1.shape[0],self.z*self.r*self.phi), x2.reshape(x1.shape[0],self.z*self.r*self.phi)
     
-    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 15 * 1.2812657528661318):
-        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
-#         return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
-        return x0/1000000 * 10
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map=1.0):
+        return ((torch.log(x0) - log_e_min) / (log_e_max - log_e_min)) * s_map
 
 
 class DecoderCNNPB3DADDv1(BasicDecoderV3):
@@ -522,13 +522,10 @@ class DecoderCNNPB3DADDv1(BasicDecoderV3):
         x3 = self._layers4(xx0)
         return x1.reshape(x1.shape[0],self.z*self.r*self.phi), x2.reshape(x1.shape[0],self.z*self.r*self.phi), x3.reshape(x1.shape[0],self.z*self.r*self.phi)
     
-    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 15 * 1.2812657528661318):
-        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
-#         return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
-        return x0/1000000 * 10
-import torch
-import torch.nn as nn
-from einops import rearrange
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map=1.0):
+        return ((torch.log(x0) - log_e_min) / (log_e_max - log_e_min)) * s_map
+
+
 
 class PreNorm(nn.Module):
     def __init__(self, dim, fn):
@@ -536,9 +533,9 @@ class PreNorm(nn.Module):
         self.fn = fn
         self.norm = nn.GroupNorm(1, dim)
 
-    def forward(self, x):
+    def forward(self, x, *args, **kwargs):
         x = self.norm(x)
-        return self.fn(x)
+        return self.fn(x, *args, **kwargs)
 
 class Residual(nn.Module):
     def __init__(self, fn):
@@ -579,7 +576,7 @@ class LinearAttention(nn.Module):
         out = rearrange(out, "b h c (x y z) -> b (h c) x y z", h=self.heads, x=l, y=h, z=w)
         return self.to_out(out)
 
-# 跨注意力模块
+
 class CrossAttention3D(nn.Module):
     def __init__(self, dim_q, dim_kv, heads=1, dim_head=32, cylindrical=False):
         super().__init__()
@@ -601,11 +598,6 @@ class CrossAttention3D(nn.Module):
             )
 
     def forward(self, x, context):
-        """
-        输入:
-            x : 查询特征图 (B x C x D x H x W)
-            context: 上下文特征图 (B x C_context x D x H x W)
-        """
         b, c, l, h, w = x.shape
         q = self.to_q(x)
         k, v = self.to_kv(context).chunk(2, dim=1)
@@ -621,9 +613,9 @@ class CrossAttention3D(nn.Module):
         out = rearrange(out, "b head c (l h w) -> b (head c) l h w", head=self.heads, l=l, h=h, w=w)
         return self.to_out(out)
 
-class DecoderCNNPB3DATTv1(BasicDecoderV3):  # 使用这个模型
+class DecoderCNNPB3DATTv1(BasicDecoderV3):
     def __init__(self, output_activation_fct=nn.Identity(), num_output_nodes=368, **kwargs):
-        super(DecoderCNNPB3Dv4, self).__init__(**kwargs)
+        super(DecoderCNNPB3DATTv1, self).__init__(**kwargs)
         self._output_activation_fct = output_activation_fct
         self.num_output_nodes = num_output_nodes
         self.z = 45
@@ -632,7 +624,6 @@ class DecoderCNNPB3DATTv1(BasicDecoderV3):  # 使用这个模型
 
         self.n_latent_nodes = self._config.model.n_latent_nodes_per_p * 4
 
-        # 定义第一个卷积层序列
         self._layers = nn.Sequential(
             nn.Unflatten(1, (self.n_latent_nodes, 1, 1, 1)),
             PeriodicConvTranspose3d(self.n_latent_nodes, 512, (3, 3, 2), (2, 1, 1), 0),
@@ -643,61 +634,51 @@ class DecoderCNNPB3DATTv1(BasicDecoderV3):  # 使用这个模型
             nn.SiLU(),
             Residual(PreNorm(128, LinearAttention(128, cylindrical=True))),
         )
-
-        # 定义跨注意力模块，将 x 与 x0 进行融合
         self.cross_attention = Residual(PreNorm(128, CrossAttention3D(128, 1, cylindrical=True)))
 
-        # 定义第二个卷积层序列
         self._layers2 = nn.Sequential(
-            PeriodicConvTranspose3d(128, 64, (3, 3, 2), (2, 1, 1), 0),
-            nn.GroupNorm(1, 64),
-            nn.SiLU(),
-            Residual(PreNorm(64, LinearAttention(64, cylindrical=True))),
-            PeriodicConvTranspose3d(64, 32, (5, 3, 3), (2, 2, 1), 0),
-            nn.GroupNorm(1, 32),
-            nn.PReLU(),
-            PeriodicConvTranspose3d(32, 1, (5, 2, 3), (1, 1, 1), 0),
-            nn.PReLU(),
-        )
-
-        # 定义第三个卷积层序列
+                   PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+                   nn.GroupNorm(1,64),
+                   # self.dropout,
+                   nn.SiLU(64),
+                   Residual(PreNorm(64, LinearAttention(64, cylindrical = True))),
+                   PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+                   nn.GroupNorm(1,32),
+                   # self.dropout,
+                   nn.PReLU(32, 1.0),
+                   PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+                   # nn.BatchNorm3d(45),
+                   nn.PReLU(1, 1.0)
+                                   )
+        
         self._layers3 = nn.Sequential(
-            PeriodicConvTranspose3d(128, 64, (3, 3, 2), (2, 1, 1), 0),
-            nn.GroupNorm(1, 64),
-            nn.SiLU(),
-            Residual(PreNorm(64, LinearAttention(64, cylindrical=True))),
-            PeriodicConvTranspose3d(64, 32, (5, 3, 3), (2, 2, 1), 0),
-            nn.GroupNorm(1, 32),
-            nn.SiLU(),
-            PeriodicConvTranspose3d(32, 1, (5, 2, 3), (1, 1, 1), 0),
-            nn.SiLU(),
-        )
-
-        # 定义第二个跨注意力模块，将 x2 与 x0 进行融合
-        self.cross_attention2 = Residual(PreNorm(1, CrossAttention3D(1, 1, cylindrical=True)))
-
+                   PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+                   nn.GroupNorm(1,64),
+                   # self.dropout,
+                   nn.SiLU(64),
+                   Residual(PreNorm(64, LinearAttention(64, cylindrical = True))),
+                   PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+                   nn.GroupNorm(1,32),
+                   # self.dropout,
+                   nn.SiLU(32),
+                   PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+                   # nn.BatchNorm3d(45),
+                   nn.SiLU(1),
+                                   )
     def forward(self, x, x0):
-        x = self._layers(x)  # 通过初始卷积层
-        x0_trans = self.trans_energy(x0)  # 转换能量
+        x = self._layers(x) 
+        x0_trans = self.trans_energy(x0) 
 
-        # 将 x0 扩展为与 x 相同的空间维度
         x0_expanded = x0_trans.view(-1, 1, 1, 1, 1)
         x0_expanded = x0_expanded.expand(-1, 1, x.shape[2], x.shape[3], x.shape[4])
 
-        # 应用跨注意力机制，将 x0 作为上下文
+
         x = self.cross_attention(x, x0_expanded)
+        xx0 = torch.cat((x, x0_trans.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
 
-        # 继续通过后续的卷积层
-        x1 = self._layers2(x)
-        x2 = self._layers3(x)
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(xx0)
 
-        # 在 x2 与 x0 之间应用第二个跨注意力机制
-        x0_expanded_x2 = x0_trans.view(-1, 1, 1, 1, 1)
-        x0_expanded_x2 = x0_expanded_x2.expand(-1, 1, x2.shape[2], x2.shape[3], x2.shape[4])
-
-        x2 = self.cross_attention2(x2, x0_expanded_x2)
-
-        # 返回结果
         return x1.view(x1.shape[0], self.z * self.r * self.phi), x2.view(x2.shape[0], self.z * self.r * self.phi)
 
     def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map=1.0):

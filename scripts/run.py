@@ -184,15 +184,17 @@ def run(config=None):
             
         if epoch % 10 == 0:
             engine._save_model(name=str(epoch))
+        
+        if config.save_state:
+            config_string = "_".join(str(i) for i in [config.model.model_type, 
+                                                      config.data.data_type,
+                                                      config.tag, "latest"])
+            modelCreator.save_state(config_string)
 
     if "test" in config.task:
         engine.fit(epoch=epoch, is_training=False, mode="test")
 
-    if config.save_state:
-        config_string = "_".join(str(i) for i in [config.model.model_type, 
-                                                  config.data.data_type,
-                                                  config.tag, "latest"])
-        modelCreator.save_state(config_string)
+
         
     if config.save_partition:
         config_string = "_".join(str(i) for i in [config.model.model_type, 
