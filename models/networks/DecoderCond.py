@@ -612,6 +612,15 @@ class CrossAttention3D(nn.Module):
         out = torch.einsum("b h n m, b h d m -> b h d n", attn, v)
         out = rearrange(out, "b head c (l h w) -> b (head c) l h w", head=self.heads, l=l, h=h, w=w)
         return self.to_out(out)
+    
+class ScaledSigmoid(nn.Module):
+    def __init__(self, min_val=0.0, max_val=8.0):
+        super(ScaledSigmoid, self).__init__()
+        self.min_val = min_val
+        self.max_val = max_val
+
+    def forward(self, x):
+        return self.min_val + 2 * (self.max_val - self.min_val) * (torch.sigmoid(x)-0.5)
 
 class DecoderCNNPB3DATTv1(BasicDecoderV3):
     def __init__(self, output_activation_fct=nn.Identity(), num_output_nodes=368, **kwargs):
@@ -678,6 +687,7 @@ class DecoderCNNPB3DATTv1(BasicDecoderV3):
 
         x1 = self._layers2(xx0)
         x2 = self._layers3(xx0)
+        x2 = ScaledSigmoid(min_val=0.0, max_val=9.0)(x2)
 
         return x1.view(x1.shape[0], self.z * self.r * self.phi), x2.view(x2.shape[0], self.z * self.r * self.phi)
 

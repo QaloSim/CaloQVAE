@@ -21,14 +21,15 @@ wandb_enabled: 1
 
 # zephyr-luian1
 # robust-serenity-216
-run_path: '/fast_scratch_1/caloqvae/blazerjia/wandb/run-20241005_014138-rkrljva3/files/AtlasConditionalQVAE3D_atlas_default_best.pth'
+# run_path: '/fast_scratch_1/caloqvae/blazerjia/wandb/run-20241005_014138-rkrljva3/files/AtlasConditionalQVAE3D_atlas_default_best.pth'
 
+run_path: '/fast_scratch_1/caloqvae/blazerjia/wandb/run-20241120_005607-XyYpz1vh/files/AtlasConditionalQVAE3D_atlas_default_latest.pth'
 
 output_path: /fast_scratch_1/blazerjia/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 2
+  - 3
 
 task:
   - train

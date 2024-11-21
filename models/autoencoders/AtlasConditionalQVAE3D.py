@@ -213,10 +213,11 @@ class AtlasConditionalQVAE3D(GumBoltAtlasPRBMCNN):
 
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)  
         
-        sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
-        interpolation_param = self._config.model.interpolation_param
-        batch_mean = torch.mean(input_data[input_data>0.01],dim=0)
-        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * (torch.exp(self._config.model.pos_mse_weight*(input_data-batch_mean)) + torch.exp(-self._config.model.neg_mse_weight*(input_data-batch_mean)))
+#         sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
+#         interpolation_param = self._config.model.interpolation_param
+        batch_mean = torch.mean(input_data[input_data>0.0001],dim=0)
+#         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * (torch.exp(self._config.model.pos_mse_weight*(input_data-batch_mean)) + torch.exp(-self._config.model.neg_mse_weight*(input_data-batch_mean)))
+        ae_loss = torch.pow((input_data - fwd_out.output_activations),2) * (torch.exp(self._config.model.pos_mse_weight*(input_data-batch_mean)) + torch.exp(-self._config.model.neg_mse_weight*(input_data-batch_mean)))
 
         # Reweight the events with the incidental energy in AE loss.
         if self._config.model.weighted_ae_loss:

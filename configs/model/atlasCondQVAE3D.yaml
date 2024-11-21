@@ -32,14 +32,28 @@ encoder_pb_hierarchy: 0
 encoder_pb_hierarchy_bin: 1
 
 fullyconnected: False
-# topology: pegasus
-topology: zephyr
+topology: pegasus
+# topology: zephyr
 alpha: 0.0
 gamma: 0.0
+
+# # Weighted loss function current:
 weighted_ae_loss: True
-pos_mse_weight: 1.1
-neg_mse_weight: 0.01
+pos_mse_weight: 0.7
+neg_mse_weight: 0.2
 coefficient: 0.0001
+
+# Non-Weighted loss function current:
+# weighted_ae_loss: False
+# pos_mse_weight: 0.7
+# neg_mse_weight: 0.3
+# coefficient: 0.5
+
 interpolation_param: 1.0
 bce_weights_power: 0.0
 rbmMethod: CD
+
+# Current Best
+# pos_mse_weight: 0.6
+# neg_mse_weight: 0.2
+# coefficient: 0.001
