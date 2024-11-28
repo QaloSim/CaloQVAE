@@ -48,12 +48,12 @@ class PegasusRBM(nn.Module):
             str_key = ''.join([str(key[i]) for i in range(len(key))])
             self._weight_dict[str_key] = nn.Parameter(
                 torch.randn(self._nodes_per_partition,
-                            self._nodes_per_partition), requires_grad=True) * 0.01
+                            self._nodes_per_partition), requires_grad=True)
 
         # Dict of RBM biases for each partition
         for i in range(self._n_partitions):
             self._bias_dict[str(i)] = nn.Parameter(
-                torch.randn(self._nodes_per_partition), requires_grad=True) * 0.01
+                torch.randn(self._nodes_per_partition), requires_grad=True)
 
         # if qpu:
         self._qubit_idx_dict, device = self.gen_qubit_idx_dict()

@@ -22,7 +22,7 @@ wandb_enabled: 1
 #worthy-paper-518
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-17/22-24-09/wandb/run-20241017_222410-35qftv82/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
 
-run_path: '/home/javier/Projects/CaloQVAE/outputs/2024-10-21/19-59-47/wandb/run-20241021_195948-809lp14l/files/AtlasConditionalQVAE3D_atlas_default_250.pth'
+# run_path: '/home/javier/Projects/CaloQVAE/outputs/2024-10-21/19-59-47/wandb/run-20241021_195948-809lp14l/files/AtlasConditionalQVAE3D_atlas_default_250.pth'
 # modelname = 'lively-grass-519'
 
 #pegasus
@@ -33,6 +33,8 @@ run_path: '/home/javier/Projects/CaloQVAE/outputs/2024-10-21/19-59-47/wandb/run-
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-15/18-47-19/wandb/run-20240817_194429-1valeubk/files/AtlasConditionalQVAE3D_atlas_default_210.pth"
 
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-16/18-37-54/wandb/run-20240818_130637-frfzrs9j/files/AtlasConditionalQVAE3D_atlas_default_140.pth"
+
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-28/04-58-50/wandb/run-20241028_045851-zu8velk6/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
 
 # 3GSS
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-30/15-55-03/wandb/run-20240830_155504-3y6n52jl/files/AtlasConditionalQVAE3D_atlas_default_70.pth"

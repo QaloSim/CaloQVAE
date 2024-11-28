@@ -42,4 +42,4 @@ interpolation_param: 1.0
 bce_weights_power: 0.0
 rbmMethod: CD
 bool_bp_pos_energy: True
-dropout_prob: 0.2
+dropout_prob: 0.0
