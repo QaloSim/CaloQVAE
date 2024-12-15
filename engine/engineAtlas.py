@@ -367,24 +367,25 @@ class EngineAtlas(EngineCaloV3):
         # return torch.log1p((in_data/true_energy)/0.04), true_energy, in_data_flat #<------JQTM: log(1+reduced_energy/R) w/ R=0.05 for photons
 
     def _reduce(self, in_data, true_energy, R=1e-7):
-        """
-        CaloDiff Transformation Scheme
-        """
-        ϵ = in_data/true_energy
-        x = R + (1-2*R)*ϵ
-        u = torch.log(x*(1-R)/(R*(1-x))) # - torch.log(torch.tensor([R/(1-R)]).to(x.device)) #torch.log(torch.tensor([δ/(1-δ)]))
-        return u
+#         """
+#         CaloDiff Transformation Scheme
+#         """
+#         ϵ = in_data/true_energy
+#         x = R + (1-2*R)*ϵ
+#         u = torch.log(x/(1-x)) - torch.log(torch.tensor([R/(1-R)]).to(x.device)) #torch.log(torch.tensor([δ/(1-δ)]))
+#         return u
+        return torch.log(1+in_data)
 
         
     def _reduceinv(self, in_data, true_energy, R=1e-7):
-        """
-        CaloDiff Transformation Scheme
-        """
+#         """
+#         CaloDiff Transformation Scheme
+#         """
         
-        x = (torch.sigmoid(in_data + torch.log(torch.tensor([R/(1-R)]).to(in_data.device)) ) - R)/(1-2*R) * true_energy
-        x[torch.isclose(x, torch.tensor([0]).to(dtype=x.dtype, device=x.device)) ] = 0.0
+#         x = (torch.sigmoid(in_data + torch.log(torch.tensor([R/(1-R)]).to(in_data.device)) ) - R)/(1-2*R) * true_energy
+#         x[torch.isclose(x, torch.tensor([0]).to(dtype=x.dtype, device=x.device)) ] = 0.0
         
-        return x
+        return torch.exp(in_data) - 1
 
     
     def _update_histograms(self, in_data, output_activations, true_energy):

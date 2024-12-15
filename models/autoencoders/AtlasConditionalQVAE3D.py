@@ -166,6 +166,12 @@ class AtlasConditionalQVAE3D(AtlasConditionalQVAE): #(GumBoltAtlasPRBMCNN): #Atl
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
+        elif self._config.model.decodertype == "SmallPBHEv1":
+            return DecoderCNNPB_HEv1(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        
 
 
 #     def forward(self, xx, is_training, beta_smoothing_fct=5, act_fct_slope=0.02):

@@ -34,7 +34,7 @@ wandb_enabled: 1
 
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-16/18-37-54/wandb/run-20240818_130637-frfzrs9j/files/AtlasConditionalQVAE3D_atlas_default_140.pth"
 
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-28/04-58-50/wandb/run-20241028_045851-zu8velk6/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
+run_path: "/fast_scratch_1/caloqvae/dsogutlu/wandb/run-20241212_211939-qdhtuurr/files/AtlasConditionalQVAE3D_atlas_default_150.pth"
 
 # 3GSS
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-30/15-55-03/wandb/run-20240830_155504-3y6n52jl/files/AtlasConditionalQVAE3D_atlas_default_70.pth"
@@ -44,7 +44,7 @@ run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-28/04-58-50/wandb/run-
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-09-03/19-07-34/wandb/run-20240903_190735-gcbwc4g1/files/AtlasConditionalQVAE3D_atlas_default_120.pth"
 
 
-output_path: /fast_scratch_1/jtoledo/outputs
+output_path: /fast_scratch_1/dsogutlu/outputs
 num_workers: 16
 device: gpu
 gpu_list:
@@ -57,7 +57,7 @@ task:
 
 defaults:
   - model: atlasCondQVAE3D
-  - data: atlasDGX
+  - data: atlasML2
   - engine: dvaeatlas_training_peg
   - qpu: peggy
 

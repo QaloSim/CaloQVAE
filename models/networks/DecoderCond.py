@@ -7,9 +7,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
+from torch.nn import LeakyReLU, ReLU
 
 # from models.networks.networks import Network, NetworkV2, NetworkV3
 from models.networks.basicCoders import BasicDecoderV3
+from utils.dists.gumbelmod import GumbelMod
 
 #logging module with handmade settings.
 # from CaloQVAE import logging
@@ -263,7 +265,7 @@ class PeriodicConvTranspose2d(nn.Module):
         # Apply convolution
         x = self.conv(x)
         return x
-    
+
 ####################################
 class PeriodicConv3d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True):
@@ -1028,3 +1030,83 @@ class DecoderCNNPB3Dv4(BasicDecoderV3): #use this one
     def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 1.0):
         # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
         return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+    
+class DecoderCNNPB_HEv1(BasicDecoderV3):
+    def __init__(self, encArch='Large', num_output_nodes=None, dropout_prob=0.5, **kwargs):
+        self.encArch = encArch
+        super(DecoderCNNPB_HEv1, self).__init__(**kwargs)
+        self._hit_smoothing_dist_mod = GumbelMod()
+        self._inference_energy_activation_fct = ReLU()
+        self._create_hierarchy_network()
+
+    def _training_activation_fct(self, slope):
+        return LeakyReLU(slope)
+
+#     def _create_hierarchy_network(self, level: int = 0):
+#         self.latent_nodes = self._config.model.n_latent_nodes_per_p * 4
+        
+#         # Unbalanced Hierarchical Decoder
+#         inp_layers = [self.latent_nodes, self.latent_nodes + 1728]
+#         out_layers = [1728, 4752]
+#         self.raw_layers = [0, 1728, 6480]
+
+        
+
+    
+    def _create_hierarchy_network(self, level: int = 0):
+        self.latent_nodes = self._config.model.n_latent_nodes_per_p * 4
+        # change these variables for different HE decoder structures
+        self.n_layers_per_subdec = 5
+        self.layer_step = self.n_layers_per_subdec*144
+         # varies depending on if last layer is > or < layer step
+        self.hierarchical_lvls = 9
+
+        inp_layers = [self.latent_nodes + i * self.layer_step for i in range(self.hierarchical_lvls)] 
+        out_layers = self.hierarchical_lvls * [self.layer_step]
+
+        out_layers[self.hierarchical_lvls - 1] += (6480 - self.hierarchical_lvls * self.layer_step)
+        # print(self.raw_layers)
+
+        # Unbalanced Hierachical Decoder
+        # inp_layers[0:5] = [self.latent_nodes]
+        # out_layers[0:5] = [sum(out_layers[0:5])]
+        self.raw_layers = [layers - self.latent_nodes for layers in inp_layers] + [6480]
+        
+        
+#        Check Layers
+        print("Layer Inputs: ", inp_layers)
+        print("Layer Outputs: ", out_layers)
+        print("Raw Layer Indices: ", self.raw_layers)
+
+        self.moduleLayers = nn.ModuleList([])
+        for i in range(len(inp_layers)):
+            self.moduleLayers.append(DecoderCNNPBv4_HEMOD(inp_layers[i], out_layers[i]))
+        
+    def forward(self, x, x0, act_fct_slope, x_raw):
+        self.sub_values = []
+        self.x1, self.x2 = torch.tensor([]).to(x.device), torch.tensor([]).to(x.device) # store hits and activation tensors
+        # Instead of in range(self.hierarchical_lvls) just use len(self.moduleLayers) to deal with unbalanced hierarchical decoders
+        for lvl in range(len(self.moduleLayers)):
+            cur_net = self.moduleLayers[lvl]
+            output_hits, output_activations = cur_net(x, x0)
+            beta = torch.tensor(self._config.model.output_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
+            # if self._config.engine.modelhits:
+            if self.training:
+                # out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+                activation_fct_annealed = self._training_activation_fct(act_fct_slope)
+                # out.output_activations = activation_fct_annealed(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
+                # print(self.raw_layers[lvl+1])
+                outputs = activation_fct_annealed(output_activations) * torch.where(x_raw[:, self.raw_layers[lvl]:self.raw_layers[lvl+1]] > 0, 1., 0.)
+            else:
+                outputs = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training=False)
+            z = outputs
+            self.sub_values.append([output_hits, output_activations])
+            if lvl == len(self.moduleLayers) - 1:
+                for vals in self.sub_values:
+                    self.x1 = torch.cat((self.x1, vals[0]), dim=1)
+                    self.x2 = torch.cat((self.x2, vals[1]), dim=1)
+            else:
+                x = torch.cat((x, z), dim=1)
+        return self.x1, self.x2
+
+                      

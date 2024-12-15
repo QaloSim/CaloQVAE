@@ -1,6 +1,10 @@
 _target_: engine.engineAtlas.EngineAtlas
-learning_rate: 0.0001
-n_epochs: 250
+learning_rate: 0.0003
+weight_decay: 0.005
+n_epochs: 150
+T_0: 10  # Initial cycle length
+T_mult: 2  # Factor by which the cycle length increases
+T_max: 3
 
 kl_enabled: 1
 ae_enabled: 1
@@ -10,7 +14,7 @@ kl_gamma_max: 1.0
 epoch_annealing_start: 0
 annealing_percentage: 0.3
 epoch_annealing_end: 50
-epoch_freeze: 200
+epoch_freeze: 100
 # r_param : 0.0020
 r_param : 0.0000001
 # r_param : 0.00004
@@ -23,7 +27,7 @@ beta_smoothing_fct_anneal: 1
 # cl_lambda: 0
 
 slope_activation_fct: 0.05
-slope_activation_fct_final: 0.
+slope_activation_fct_final: 0.0
 slope_activation_fct_anneal: 1
 
 n_train_batch_size: 128

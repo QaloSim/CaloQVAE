@@ -139,6 +139,16 @@ def run(config=None):
     #instantiate and register optimisation algorithm
     engine.optimiser = torch.optim.Adam(model.parameters(),
                                         lr=config.engine.learning_rate)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+        engine.optimiser, 
+        T_0=config.engine.T_0,  # The number of iterations for the first restart
+        T_mult=config.engine.T_mult  # Factor for increasing the cycle length
+    )
+    # Track the number of restarts
+    max_restarts = config.engine.T_max
+    restarts_done = 0
+    current_cycle_length = config.engine.T_0
+
     #add the model instance to the engine namespace
     engine.model = model
     # add the modelCreator instance to engine namespace
@@ -187,6 +197,16 @@ def run(config=None):
             
         if epoch % 10 == 0:
             engine._save_model(name=str(epoch))
+            
+        if epoch >= current_cycle_length:
+            restarts_done += 1
+            current_cycle_length += config.engine.T_0 * (config.engine.T_mult ** restarts_done)
+
+        if restarts_done < max_restarts:
+            scheduler.step()
+        else:
+            # Stop further restarts by skipping the scheduler step
+            pass
 
     if "test" in config.task:
         engine.model.eval()
