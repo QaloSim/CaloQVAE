@@ -22,10 +22,11 @@ runJT.sh
 GenSamples_bkp.ipynb
 llJT.sh
 figs/
-runSG.sh
+run.sh
 init_container.sh
 fast_stern_test.ipynb
 stein/
+run1.sh
 ##############################################
 #### Automatically created
 ##############################################
