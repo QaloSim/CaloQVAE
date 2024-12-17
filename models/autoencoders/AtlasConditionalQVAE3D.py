@@ -245,39 +245,38 @@ class AtlasConditionalQVAE3D(AtlasConditionalQVAE): #(GumBoltAtlasPRBMCNN): #Atl
 #         #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
 #         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
 
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 15 * 1.2812657528661318):
+#         s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+    
     def loss(self, input_data, fwd_out, true_energy):
         """
         - Overrides loss in gumboltCaloV5.py
         """
         logger.debug("loss")
 
-        kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-        # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
+        kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)  
+        
         sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
         interpolation_param = self._config.model.interpolation_param
-        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-        ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) * self._config.model.coefficient
+        batch_mean = torch.mean(input_data[input_data>0.01],dim=0)
+        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * (torch.exp(self._config.model.pos_mse_weight*(input_data-batch_mean)) + torch.exp(-self._config.model.neg_mse_weight*(input_data-batch_mean)))
 
-        #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
-        #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
-        # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
+        # Reweight the events with the incidental energy in AE loss.
+        if self._config.model.weighted_ae_loss:
+            true_energy_weight = self.trans_energy(true_energy).squeeze(dim=1)
+            ae_loss = torch.mean(torch.dot(torch.sum(ae_loss, dim=1) , true_energy_weight), dim=0) * self._config.model.coefficient
+        else:
+            ae_loss = torch.mean(torch.sum(ae_loss, dim=1), dim=0) * self._config.model.coefficient
+        
         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
 
-        # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
-        # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
-
-
-        # if self._config.engine.modelhits:
         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        # else:
-        #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
 
-    
     def kl_divergence(self, post_logits, post_samples, is_training=True):
         """Overrides kl_divergence in GumBolt.py
 
@@ -311,6 +310,18 @@ class AtlasConditionalQVAE3D(AtlasConditionalQVAE): #(GumBoltAtlasPRBMCNN): #Atl
                                      post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
                                      post_zetas[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
         
+        #beta, _, _, _ = self.find_beta()
+        #beta = 7.5
+        #p0_state, p1_state, p2_state, p3_state = self.dwave_sampling(num_samples=self._config.engine.rbm_batch_size, measure_time=False, beta=1.0/beta)
+
+        
+        # neg_energy = - self.energy_exp(p0_state, p1_state, p2_state, p3_state)
+        neg_energy = - self.energy_exp_cond(p0_state, p1_state, p2_state, p3_state)
+
+        # Estimate of the kl-divergence
+        kl_loss = entropy + pos_energy + neg_energy
+        return kl_loss, entropy, pos_energy, neg_energy
+
         #beta, _, _, _ = self.find_beta()
         #beta = 7.5
         #p0_state, p1_state, p2_state, p3_state = self.dwave_sampling(num_samples=self._config.engine.rbm_batch_size, measure_time=False, beta=1.0/beta)

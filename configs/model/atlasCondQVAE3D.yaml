@@ -37,9 +37,13 @@ topology: zephyr
 alpha: 0.0
 gamma: 0.0
 mse_weight: 0.5
-coefficient: 0.01
 interpolation_param: 1.0
 bce_weights_power: 0.0
 rbmMethod: CD
 bool_bp_pos_energy: True
 dropout_prob: 0.0
+
+weighted_ae_loss: True
+pos_mse_weight: 0.7
+neg_mse_weight: 0.2
+coefficient: 0.0001
