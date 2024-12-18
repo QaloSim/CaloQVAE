@@ -18,6 +18,8 @@ encoder_hidden_nodes:
 # n_latent_nodes: 512
 #for PB
 n_latent_hierarchy_lvls: 3
+# n_latent_nodes: 1024
+# n_latent_nodes_per_p: 1024
 n_latent_nodes: 512
 n_latent_nodes_per_p: 512
 # n_latent_nodes: 302
