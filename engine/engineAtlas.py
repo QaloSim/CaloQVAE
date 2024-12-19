@@ -155,7 +155,10 @@ class EngineAtlas(EngineCaloV3):
                     
                     if self._config.exact_rbm_grad in self._config and self._config.exact_rbm_grad:
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + batch_loss_dict["hit_loss"] 
-                        self.model.sampler.gradient_rbm(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
+                        if self._config.rbm_grad_centered:
+                            self.model.sampler.gradient_rbm_centered(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
+                        else:
+                            self.model.sampler.gradient_rbm(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
                         self.model.sampler.update_params()
                     else:
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
