@@ -1,4 +1,4 @@
-model_type: AtlasConditionalQVAE3D
+model_type: AtlasConditionalQVAE3Db
 activation_fct: relu
 beta_smoothing_fct: 5
 output_smoothing_fct: 60
@@ -38,8 +38,14 @@ fullyconnected: False
 topology: zephyr
 alpha: 0.0
 gamma: 0.0
+
+weighted_ae_loss: True
+pos_mse_weight: 0.8
+neg_mse_weight: 0.01
+coefficient: 0.0001
+
 mse_weight: 0.5
-coefficient: 0.01
+# coefficient: 0.01
 interpolation_param: 1.0
 bce_weights_power: 0.0
 rbmMethod: CD

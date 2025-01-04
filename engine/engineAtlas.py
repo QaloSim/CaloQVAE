@@ -388,7 +388,6 @@ class EngineAtlas(EngineCaloV3):
         x[torch.isclose(x, torch.tensor([0]).to(dtype=x.dtype, device=x.device)) ] = 0.0
         
         return x
-
     
     def _update_histograms(self, in_data, output_activations, true_energy):
         """

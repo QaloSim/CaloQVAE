@@ -19,6 +19,11 @@ wandb_enabled: 1
 #divine-dream-509
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-16/19-31-44/wandb/run-20241016_193145-peb8g4m0/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
 
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-18/21-56-48/wandb/run-20241218_215649-rdcvqbqa/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-18/22-03-41/wandb/run-20241218_220342-nqwgiewh/files/AtlasConditionalQVAE3D_atlas_default_240.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-23/14-47-57/wandb/run-20241223_144758-x95agqf6/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-24/16-23-58/wandb/run-20241224_162359-6xh18drf/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
+
 #worthy-paper-518
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-17/22-24-09/wandb/run-20241017_222410-35qftv82/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
 
@@ -36,7 +41,7 @@ wandb_enabled: 1
 
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-28/04-58-50/wandb/run-20241028_045851-zu8velk6/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
 #1024 RBM
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-11-28/17-49-42/wandb/run-20241128_174943-hsnd6gz9/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-11-28/17-49-42/wandb/run-20241128_174943-hsnd6gz9/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
 
 # 3GSS
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-30/15-55-03/wandb/run-20240830_155504-3y6n52jl/files/AtlasConditionalQVAE3D_atlas_default_70.pth"
@@ -50,7 +55,7 @@ output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 2
+  - 1
 
 task:
   - train
