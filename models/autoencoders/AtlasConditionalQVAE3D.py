@@ -208,36 +208,36 @@ class AtlasConditionalQVAE3D(AtlasConditionalQVAE): #(GumBoltAtlasPRBMCNN): #Atl
 #             out.output_activations = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
 #         return out
 
-    def loss(self, input_data, fwd_out, true_energy):
-        """
-        - Overrides loss in gumboltCRBMCNN.py
-        """
-        logger.debug("loss")
-        kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
-        # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
-        sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
-        interpolation_param = self._config.model.interpolation_param
-        ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
-        ae_loss = torch.mean(torch.mean(ae_loss, dim=1), dim=0)
+#     def loss(self, input_data, fwd_out, true_energy):
+#         """
+#         - Overrides loss in gumboltCRBMCNN.py
+#         """
+#         logger.debug("loss")
+#         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
+#         # ae_loss = self._output_loss(input_data, fwd_out.output_activations) * torch.exp(self._config.model.mse_weight*input_data)
+#         sigma = 2 * torch.sqrt(torch.max(input_data, torch.min(input_data[input_data>0])))
+#         interpolation_param = self._config.model.interpolation_param
+#         ae_loss = torch.pow((input_data - fwd_out.output_activations)/sigma,2) * (1 - interpolation_param + interpolation_param*torch.pow(sigma,2)) * torch.exp(self._config.model.mse_weight*input_data)
+#         ae_loss = torch.mean(torch.mean(ae_loss, dim=1), dim=0)
 
-        #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
-        #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
-        # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
-        hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
-        spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
-        sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
-        hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
+#         #hit_loss = self._hit_loss(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.))
+#         #hit_loss = torch.mean(torch.sum(hit_loss, dim=1), dim=0)
+#         # hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), reduction='none')
+#         hit_loss = binary_cross_entropy_with_logits(fwd_out.output_hits, torch.where(input_data > 0, 1., 0.), weight= (1+input_data).pow(self._config.model.bce_weights_power), reduction='none') #, weight= 1 + input_data: (1+input_data).sqrt()
+#         spIdx = torch.where(input_data > 0, 0., 1.).sum(dim=1) / input_data.shape[1]
+#         sparsity_weight = torch.exp(self._config.model.alpha - self._config.model.gamma * spIdx)
+#         hit_loss = torch.mean(torch.sum(hit_loss, dim=1) * sparsity_weight, dim=0)
 
-        # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
-        # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
+#         # labels_target = nn.functional.one_hot(true_energy.divide(256).log2().to(torch.int64), num_classes=15).squeeze(1).to(torch.float)
+#         # hit_label = binary_cross_entropy_with_logits(fwd_out.labels, labels_target)
 
 
-        # if self._config.engine.modelhits:
-        return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
-                "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-        # else:
-        #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
-        #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+#         # if self._config.engine.modelhits:
+#         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
+#                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
+#         # else:
+#         #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
+#         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
 
     def loss(self, input_data, fwd_out, true_energy):
         """

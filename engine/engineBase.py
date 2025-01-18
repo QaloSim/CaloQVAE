@@ -19,6 +19,7 @@ class EngineBase(object):
         
         self._model = None
         self._optimiser = None
+        self._optimiser_c = None
         self._data_mgr = None
         self._device = None
         self._model_creator = None
@@ -30,6 +31,14 @@ class EngineBase(object):
     @model.setter   
     def model(self,model):
         self._model=model
+        
+    @property
+    def critic(self):
+        return self._critic
+    
+    @critic.setter   
+    def critic(self,critic):
+        self._critic=critic
 
     @property
     def optimiser(self):
@@ -38,6 +47,14 @@ class EngineBase(object):
     @optimiser.setter   
     def optimiser(self,optimiser):
         self._optimiser=optimiser
+        
+    @property
+    def optimiser_c(self):
+        return self._optimiser_c
+    
+    @optimiser_c.setter   
+    def optimiser_c(self,optimiser_c):
+        self._optimiser_c=optimiser_c
     
     @property
     def data_mgr(self):

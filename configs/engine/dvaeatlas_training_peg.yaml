@@ -1,4 +1,4 @@
-_target_: engine.engineAtlasV2.EngineAtlasV2
+_target_: engine.engineAtlas.EngineAtlas
 learning_rate: 0.0001
 n_epochs: 250
 

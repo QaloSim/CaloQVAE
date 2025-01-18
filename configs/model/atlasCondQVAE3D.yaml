@@ -1,4 +1,4 @@
-model_type: AtlasConditionalQVAE3Db
+model_type: AtlasConditionalQVAE3D
 activation_fct: relu
 beta_smoothing_fct: 5
 output_smoothing_fct: 60

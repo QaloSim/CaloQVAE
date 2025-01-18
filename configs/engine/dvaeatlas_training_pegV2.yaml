@@ -1,6 +1,6 @@
-_target_: engine.engineAtlasV2.EngineAtlasV2
+_target_: engine.engineAtlas.EngineAtlas
 learning_rate: 0.0001
-n_epochs: 150
+n_epochs: 250
 
 kl_enabled: 1
 ae_enabled: 1
@@ -9,7 +9,11 @@ kl_annealing_ratio: 0.3
 kl_gamma_max: 1.0
 epoch_annealing_start: 0
 annealing_percentage: 0.3
-r_param : 0.001
+epoch_annealing_end: 50
+epoch_freeze: 200
+# r_param : 0.0020
+r_param : 0.0000001
+# r_param : 0.00004
 
 beta_smoothing_fct: 5
 beta_smoothing_fct_final: 500
