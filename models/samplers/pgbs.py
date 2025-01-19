@@ -246,15 +246,15 @@ class PGBS:
             self.grad["bias"][str(i)] = data_mean[n_nodes_p*i:n_nodes_p*(i+1)] - data_gen[n_nodes_p*i:n_nodes_p*(i+1)]
             for j in range(4):
                 if j > i:
-                    self.grad["bias"][str(i)] = self.grad["bias"][str(i)] - 0.5 * self.grad["weight"][str(i)+str(j)] * (data_mean[n_nodes_p*j:n_nodes_p*(j+1)] + data_gen[n_nodes_p*j:n_nodes_p*(j+1)])
+                    self.grad["bias"][str(i)] = self.grad["bias"][str(i)] - 0.5 * torch.matmul(self.grad["weight"][str(i)+str(j)], (data_mean[n_nodes_p*j:n_nodes_p*(j+1)] + data_gen[n_nodes_p*j:n_nodes_p*(j+1)]))
                 elif j < i:
-                    self.grad["bias"][str(i)] = self.grad["bias"][str(i)] - 0.5 * self.grad["weight"][str(j)+str(i)].T * (data_mean[n_nodes_p*j:n_nodes_p*(j+1)] + data_gen[n_nodes_p*j:n_nodes_p*(j+1)])
+                    self.grad["bias"][str(i)] = self.grad["bias"][str(i)] - 0.5 * torch.matmul(self.grad["weight"][str(j)+str(i)].T , (data_mean[n_nodes_p*j:n_nodes_p*(j+1)] + data_gen[n_nodes_p*j:n_nodes_p*(j+1)]))
     
     def update_params(self, lr=0.01):
         for i in range(4):
-            self._prbm.bias_dict[str(i)] = self._prbm.bias_dict[str(i)] + lr * grad["bias"][str(i)]
+            self._prbm.bias_dict[str(i)] = self._prbm.bias_dict[str(i)] + lr * self.grad["bias"][str(i)]
 
         for i in range(3):
             for j in [0,1,2,3]:
                 if j > i:
-                    self._prbm.weight_dict[str(i)+str(j)] = self._prbm.weight_dict[str(i)+str(j)] + lr * grad["weight"][str(i)+str(j)]
+                    self._prbm.weight_dict[str(i)+str(j)] = self._prbm.weight_dict[str(i)+str(j)] + lr * self.grad["weight"][str(i)+str(j)]

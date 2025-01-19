@@ -20,6 +20,9 @@ class Discriminator(nn.Module):
         conv3_channels = int(out_conv_channels / 2)
         self.out_conv_channels = out_conv_channels
         self.out_dim = int(dim / 16)
+        self.z = 45
+        self.r = 9
+        self.phi = 16
 
         self.conv1 = nn.Sequential(
             nn.Conv3d(
@@ -59,6 +62,7 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, x):
+        x = x.reshape(x.shape[0], 1, self.z, self.phi, self.r) 
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)

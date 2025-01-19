@@ -49,3 +49,5 @@ sample_energies:
   - 150
   
 discriminator: True
+n_critic: 5
+clip_value: 0.01

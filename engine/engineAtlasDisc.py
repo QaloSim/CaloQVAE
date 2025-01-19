@@ -38,7 +38,10 @@ class EngineAtlasDisc(EngineAtlas):
         real_c = torch.zeros_like(input_data)
         fake_c = input_data - fwd_out.output_activations
         
-        l_critic = - (real_c.mean() - fake_c.mean())
+        f_real = self.critic(real_c)
+        f_fake = self.critic(fake_c)
+        
+        l_critic = - (f_real.mean() - f_fake.mean())
         
         return l_critic
         
@@ -47,8 +50,9 @@ class EngineAtlasDisc(EngineAtlas):
         Wasserstein GAN
         """
         fake_c = input_data - fwd_out.output_activations
+        f_fake = self.critic(fake_c)
         
-        l_gen = -fake_c.mean()
+        l_gen = -f_fake.mean()
         
         return l_gen
         
@@ -133,7 +137,7 @@ class EngineAtlasDisc(EngineAtlas):
                     batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
                     batch_loss_dict["ah_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
                     
-                    if self._config.exact_rbm_grad in self._config and self._config.exact_rbm_grad:
+                    if 'exact_rbm_grad' in self._config.keys() and self._config.exact_rbm_grad:
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + batch_loss_dict["hit_loss"] 
                         if self._config.rbm_grad_centered:
                             self.model.sampler.gradient_rbm_centered(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
@@ -157,11 +161,14 @@ class EngineAtlasDisc(EngineAtlas):
                         batch_loss_dict["loss"].backward()
                         self._optimiser.step()
                         
-                        self._optimiser_c.zero_grad()
-                        fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct, slope_act_fct)
-                        l_critic = self.loss_wgan_1(in_data, fwd_output)
-                        l_critic.backward()
-                        self._optimiser_c.step()
+                        for _ in range(self._config.engine.n_critic):
+                            self._optimiser_c.zero_grad()
+                            fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct, slope_act_fct)
+                            batch_loss_dict["critic"] = self.loss_wgan_1(in_data, fwd_output)
+                            batch_loss_dict["critic"].backward()
+                            self._optimiser_c.step()
+                            for p in self.critic.parameters():
+                                p.data.clamp_(-self._config.engine.clip_value, self._config.engine.clip_value)
                     else:
                         
                         batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
@@ -235,7 +242,8 @@ class EngineAtlasDisc(EngineAtlas):
                             in_data = self._reduceinv(in_data, true_energy, R=self.R)
                             recon_data = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
                             self._model.sampler._batch_size = true_energy.shape[0]
-                            sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            # sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            sample_energies, sample_data = self._model.generate_samples_cond(num_samples=true_energy.shape[0], true_energy=true_energy)
                             self._model.sampler._batch_size = self._config.engine.rbm_batch_size
                             # sample_energies, sample_data = self._model.generate_samples()
                             # if self._config.usinglayers:

@@ -143,6 +143,8 @@ def run(config=None):
     engine.model = model
     # add the modelCreator instance to engine namespace
     engine.model_creator = modelCreator
+    if 'discriminator' in engine._config.engine.keys() and engine._config.engine.discriminator:
+        engine.critic.to(dev)
 
     _epoch = 0
     dummy_variable = 0
@@ -185,7 +187,7 @@ def run(config=None):
             with torch.no_grad():
                 engine.fit(epoch=epoch, is_training=False, mode="validate")
             
-        if epoch % 10 == 0:
+        if epoch % 1000 == 0:
             engine._save_model(name=str(epoch))
 
     if "test" in config.task:
