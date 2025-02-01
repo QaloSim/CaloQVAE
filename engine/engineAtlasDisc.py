@@ -37,6 +37,8 @@ class EngineAtlasDisc(EngineAtlas):
         """
         real_c = torch.zeros_like(input_data)
         fake_c = input_data - fwd_out.output_activations
+        # real_c = input_data
+        # fake_c = fwd_out.output_activations
         
         f_real = self.critic(real_c)
         f_fake = self.critic(fake_c)
@@ -44,17 +46,63 @@ class EngineAtlasDisc(EngineAtlas):
         l_critic = - (f_real.mean() - f_fake.mean())
         
         return l_critic
+    
+    def wgan_gp_critic_loss(self, input_data, fwd_out, lambda_gp=10):
+        real = input_data
+        fake = fwd_out.output_activations
+        # 1. Critic outputs
+        crit_real = self.critic(real).mean()   # mean over batch
+        crit_fake = self.critic(fake).mean()
+
+        # 2. Wasserstein loss (negative of the difference)
+        wloss = -(crit_real - crit_fake)
+
+        # 3. Compute gradient penalty
+        gp = self.gradient_penalty(real, fake, lambda_gp)
+
+        # 4. Combine
+        loss_critic = wloss + gp
+        return loss_critic #, crit_real, crit_fake, gp
+
         
     def loss_wgan_2(self, input_data, fwd_out):
         """
         Wasserstein GAN
         """
         fake_c = input_data - fwd_out.output_activations
+        # fake_c = fwd_out.output_activations
         f_fake = self.critic(fake_c)
         
         l_gen = -f_fake.mean()
         
         return l_gen
+    
+    def gradient_penalty(self, real_data, fake_data, lambda_gp=10):
+        batch_size = real_data.size(0)
+        # Sample Epsilon from uniform distribution
+        eps = torch.rand(batch_size, 1).to(real_data.device)
+        eps = eps.expand_as(real_data)
+        
+        # Interpolation between real data and fake data.
+        interpolation = eps * real_data + (1 - eps) * fake_data
+        
+        # get logits for interpolated images
+        interp_logits = self.critic(interpolation)
+        grad_outputs = torch.ones_like(interp_logits)
+        
+        # Compute Gradients
+        gradients = torch.autograd.grad(
+            outputs=interp_logits,
+            inputs=interpolation,
+            grad_outputs=grad_outputs,
+            create_graph=True,
+            retain_graph=True,
+        )[0]
+        
+        # Compute and return Gradient Norm
+        gradients = gradients.view(batch_size, -1)
+        grad_norm = gradients.norm(2, 1)
+        return torch.mean((grad_norm - 1) ** 2) * lambda_gp
         
     def fit(self, epoch, is_training=True, mode="train"):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
@@ -134,11 +182,11 @@ class EngineAtlasDisc(EngineAtlas):
                     batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     
-                    batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
+                    batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"]  + batch_loss_dict["hit_loss"]
                     batch_loss_dict["ah_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
                     
                     if 'exact_rbm_grad' in self._config.keys() and self._config.exact_rbm_grad:
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + batch_loss_dict["hit_loss"] 
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"] 
                         if self._config.rbm_grad_centered:
                             self.model.sampler.gradient_rbm_centered(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
                         else:
@@ -148,12 +196,7 @@ class EngineAtlasDisc(EngineAtlas):
                         batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
                         
                     
-                    # batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
-                    # batch_loss_dict["loss"].backward()
-                    
-                    # self._optimiser.step()
-                    
-                    if self._config.engine.discriminator:
+                    if self._config.engine.discriminator and epoch > 2 and epoch < self._config.engine.epoch_freeze:
                         batch_loss_dict["generator"] = self.loss_wgan_2(in_data, fwd_output)
                         batch_loss_dict["loss"] = batch_loss_dict["loss"] + batch_loss_dict["generator"]
                         
@@ -165,15 +208,20 @@ class EngineAtlasDisc(EngineAtlas):
                             self._optimiser_c.zero_grad()
                             fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct, slope_act_fct)
                             batch_loss_dict["critic"] = self.loss_wgan_1(in_data, fwd_output)
+                            # batch_loss_dict["critic"] = self.wgan_gp_critic_loss(in_data, fwd_output, self._config.engine.gp_l)
                             batch_loss_dict["critic"].backward()
                             self._optimiser_c.step()
-                            for p in self.critic.parameters():
-                                p.data.clamp_(-self._config.engine.clip_value, self._config.engine.clip_value)
+                            # if epoch % 5 == 0 and epoch > 5:
+                            #     for p in self.critic.parameters():
+                            #         p.data.clamp_(-self._config.engine.clip_value, self._config.engine.clip_value)
                     else:
-                        
                         batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
-                        batch_loss_dict["loss"].backward()
-                        self._optimiser.step()
+                        try:
+                            batch_loss_dict["loss"].backward()
+                        except:
+                            pass
+                        
+                    self._optimiser.step()
                         
                 else:
                     batch_loss_dict["gamma"] = 1.0

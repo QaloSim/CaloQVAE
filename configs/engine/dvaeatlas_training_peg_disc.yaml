@@ -31,13 +31,13 @@ n_test_batch_size: 1024
 n_valid_batch_size: 1024
 rbm_batch_size: 1024
 
-n_gibbs_sampling_steps: 3000
+n_gibbs_sampling_steps: 1000
 
 n_val_batches: 3
 n_valid_per_epoch: 5
 
 n_plot_samples: 5
-n_batches_log_train: 10
+n_batches_log_train: 3
 
 val_w_qpu: 0
 
@@ -48,6 +48,7 @@ sample_energies:
   - 100
   - 150
   
-discriminator: True
+discriminator: 1
 n_critic: 5
-clip_value: 0.01
+clip_value: 10.0
+gp_l: 10.0

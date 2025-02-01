@@ -154,18 +154,24 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["ah_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
                     
                     if 'exact_rbm_grad' in self._config.keys() and self._config.exact_rbm_grad:
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + batch_loss_dict["hit_loss"] 
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + batch_loss_dict["hit_loss"] + kl_gamma*batch_loss_dict["pos_energy"]
                         if self._config.rbm_grad_centered:
                             self.model.sampler.gradient_rbm_centered(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
                         else:
                             self.model.sampler.gradient_rbm(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
                         self.model.sampler.update_params()
+                        batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
+                        try:
+                            batch_loss_dict["loss"].backward()
+                        except:
+                            pass
                     else:
-                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"]
+                        batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
+                        batch_loss_dict["loss"].backward()
                         
                     
-                    batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
-                    batch_loss_dict["loss"].backward()
+                    
                     
                     self._optimiser.step()
                     # Trying this to free up memory on the GPU and run validation during a training epoch
@@ -344,8 +350,8 @@ class EngineAtlas(EngineCaloV3):
             val_loss_dict["RBM energy"] = rbm_energy_hist
             config_string = f'RBM_{epoch}_{batch_idx}'
             encoded_data_energy = self._energy_encoded_data()
-            if epoch % 500 == 0:
-                self._model_creator.save_RBM_state(config_string, encoded_data_energy)
+            # if epoch % 500 == 0:
+            self._model_creator.save_RBM_state(config_string, encoded_data_energy)
                     
             wandb.log(val_loss_dict)
             
@@ -448,7 +454,7 @@ class EngineAtlas(EngineCaloV3):
         conditioned_samples = []
         for energy in conditioning_energies:
             #Note: Should we recompute beta before every sample run?
-            sample_energies, sample_data = self._model.generate_samples_cond(num_samples=self._config.engine.n_valid_batch_size, true_energy=energy)
+            sample_energies, sample_data = self._model.generate_samples(num_samples=self._config.engine.n_valid_batch_size, true_energy=energy)
 
             if self._config.data.scaled:
                 sample_data = self._data_mgr.inv_transform(sample_data.detach().cpu().numpy())/1000. 

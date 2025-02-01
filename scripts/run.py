@@ -145,6 +145,12 @@ def run(config=None):
     engine.model_creator = modelCreator
     if 'discriminator' in engine._config.engine.keys() and engine._config.engine.discriminator:
         engine.critic.to(dev)
+    
+    if 'exact_rbm_grad' in config.keys() and config.exact_rbm_grad:
+        for name, param in engine.model.named_parameters():
+            if 'prior' in name:
+                param.requires_grad = False
+            print(name, param.requires_grad)
 
     _epoch = 0
     dummy_variable = 0
@@ -187,7 +193,7 @@ def run(config=None):
             with torch.no_grad():
                 engine.fit(epoch=epoch, is_training=False, mode="validate")
             
-        if epoch % 1000 == 0:
+        if epoch % 10 == 0:
             engine._save_model(name=str(epoch))
 
     if "test" in config.task:

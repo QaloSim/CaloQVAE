@@ -10,45 +10,13 @@ freeze_vae: 1
 
 wandb_enabled: 1
 
-# #rural-cosmos-358
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-04-10/21-09-25/wandb/run-20240410_210926-1fmsh565/files/GumBoltAtlasPRBMCNN_atlas_default_best.pth"
-
-# #zephyr
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-20-30/wandb/run-20240518_152031-zhvzuxif/files/AtlasConditionalQVAE_atlas_default_latest.pth"
-# run_path : "/home/javier/Projects/CaloQVAE/outputs/2024-10-04/14-10-35/wandb/run-20241004_141036-oxw8je9r/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-#divine-dream-509
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-16/19-31-44/wandb/run-20241016_193145-peb8g4m0/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-18/21-56-48/wandb/run-20241218_215649-rdcvqbqa/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-18/22-03-41/wandb/run-20241218_220342-nqwgiewh/files/AtlasConditionalQVAE3D_atlas_default_240.pth"
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-23/14-47-57/wandb/run-20241223_144758-x95agqf6/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-24/16-23-58/wandb/run-20241224_162359-6xh18drf/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-
-#worthy-paper-518
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-17/22-24-09/wandb/run-20241017_222410-35qftv82/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-
-# run_path: '/home/javier/Projects/CaloQVAE/outputs/2024-10-21/19-59-47/wandb/run-20241021_195948-809lp14l/files/AtlasConditionalQVAE3D_atlas_default_250.pth'
-# modelname = 'lively-grass-519'
-
-#pegasus
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-05-18/15-22-04/wandb/run-20240518_152205-pi1sujcx/files/AtlasConditionalQVAE_atlas_default_latest.pth"
-
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-15/18-39-39/wandb/run-20240817_193745-3in69i3s/files/AtlasConditionalQVAE3D_atlas_default_150.pth"
-
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-15/18-47-19/wandb/run-20240817_194429-1valeubk/files/AtlasConditionalQVAE3D_atlas_default_210.pth"
-
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-16/18-37-54/wandb/run-20240818_130637-frfzrs9j/files/AtlasConditionalQVAE3D_atlas_default_140.pth"
-
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-10-28/04-58-50/wandb/run-20241028_045851-zu8velk6/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-#1024 RBM
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-11-28/17-49-42/wandb/run-20241128_174943-hsnd6gz9/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-
-# 3GSS
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-30/15-55-03/wandb/run-20240830_155504-3y6n52jl/files/AtlasConditionalQVAE3D_atlas_default_70.pth"
-# fully connected
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-08-30/19-52-39/wandb/run-20240830_195240-1nv2akol/files/AtlasConditionalQVAE3D_atlas_default_70.pth"
-
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-09-03/19-07-34/wandb/run-20240903_190735-gcbwc4g1/files/AtlasConditionalQVAE3D_atlas_default_120.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-19/02-13-29/wandb/run-20250119_021330-vj9yai2u/files/AtlasConditionalQVAE3D_atlas_default_200.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-19/02-12-57/wandb/run-20250119_021258-4tg1wl7s/files/AtlasConditionalQVAE3D_atlas_default_200.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-18/22-03-41/wandb/run-20241218_220342-nqwgiewh/files/AtlasConditionalQVAE3D_atlas_default_200.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-19/02-13-29/wandb/run-20250121_132020-vj9yai2u/files/AtlasConditionalQVAE3D_atlas_default_450.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-18/22-03-41/wandb/run-20250121_132833-nqwgiewh/files/AtlasConditionalQVAE3D_atlas_default_330.pth"
+# run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-24/17-42-08/wandb/run-20250124_174209-cktk5qod/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-28/00-26-28/wandb/run-20250128_002629-1aipg0dn/files/AtlasConditionalQVAE3D_atlas_default_210.pth"
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
@@ -65,7 +33,7 @@ task:
 defaults:
   - model: atlasCondQVAE3D
   - data: atlasDGX
-  - engine: dvaeatlas_training_peg
+  - engine: dvaeatlas_training_peg_disc
   - qpu: peggy
 
 # model: gumboltatlascrbmcnndcond
