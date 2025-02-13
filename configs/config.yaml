@@ -16,14 +16,14 @@ wandb_enabled: 1
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-19/02-13-29/wandb/run-20250121_132020-vj9yai2u/files/AtlasConditionalQVAE3D_atlas_default_450.pth"
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-18/22-03-41/wandb/run-20250121_132833-nqwgiewh/files/AtlasConditionalQVAE3D_atlas_default_330.pth"
 # run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-24/17-42-08/wandb/run-20250124_174209-cktk5qod/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-28/00-26-28/wandb/run-20250128_002629-1aipg0dn/files/AtlasConditionalQVAE3D_atlas_default_210.pth"
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-02-02/15-35-55/wandb/run-20250202_153556-l3c5zgt6/files/AtlasConditionalQVAE3D_atlas_default_230.pth"
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 2
+  - 0
 
 task:
   - train
@@ -33,7 +33,7 @@ task:
 defaults:
   - model: atlasCondQVAE3D
   - data: atlasDGX
-  - engine: dvaeatlas_training_peg_disc
+  - engine: dvaeatlas_training_peg
   - qpu: peggy
 
 # model: gumboltatlascrbmcnndcond

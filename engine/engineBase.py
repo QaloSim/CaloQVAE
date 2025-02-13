@@ -39,6 +39,14 @@ class EngineBase(object):
     @critic.setter   
     def critic(self,critic):
         self._critic=critic
+        
+    @property
+    def critic_2(self):
+        return self._critic_2
+    
+    @critic_2.setter   
+    def critic_2(self,critic):
+        self._critic_2=critic
 
     @property
     def optimiser(self):
@@ -55,6 +63,14 @@ class EngineBase(object):
     @optimiser_c.setter   
     def optimiser_c(self,optimiser_c):
         self._optimiser_c=optimiser_c
+        
+    @property
+    def optimiser_c_2(self):
+        return self._optimiser_c_2
+    
+    @optimiser_c_2.setter   
+    def optimiser_c_2(self,optimiser_c):
+        self._optimiser_c_2=optimiser_c
     
     @property
     def data_mgr(self):

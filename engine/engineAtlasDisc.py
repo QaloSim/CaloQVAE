@@ -30,54 +30,60 @@ class EngineAtlasDisc(EngineAtlas):
         self.critic = Discriminator()
         self.optimiser_c = torch.optim.Adam(self.critic.parameters(),
                                         lr=self._config.engine.learning_rate)
+        self.critic_2 = Discriminator()
+        self.optimiser_c_2 = torch.optim.Adam(self.critic_2.parameters(),
+                                        lr=self._config.engine.learning_rate)
         
-    def loss_wgan_1(self, input_data, fwd_out):
+    # def loss_wgan_1(self, input_data, fwd_out):
+    def loss_wgan_1(self, critic, real_c, fake_c, true_energy):
         """
         Wasserstein GAN
         """
-        real_c = torch.zeros_like(input_data)
-        fake_c = input_data - fwd_out.output_activations
+        # real_c = torch.zeros_like(input_data)
+        # fake_c = input_data - fwd_out.output_activations
         # real_c = input_data
         # fake_c = fwd_out.output_activations
         
-        f_real = self.critic(real_c)
-        f_fake = self.critic(fake_c)
+        f_real = critic(real_c, true_energy)
+        f_fake = critic(fake_c, true_energy)
         
         l_critic = - (f_real.mean() - f_fake.mean())
         
         return l_critic
     
-    def wgan_gp_critic_loss(self, input_data, fwd_out, lambda_gp=10):
-        real = input_data
-        fake = fwd_out.output_activations
+    # def wgan_gp_critic_loss(self, input_data, fwd_out, lambda_gp=10):
+    def wgan_gp_critic_loss(self, critic, real, fake, true_energy, lambda_gp=10):
+        # real = input_data
+        # fake = fwd_out.output_activations
         # 1. Critic outputs
-        crit_real = self.critic(real).mean()   # mean over batch
-        crit_fake = self.critic(fake).mean()
+        crit_real = critic(real, true_energy).mean()   # mean over batch
+        crit_fake = critic(fake, true_energy).mean()
 
         # 2. Wasserstein loss (negative of the difference)
         wloss = -(crit_real - crit_fake)
 
         # 3. Compute gradient penalty
-        gp = self.gradient_penalty(real, fake, lambda_gp)
+        gp = self.gradient_penalty(critic, real, fake, true_energy, lambda_gp)
 
         # 4. Combine
         loss_critic = wloss + gp
         return loss_critic #, crit_real, crit_fake, gp
 
         
-    def loss_wgan_2(self, input_data, fwd_out):
+    # def loss_wgan_2(self, input_data, fwd_out):
+    def loss_wgan_2(self, critic, fake_c, true_energy):
         """
         Wasserstein GAN
         """
-        fake_c = input_data - fwd_out.output_activations
+        # fake_c = input_data - fwd_out.output_activations
         # fake_c = fwd_out.output_activations
-        f_fake = self.critic(fake_c)
+        f_fake = critic(fake_c, true_energy)
         
         l_gen = -f_fake.mean()
         
         return l_gen
     
-    def gradient_penalty(self, real_data, fake_data, lambda_gp=10):
+    def gradient_penalty(self, critic, real_data, fake_data, true_energy, lambda_gp=10):
         batch_size = real_data.size(0)
         # Sample Epsilon from uniform distribution
         eps = torch.rand(batch_size, 1).to(real_data.device)
@@ -87,7 +93,7 @@ class EngineAtlasDisc(EngineAtlas):
         interpolation = eps * real_data + (1 - eps) * fake_data
         
         # get logits for interpolated images
-        interp_logits = self.critic(interpolation)
+        interp_logits = critic(interpolation, true_energy)
         grad_outputs = torch.ones_like(interp_logits)
         
         # Compute Gradients
@@ -197,8 +203,14 @@ class EngineAtlasDisc(EngineAtlas):
                         
                     
                     if self._config.engine.discriminator and epoch > 2 and epoch < self._config.engine.epoch_freeze:
-                        batch_loss_dict["generator"] = self.loss_wgan_2(in_data, fwd_output)
+                        fake = in_data - fwd_output.output_activations
+                        batch_loss_dict["generator"] = self.loss_wgan_2(self.critic, fake, true_energy)
                         batch_loss_dict["loss"] = batch_loss_dict["loss"] + batch_loss_dict["generator"]
+                        ############critic 2    
+                        fake = fwd_output.output_activations
+                        batch_loss_dict["generator_2"] = self.loss_wgan_2(self.critic_2, fake, true_energy)
+                        batch_loss_dict["loss"] = batch_loss_dict["loss"] + batch_loss_dict["generator_2"]
+                        ############################
                         
                         batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                         batch_loss_dict["loss"].backward()
@@ -207,13 +219,25 @@ class EngineAtlasDisc(EngineAtlas):
                         for _ in range(self._config.engine.n_critic):
                             self._optimiser_c.zero_grad()
                             fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct, slope_act_fct)
-                            batch_loss_dict["critic"] = self.loss_wgan_1(in_data, fwd_output)
-                            # batch_loss_dict["critic"] = self.wgan_gp_critic_loss(in_data, fwd_output, self._config.engine.gp_l)
+                            real = torch.zeros_like(in_data)
+                            fake = in_data - fwd_output.output_activations
+                            # batch_loss_dict["critic"] = self.loss_wgan_1(real, fake, , true_energy)
+                            batch_loss_dict["critic"] = self.wgan_gp_critic_loss(self.critic, real, fake, true_energy, self._config.engine.gp_l)
                             batch_loss_dict["critic"].backward()
                             self._optimiser_c.step()
-                            # if epoch % 5 == 0 and epoch > 5:
+                            # if epoch % 10 == 0 and epoch > 5:
                             #     for p in self.critic.parameters():
                             #         p.data.clamp_(-self._config.engine.clip_value, self._config.engine.clip_value)
+                            
+                        
+                        for _ in range(self._config.engine.n_critic):
+                            self._optimiser_c_2.zero_grad()
+                            fwd_output = self._model((in_data, true_energy), is_training, beta_smoothing_fct, slope_act_fct)
+                            real = in_data
+                            fake = fwd_output.output_activations
+                            batch_loss_dict["critic_2"] = self.wgan_gp_critic_loss(self.critic_2, real, fake, true_energy, self._config.engine.gp_l)
+                            batch_loss_dict["critic_2"].backward()
+                            self._optimiser_c_2.step()
                     else:
                         batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                         try:

@@ -145,6 +145,7 @@ def run(config=None):
     engine.model_creator = modelCreator
     if 'discriminator' in engine._config.engine.keys() and engine._config.engine.discriminator:
         engine.critic.to(dev)
+        engine.critic_2.to(dev)
     
     if 'exact_rbm_grad' in config.keys() and config.exact_rbm_grad:
         for name, param in engine.model.named_parameters():

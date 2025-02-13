@@ -25,7 +25,7 @@ from CaloQVAE.models.rbm import pegasusRBM, zephyrRBM
 from CaloQVAE.models.samplers import pgbs
 
 from models.networks.EncoderCond import EncoderHierarchyPB_BinEv2
-from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2, DecoderCNNPB3Dv3, DecoderCNNPB3Dv4, DecoderCNNPB3Dv5
+from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2, DecoderCNNPB3Dv3, DecoderCNNPB3Dv4, DecoderCNNPB3Dv5, DecoderCNNPB3DCholesky, DecoderCNNPB3DSelfAtt
 
 import time
 
@@ -163,6 +163,16 @@ class AtlasConditionalQVAE3D(AtlasConditionalQVAE): #(GumBoltAtlasPRBMCNN): #Atl
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallPB3Dv5":
             return DecoderCNNPB3Dv5(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3Dv6":
+            return DecoderCNNPB3DCholesky(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3Dv7":
+            return DecoderCNNPB3DSelfAtt(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)

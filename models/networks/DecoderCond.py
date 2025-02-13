@@ -966,31 +966,26 @@ class DecoderCNNPB3Dv4(BasicDecoderV3): #use this one
                    nn.Unflatten(1, (self.n_latent_nodes, 1, 1, 1)),
 
                    PeriodicConvTranspose3d(self.n_latent_nodes, 512, (3,3,2), (2,1,1), 0),
-                   nn.GroupNorm(1,512),
+                   nn.BatchNorm3d(512),
                    # self.dropout,
-                   nn.SiLU(512),
-                   LinearAttention(512, cylindrical = False),
+                   nn.PReLU(512, 0.02),
+                   
 
                    PeriodicConvTranspose3d(512, 128, (5,3,3), (2,1,1), 0),
-                   nn.GroupNorm(1,128),
-                   nn.SiLU(128),
-                   # Residual(PreNorm(128, LinearAttention(128, cylindrical = False))),
-                   LinearAttention(128, cylindrical = False),
+                   nn.BatchNorm3d(128),
+                   nn.PReLU(128, 0.02),
                                    )
         
         self._layers2 = nn.Sequential(
                    PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
-                   nn.GroupNorm(1,64),
+                   nn.BatchNorm3d(64),
                    # self.dropout,
-                   nn.SiLU(64),
-                   # Residual(PreNorm(64, LinearAttention(64, cylindrical = False))),
-                   LinearAttention(64, cylindrical = False),
+                   nn.PReLU(64, 0.02),
 
                    PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
-                   nn.GroupNorm(1,32),
+                   nn.BatchNorm3d(32),
                    # self.dropout,
-                   nn.SiLU(32),
-                   LinearAttention(32, cylindrical = False),
+                   nn.PReLU(32, 1.0),
 
                    PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
                    # nn.BatchNorm3d(45),
@@ -1023,6 +1018,232 @@ class DecoderCNNPB3Dv4(BasicDecoderV3): #use this one
         xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
         x1 = self._layers2(xx0)
         x2 = self._layers3(xx0)
+        return x1.reshape(x1.shape[0],self.z*self.r*self.phi), x2.reshape(x1.shape[0],self.z*self.r*self.phi)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 1.0):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+    
+
+class Head(nn.Module):
+    '''
+    Self-attention block
+    '''
+    def __init__(self, dim, head_size=16):
+        super().__init__()
+        self.head_size = head_size
+        self.key = nn.Linear(dim,head_size, bias=False)
+        self.query = nn.Linear(dim,head_size, bias=False)
+        self.value = nn.Linear(dim,head_size, bias=False)
+        # self.ln1 = nn.LayerNorm(dim)
+        # self.ln2 = nn.LayerNorm(dim)
+
+    def forward(self, x):
+        b, c, l, h, w = x.shape
+        x = rearrange(x, "b c l h w -> b (l h w) c")
+        # x = self.ln1(x)
+        k = self.key(x)
+        q = self.query(x)
+        wei = q @ k.transpose(-2,-1) * self.head_size**-0.5
+        wei = F.softmax(wei,dim=-1)
+        v = self.value(x)
+        # out = self.ln2(wei @ v)
+        out = wei @ v
+        
+        return rearrange(out, "b (l h w) c -> b c l h w",l=l,h=h,w=w)
+    
+class Multihead(nn.Module):
+    '''
+        Multi-head attention
+    '''
+    def __init__(self, dim, num=1, head_size=16):
+        super().__init__()
+        self.heads = nn.ModuleList([Head(dim,head_size) for _ in range(num)])
+        
+    def forward(self, x):
+        return torch.cat([h(x) for h in self.heads], dim=1)
+    
+    
+class DecoderCNNPB3DSelfAtt(BasicDecoderV3): #use this one
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
+        super(DecoderCNNPB3DSelfAtt, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+
+        self.n_latent_nodes = self._config.model.n_latent_nodes_per_p * 4
+        self._layers =  nn.Sequential(
+                   # nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+                   nn.Unflatten(1, (self.n_latent_nodes, 1, 1, 1)),
+
+                   PeriodicConvTranspose3d(self.n_latent_nodes, 512, (3,3,2), (2,1,1), 0),
+                   nn.BatchNorm3d(512),
+                   # self.dropout,
+                   nn.PReLU(512, 0.02),
+                   
+
+                   PeriodicConvTranspose3d(512, 128, (5,3,3), (2,1,1), 0),
+                   nn.BatchNorm3d(128),
+                   nn.PReLU(128, 0.02),
+                                   )
+        
+        self._layers2 = nn.Sequential(
+                   PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+                   nn.BatchNorm3d(64),
+                   # self.dropout,
+                   nn.PReLU(64, 0.02),
+
+                   PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+                   nn.BatchNorm3d(32),
+                   # self.dropout,
+                   nn.PReLU(32, 1.0),
+
+                   PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+                   # nn.BatchNorm3d(45),
+                   nn.PReLU(1, 1.0)
+                                   )
+        self._layers3 = nn.Sequential(
+                   PeriodicConvTranspose3d(129, 64, (3,2,2), (2,1,1), 0),
+                   nn.BatchNorm3d(64),
+                   nn.PReLU(64, 1.0),
+
+                   PeriodicConvTranspose3d(64, 32, (3,3,3), (1,1,1), 0),
+                   nn.BatchNorm3d(32),
+                   Residual(Multihead(32,2,16)),
+
+                   PeriodicConvTranspose3d(32, 1, (5,2,3), (2,2,1), 0),
+                   # nn.BatchNorm3d(45),
+                   nn.PReLU(1,1.0),
+                                   )
+        
+#         self._layers3 = nn.Sequential(
+#                    PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+#                    nn.BatchNorm(64),
+#                    Residual(Multihead(64,4,16)),
+
+#                    PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+#                    nn.BatchNorm(32),
+#                    nn.PReLU(32, 1.0),
+
+#                    PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+#                    # nn.BatchNorm3d(45),
+#                    nn.PReLU(1,1.0),
+#                                    )
+        
+    def forward(self, x, x0):
+                
+        x = self._layers(x)
+        x0 = self.trans_energy(x0)
+        xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(xx0)
+        return x1.reshape(x1.shape[0],self.z*self.r*self.phi), x2.reshape(x1.shape[0],self.z*self.r*self.phi)
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 1.0):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
+
+    
+############################Cholesky
+class NoiseAddCholesky(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self,x):
+        if self.training:
+            bss = x.shape
+            z = x.view(bss[0]*bss[1],-1).detach()
+            cov = torch.cov(z.T)
+            L = torch.linalg.cholesky((cov+cov.T)/2)
+            # return x + torch.randn_like(z).to(x.device) @ L
+            return x + (torch.randn_like(z).to(x.device) @ L).reshape(bss)
+        else:
+            return x
+        
+        
+class NoiseAdd(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self,x):
+        if self.training:
+            return x + torch.randn_like(x).to(x.device)
+        else:
+            return x
+        
+class DecoderCNNPB3DCholesky(BasicDecoderV3): #use this one
+    def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
+        super(DecoderCNNPB3DCholesky, self).__init__(**kwargs)
+        self._output_activation_fct=output_activation_fct
+        self.num_output_nodes = num_output_nodes
+        self.z = 45
+        self.r = 9
+        self.phi = 16
+
+        # self.n_latent_nodes = self._config.model.n_latent_nodes
+        self.n_latent_nodes = self._config.model.n_latent_nodes_per_p * 4
+
+        # dropout for regularization
+        # self.dropout = nn.Dropout3d(self._config.model.dropout_prob)
+        
+        # self._node_sequence = [(2049, 800), (800, 700), (700, 600), (600, 550), (550, 500), (500, 6480)]
+        self._layers =  nn.Sequential(
+                   # nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
+                   nn.Unflatten(1, (self.n_latent_nodes, 1, 1, 1)),
+
+                   PeriodicConvTranspose3d(self.n_latent_nodes, 512, (3,3,2), (2,1,1), 0),
+                   nn.BatchNorm3d(512),
+                   # self.dropout,
+                   nn.PReLU(512, 0.02),
+                   
+
+                   PeriodicConvTranspose3d(512, 128, (5,3,3), (2,1,1), 0),
+                   nn.BatchNorm3d(128),
+                   nn.PReLU(128, 0.02),
+                                   )
+        
+        self._layers2 = nn.Sequential(
+                   PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+                   nn.BatchNorm3d(64),
+                   # self.dropout,
+                   nn.PReLU(64, 0.02),
+
+                   PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+                   nn.BatchNorm3d(32),
+                   # self.dropout,
+                   nn.PReLU(32, 1.0),
+
+                   PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+                   # nn.BatchNorm3d(45),
+                   nn.PReLU(1, 1.0)
+                                   )
+        
+        self._layers3 = nn.Sequential(
+                   PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+                   nn.BatchNorm3d(64),
+                   # self.dropout,
+                   nn.PReLU(64, 0.02),
+
+                   PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+                   nn.BatchNorm3d(32),
+                   # self.dropout,
+                   # nn.PReLU(32, 0.02),
+                   NoiseAdd(),
+
+                   PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+                   # nn.BatchNorm3d(45),
+                   nn.PReLU(1, 0.02),
+                                   )
+        
+    def forward(self, x, x0):
+                
+        x = self._layers(x)
+        x0 = self.trans_energy(x0)
+        xx0 = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
+        x1 = self._layers2(xx0)
+        x2 = self._layers3(xx0)   #activations
         return x1.reshape(x1.shape[0],self.z*self.r*self.phi), x2.reshape(x1.shape[0],self.z*self.r*self.phi)
     
     def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 1.0):

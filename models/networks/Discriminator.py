@@ -34,7 +34,7 @@ class Discriminator(nn.Module):
         )
         self.conv2 = nn.Sequential(
             nn.Conv3d(
-                in_channels=conv1_channels, out_channels=conv2_channels, kernel_size=(4,4,3),
+                in_channels=conv1_channels+1, out_channels=conv2_channels, kernel_size=(4,4,3),
                 stride=2, padding=1, bias=False
             ),
             nn.BatchNorm3d(conv2_channels),
@@ -61,9 +61,12 @@ class Discriminator(nn.Module):
             # nn.LeakyReLU(0.2, inplace=True),
         )
 
-    def forward(self, x):
+    def forward(self, x, x0):
         x = x.reshape(x.shape[0], 1, self.z, self.phi, self.r) 
         x = self.conv1(x)
+        
+        x0 = self.trans_energy(x0)
+        x = torch.cat((x, x0.unsqueeze(2).unsqueeze(3).unsqueeze(4).repeat(1,1,torch.tensor(x.shape[-3:-2]).item(),torch.tensor(x.shape[-2:-1]).item(), torch.tensor(x.shape[-1:]).item())), 1)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
@@ -71,3 +74,7 @@ class Discriminator(nn.Module):
         x = x.view(-1, self.out_conv_channels)
         x = self.out(x)
         return x
+    
+    def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 1.0):
+        # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
+        return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
