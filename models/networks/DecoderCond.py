@@ -1023,7 +1023,16 @@ class DecoderCNNPB3Dv4(BasicDecoderV3): #use this one
     def trans_energy(self, x0, log_e_max=14.0, log_e_min=6.0, s_map = 1.0):
         # s_map = max(scaled voxel energy u_i) * (incidence energy / slope of total energy in shower) of the dataset
         return ((torch.log(x0) - log_e_min)/(log_e_max - log_e_min)) * s_map
-    
+
+class LNorm(nn.Module):
+    def __init__(self, dim, fn):
+        super().__init__()
+        self.fn = fn
+        self.norm = nn.LayerNorm(dim)
+
+    def forward(self, x):
+        x = self.norm(self.fn(x))
+        return x
 
 class Head(nn.Module):
     '''
@@ -1051,6 +1060,7 @@ class Head(nn.Module):
         out = wei @ v
         
         return rearrange(out, "b (l h w) c -> b c l h w",l=l,h=h,w=w)
+
     
 class Multihead(nn.Module):
     '''
@@ -1062,6 +1072,48 @@ class Multihead(nn.Module):
         
     def forward(self, x):
         return torch.cat([h(x) for h in self.heads], dim=1)
+    
+class Headv2(nn.Module):
+    '''
+    Self-attention block
+    '''
+    def __init__(self, dim, head_size=16):
+        super().__init__()
+        self.head_size = head_size
+        self.key = nn.Linear(dim,head_size, bias=False)
+        self.query = nn.Linear(dim,head_size, bias=False)
+        self.value = nn.Linear(dim,head_size, bias=False)
+        
+
+    def forward(self, x):
+        # b, c, l, h, w = x.shape
+        # x = rearrange(x, "b c l h w -> b (l h w) c")
+        k = self.key(x)
+        q = self.query(x)
+        wei = q @ k.transpose(-2,-1) * self.head_size**-0.5
+        wei = F.softmax(wei,dim=-1)
+        v = self.value(x)
+        out = wei @ v
+        
+        return out
+    
+class Multiheadv2(nn.Module):
+    '''
+        Multi-head attention
+    '''
+    def __init__(self, dim, num=1):
+        super().__init__()
+        head_size = dim // num
+        self.heads = nn.ModuleList([Headv2(dim,head_size) for _ in range(num)])
+        self.ln1 = nn.LayerNorm(dim)
+        self.ln2 = nn.LayerNorm(dim)
+        
+    def forward(self, x):
+        b, c, l, h, w = x.shape
+        x = rearrange(x, "b c l h w -> b (l h w) c")
+        x = torch.cat([h(self.ln1(x)) for h in self.heads], dim=2)
+        x = self.ln2(x)
+        return rearrange(x, "b (l h w) c -> b c l h w",l=l,h=h,w=w)
     
     
 class DecoderCNNPB3DSelfAtt(BasicDecoderV3): #use this one
@@ -1110,27 +1162,17 @@ class DecoderCNNPB3DSelfAtt(BasicDecoderV3): #use this one
                    nn.PReLU(64, 1.0),
 
                    PeriodicConvTranspose3d(64, 32, (3,3,3), (1,1,1), 0),
-                   nn.BatchNorm3d(32),
-                   Residual(Multihead(32,2,16)),
+                   # nn.BatchNorm3d(32),
+                   # Residual(Multihead(32,2,16)),
+                   # Multihead(32,2,16),
+                   Multiheadv2(32,2),
 
                    PeriodicConvTranspose3d(32, 1, (5,2,3), (2,2,1), 0),
                    # nn.BatchNorm3d(45),
-                   nn.PReLU(1,1.0),
+                   # nn.PReLU(1,0.1),
+                   nn.SiLU(1),
+                   NoiseAdd(),
                                    )
-        
-#         self._layers3 = nn.Sequential(
-#                    PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
-#                    nn.BatchNorm(64),
-#                    Residual(Multihead(64,4,16)),
-
-#                    PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
-#                    nn.BatchNorm(32),
-#                    nn.PReLU(32, 1.0),
-
-#                    PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
-#                    # nn.BatchNorm3d(45),
-#                    nn.PReLU(1,1.0),
-#                                    )
         
     def forward(self, x, x0):
                 
@@ -1164,14 +1206,15 @@ class NoiseAddCholesky(nn.Module):
         
         
 class NoiseAdd(nn.Module):
-    def __init__(self):
+    def __init__(self, std=1.0):
         super().__init__()
+        self.std = std
 
     def forward(self,x):
-        if self.training:
-            return x + torch.randn_like(x).to(x.device)
-        else:
-            return x
+        # if self.training:
+        return x + torch.randn_like(x).to(x.device) * self.std
+        # else:
+            # return x
         
 class DecoderCNNPB3DCholesky(BasicDecoderV3): #use this one
     def __init__(self, output_activation_fct=nn.Identity(),num_output_nodes=368, **kwargs):
@@ -1229,12 +1272,13 @@ class DecoderCNNPB3DCholesky(BasicDecoderV3): #use this one
                    PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
                    nn.BatchNorm3d(32),
                    # self.dropout,
-                   # nn.PReLU(32, 0.02),
-                   NoiseAdd(),
+                   nn.PReLU(32, 0.02),
 
                    PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
                    # nn.BatchNorm3d(45),
-                   nn.PReLU(1, 0.02),
+                   # nn.PReLU(1, 0.02),
+                   nn.SiLU(1),
+                   NoiseAdd(1.0),
                                    )
         
     def forward(self, x, x0):

@@ -15,7 +15,7 @@ epoch_freeze: 200
 r_param : 0.0000001
 # r_param : 0.00004
 
-beta_smoothing_fct: 5
+beta_smoothing_fct: 1
 beta_smoothing_fct_final: 500
 beta_smoothing_fct_anneal: 1
 
@@ -49,6 +49,6 @@ sample_energies:
   - 150
   
 discriminator: 1
-n_critic: 5
+n_critic: 1
 clip_value: 10.0
 gp_l: 10.0

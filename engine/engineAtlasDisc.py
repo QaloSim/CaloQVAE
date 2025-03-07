@@ -29,10 +29,10 @@ class EngineAtlasDisc(EngineAtlas):
         super(EngineAtlasDisc, self).__init__(cfg, **kwargs)
         self.critic = Discriminator()
         self.optimiser_c = torch.optim.Adam(self.critic.parameters(),
-                                        lr=self._config.engine.learning_rate)
+                                        lr=self._config.engine.learning_rate*0.1)
         self.critic_2 = Discriminator()
         self.optimiser_c_2 = torch.optim.Adam(self.critic_2.parameters(),
-                                        lr=self._config.engine.learning_rate)
+                                        lr=self._config.engine.learning_rate*0.1)
         
     # def loss_wgan_1(self, input_data, fwd_out):
     def loss_wgan_1(self, critic, real_c, fake_c, true_energy):

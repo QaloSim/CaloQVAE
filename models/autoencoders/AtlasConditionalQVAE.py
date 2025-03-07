@@ -926,7 +926,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
             mean_dwave_energy_list.append(mean_dwave_energy)
             beta_list.append(beta)
             # print (f'Epoch {epoch}: beta = {beta}')
-            logger.info(f'Epoch {epoch}: beta = {beta}')
+            logger.info(f'Epoch {epoch}: beta = {beta}, RBM s_E = {np.std(rbm_energies)}, DW s_E = {np.std(dwave_energies)}')
             if method == 1:
                 if adaptive:
                     lr = np.max([lr_init, np.power(beta,2)/np.var(dwave_energies)])
@@ -1066,7 +1066,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
             mean_rbm_energy_list.append(mean_rbm_energy)
             mean_dwave_energy_list.append(mean_dwave_energy)
             beta_list.append(beta)
-            logger.info(f'Epoch {epoch}: beta = {beta}')
+            logger.info(f'Epoch {epoch}: beta = {beta}, RBM s_E = {np.std(rbm_energies)}, DW s_E = {np.std(dwave_energies)}')
             self.part1.append(dwave_1)
             if method == 1:
                 if adaptive:
@@ -1164,7 +1164,7 @@ class AtlasConditionalQVAE(GumBoltAtlasPRBMCNN):
             mean_rbm_energy_list.append(mean_rbm_energy)
             mean_dwave_energy_list.append(mean_dwave_energy)
             beta_list.append(beta)
-            logger.info(f'Epoch {epoch}: beta = {beta}')
+            logger.info(f'Epoch {epoch}: beta = {beta}, RBM s_E = {np.std(rbm_energies)}, DW s_E = {np.std(dwave_energies)}')
             self.part1.append(dwave_1)
             if method == 1:
                 if adaptive:
