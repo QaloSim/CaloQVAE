@@ -1171,7 +1171,7 @@ class DecoderCNNPB3DSelfAtt(BasicDecoderV3): #use this one
                    # nn.BatchNorm3d(45),
                    # nn.PReLU(1,0.1),
                    nn.SiLU(1),
-                   NoiseAdd(),
+                   NoiseAdd(self._config.model.std_noise),
                                    )
         
     def forward(self, x, x0):

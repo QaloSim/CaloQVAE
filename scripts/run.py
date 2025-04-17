@@ -183,6 +183,8 @@ def run(config=None):
                     print(name, param.requires_grad)
                 engine.optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, engine.model.parameters()), lr=config.engine.learning_rate)
                 engine._save_model(name="at_freezing_point")
+                engine._config.model.rbmMethod = "PCD"
+                logger.info(f'RBM will use {engine._config.model.rbmMethod}')
                 dummy_variable = 1
                 
         if "train" in config.task:

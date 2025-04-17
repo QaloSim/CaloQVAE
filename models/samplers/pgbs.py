@@ -21,7 +21,7 @@ class PGBS:
     """
 
     def __init__(self, prbm: pegasusRBM.PegasusRBM, batch_size: int,
-                 n_steps: int, **kwargs):
+                 n_steps: int, n_batches : int, **kwargs):
         """__init__()
 
         :param PRBM (object)    : Configuration of the Pegasus RBM
@@ -34,6 +34,9 @@ class PGBS:
         self._batch_size = batch_size
         self._n_steps = n_steps
         self._prbm = prbm
+        self._n_batches = n_batches
+        self._chain = False
+        self.p_zetas_pcd_chains = torch.tensor([])
 
     def _p_state(self, weights_ax, weights_bx, weights_cx,
                  pa_state, pb_state, pc_state, bias_x) -> torch.Tensor:
@@ -150,7 +153,9 @@ class PGBS:
             p2_state = p2
             p3_state = p3
         elif method == 'PCD':
-            pass
+            p1_state = p1
+            p2_state = p2
+            p3_state = p3
             
         for _ in range(self._n_steps):
             # p0_state = self._p_state(p_weight['01'].T,
@@ -223,11 +228,29 @@ class PGBS:
         data_mean = post_zetas.mean(dim=0)
         torch.clamp_(data_mean, min=1e-4, max=(1. - 1e-4))
         vh_data_cov = torch.cov(post_zetas.T)
+        
+        if rbmMethod == "PCD":
+            if self._chain==False:
+                pass
+            else:
+                #generate a random index between 0 and self._n_batches
+                idx = torch.randint(self._n_batches,(1,)).item()
+                post_zetas = self.p_zetas_pcd_chains[idx,:,:].to(post_zetas.device)
+                
 
         p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_cond(post_zetas[:, :n_nodes_p],
                                              post_zetas[:, n_nodes_p:2*n_nodes_p],
                                              post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
-                                             post_zetas[:, 3*n_nodes_p:], method=rbmMethod)
+                                             post_zetas[:, 3*n_nodes_p:], method='CD')
+        
+        if rbmMethod == "PCD":
+            if self._chain==False:
+                ps = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1).to('cpu')
+                self.p_zetas_pcd_chains = torch.cat([self.p_zetas_pcd_chains, ps.unsqueeze(0)],dim=0)
+                if self.p_zetas_pcd_chains.shape[0] >= self._n_batches:
+                    self._chain = True
+            else:
+                self.p_zetas_pcd_chains[idx,:,:] = torch.cat([p0_state, p1_state, p2_state, p3_state], dim=1).to('cpu') #post_zetas.to('cpu')
 
         post_zetas_gen = torch.cat([p0_state,p1_state,p2_state,p3_state], dim=1)
         data_gen = post_zetas_gen.mean(dim=0)

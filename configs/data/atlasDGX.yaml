@@ -51,3 +51,4 @@ binning_xml_photons: /raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_
 binning_xml_pions: /raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_pions.xml
 
 entity: jtoledo
+std: 3.083174773679047

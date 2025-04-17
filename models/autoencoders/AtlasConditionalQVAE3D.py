@@ -64,7 +64,7 @@ class AtlasConditionalQVAE3D(AtlasConditionalQVAE): #(GumBoltAtlasPRBMCNN): #Atl
         :return: Instance of a PGBS sampler
         """
         return pgbs.PGBS(self.prior, self._config.engine.rbm_batch_size,
-                         n_steps=self._config.engine.n_gibbs_sampling_steps)
+                         n_steps=self._config.engine.n_gibbs_sampling_steps, n_batches=78)
     
     def _create_stat(self):
         """This object contains methods to compute Stat Mech stuff.

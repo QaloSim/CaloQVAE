@@ -40,6 +40,9 @@ class EngineAtlas(EngineCaloV3):
         elif self._config.data.particle == 'electron':
             self.HLF = HLF('electron', filename=self._config.data.binning_xml_electrons)
             self.HLF.relevantLayers = [5,10,15,20,25,30,35,40,44]
+            
+        self.R = self._config.engine.r_param
+        self._std = self._config.data.std
         
     def init_beta_QA(self):
         self.beta_QA = self._config.qpu.init_beta_qa # 4.5
@@ -100,7 +103,7 @@ class EngineAtlas(EngineCaloV3):
         ae_enabled = self._config.engine.ae_enabled
         epoch_anneal_start = self._config.engine.epoch_annealing_start
         total_batches = num_batches*(num_epochs-epoch_anneal_start+1)
-        self.R = self._config.engine.r_param
+        
         # cl_lambda = self._config.engine.cl_lambda
         
         with torch.set_grad_enabled(is_training):
@@ -381,9 +384,9 @@ class EngineAtlas(EngineCaloV3):
         """
         CaloDiff Transformation Scheme
         """
-        ϵ = in_data/true_energy
+        ϵ = in_data/true_energy #*self.e_scale
         x = R + (1-2*R)*ϵ
-        u = torch.log(x*(1-R)/(R*(1-x))) # - torch.log(torch.tensor([R/(1-R)]).to(x.device)) #torch.log(torch.tensor([δ/(1-δ)]))
+        u = torch.log(x*(1-R)/(R*(1-x)))/self._std
         return u
 
         
@@ -392,7 +395,7 @@ class EngineAtlas(EngineCaloV3):
         CaloDiff Transformation Scheme
         """
         
-        x = (torch.sigmoid(in_data + torch.log(torch.tensor([R/(1-R)]).to(in_data.device)) ) - R)/(1-2*R) * true_energy
+        x = (torch.sigmoid(in_data*self._std + torch.log(torch.tensor([R/(1-R)]).to(in_data.device)) ) - R)/(1-2*R) * true_energy 
         x[torch.isclose(x, torch.tensor([0]).to(dtype=x.dtype, device=x.device)) ] = 0.0
         
         return x
