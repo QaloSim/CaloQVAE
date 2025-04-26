@@ -45,6 +45,7 @@ from models.autoencoders.AtlasConditionalQVAE import AtlasConditionalQVAE
 from models.autoencoders.AtlasConditionalQVAEv2 import AtlasConditionalQVAEv2
 from models.autoencoders.AtlasConditionalQVAE3D import AtlasConditionalQVAE3D
 from models.autoencoders.AtlasConditionalQVAE3DHD import AtlasConditionalQVAE3DHD
+from models.autoencoders.AtlasConditionalQVAE3DUNet import AtlasConditionalQVAE3DUNet
 
 _MODEL_DICT={
     "AE": AutoEncoder, 
@@ -76,7 +77,8 @@ _MODEL_DICT={
     "AtlasConditionalQVAE": AtlasConditionalQVAE,
     "AtlasConditionalQVAEv2": AtlasConditionalQVAEv2,
     "AtlasConditionalQVAE3D": AtlasConditionalQVAE3D,
-    "AtlasConditionalQVAE3DHD": AtlasConditionalQVAE3DHD
+    "AtlasConditionalQVAE3DHD": AtlasConditionalQVAE3DHD,
+    "AtlasConditionalQVAE3DUNet": AtlasConditionalQVAE3DUNet
 }
 
 class ModelCreator(object):

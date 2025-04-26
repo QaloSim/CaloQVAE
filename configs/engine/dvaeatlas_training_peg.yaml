@@ -1,7 +1,7 @@
 _target_: engine.engineAtlas.EngineAtlas
 learning_rate: 0.0001
-weight_decay: 0.001
-n_epochs: 150
+weight_decay: 0.0
+n_epochs: 300
 
 kl_enabled: 1
 ae_enabled: 1
@@ -10,8 +10,8 @@ kl_annealing_ratio: 0.3
 kl_gamma_max: 1.0
 epoch_annealing_start: 0
 annealing_percentage: 0.3
-epoch_annealing_end: 50
-epoch_freeze: 100
+epoch_annealing_end: 200
+epoch_freeze: 250
 # r_param : 0.0020
 r_param : 0.0000001
 # r_param : 0.00004

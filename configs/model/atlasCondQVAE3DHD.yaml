@@ -18,15 +18,16 @@ encoder_hidden_nodes:
 # n_latent_nodes: 512
 #for PB
 n_latent_hierarchy_lvls: 3
+n_layers_per_subdec: 15
 # n_latent_nodes: 512
 # n_latent_nodes_per_p: 512
 n_latent_nodes: 302
 n_latent_nodes_per_p: 302
 
-encodertype: SmallPB3Dv2
+encodertype: SmallPB3Dv3
 #Large, Small, SmallUnconditioned, SmallPosEnc
-decodertype: SmallPBHEv1
-# Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
+decodertype: SmallPBHDMIRRORv1
+# Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits, SmallPBHEv1
 
 encoder_pb_hierarchy: 0
 encoder_pb_hierarchy_bin: 1
@@ -44,4 +45,4 @@ rbmMethod: CD
 bool_bp_pos_energy: True
 th_bp_pos_energy: 0.0
 dec_noise_std: 0.0
-drop_out: 0.2
+drop_out: 0.0

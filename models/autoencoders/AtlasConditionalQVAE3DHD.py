@@ -23,7 +23,7 @@ from CaloQVAE.models.rbm import pegasusRBM, zephyrRBM
 from CaloQVAE.models.samplers import pgbs
 
 from models.networks.EncoderCond import EncoderHierarchyPB_BinEv2
-from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2
+from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2, DecoderCNNPB3Dv3, DecoderCNNPBHD_MIRRORv1
 
 import time
 
@@ -146,6 +146,16 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallPB3Dv2":
             return DecoderCNNPB_HEv1(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3Dv3":
+            return DecoderCNNPB_HEv1(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPBHDMIRRORv1":
+            return DecoderCNNPBHD_MIRRORv1(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
@@ -552,7 +562,7 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         self.prior_samples = prior_samples
             
         # output_hits, output_activations = self.decoder(prior_samples)
-        output_hits, output_activations = self.decoder(prior_samples, true_e)
+        output_hits, output_activations = self.decoder(prior_samples, true_e, self.act_fct_slope, self.x_raw)
         beta = torch.tensor(self._config.model.beta_smoothing_fct, dtype=torch.float, device=output_hits.device, requires_grad=False)
         # if self._config.engine.modelhits:
         sample = self._inference_energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, False)

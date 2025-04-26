@@ -150,24 +150,41 @@ class EngineAtlas(EngineCaloV3):
                     batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
                     
-                    batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"] 
-
+                    batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
+                    batch_loss_dict["ah_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
+                    
+                    if 'exact_rbm_grad' in self._config.keys() and self._config.exact_rbm_grad:
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + batch_loss_dict["hit_loss"] + kl_gamma*batch_loss_dict["pos_energy"]
+                        if self._config.rbm_grad_centered:
+                            self.model.sampler.gradient_rbm_centered(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
+                        else:
+                            self.model.sampler.gradient_rbm(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
+                        self.model.sampler.update_params()
+                        batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
+                        try:
+                            batch_loss_dict["loss"].backward()
+                        except:
+                            pass
+                    else:
+                        batch_loss_dict["loss"] = ae_gamma*batch_loss_dict["ae_loss"] + kl_gamma*batch_loss_dict["entropy"] + kl_gamma*batch_loss_dict["pos_energy"] + kl_gamma*batch_loss_dict["neg_energy"] + batch_loss_dict["hit_loss"]
+                        batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
+                        batch_loss_dict["loss"].backward()
+                        
                     
                     
-                    batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
-                    batch_loss_dict["loss"].backward()
                     
                     self._optimiser.step()
                     # Trying this to free up memory on the GPU and run validation during a training epoch
                     # - hopefully backprop will work with the code above - didn't work
                     # batch_loss_dict["loss"].detach()
+                    # if batch_loss_dict["ahep_loss"] < -10:
+                        # self.model._config.model.bool_bp_pos_energy = False
                 else:
                     batch_loss_dict["gamma"] = 1.0
                     batch_loss_dict["epoch"] = epoch
                     
                     batch_loss_dict["loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["kl_loss"] + batch_loss_dict["hit_loss"]
-                    batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
-                    batch_loss_dict["ah_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
+                    
                     
                     for key, value in batch_loss_dict.items():
                         try:
@@ -205,7 +222,7 @@ class EngineAtlas(EngineCaloV3):
                             in_data = torch.tensor(self._data_mgr.inv_transform(in_data.detach().cpu().numpy()))
                             recon_data = torch.tensor(self._data_mgr.inv_transform(fwd_output.output_activations.detach().cpu().numpy()))
                             self._model.sampler._batch_size = true_energy.shape[0]
-                            sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            sample_energies, sample_data = self._model.generate_samples_cond(num_samples=true_energy.shape[0], true_energy=true_energy)
                             
                             if self._config.qpu.val_w_qpu and batch_idx == 0 and mode == "validate" and False:
                                 try:
@@ -229,7 +246,8 @@ class EngineAtlas(EngineCaloV3):
                             in_data = self._reduceinv(in_data, true_energy, R=self.R)
                             recon_data = self._reduceinv(fwd_output.output_activations, true_energy, R=self.R)
                             self._model.sampler._batch_size = true_energy.shape[0]
-                            sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            # sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+                            sample_energies, sample_data = self._model.generate_samples_cond(num_samples=true_energy.shape[0], true_energy=true_energy)
                             self._model.sampler._batch_size = self._config.engine.rbm_batch_size
                             # sample_energies, sample_data = self._model.generate_samples()
                             # if self._config.usinglayers:
@@ -304,12 +322,7 @@ class EngineAtlas(EngineCaloV3):
                                                                   self._config.data.data_type,
                                                                   self._config.tag, f'best'])
                         self._model_creator.save_state(config_string)
-
-                    # Disconnect pos_energy back prop to encoder (one and done -> False)
-                    if valid_loss_dict["ae_loss"] + valid_loss_dict["hit_loss"] + valid_loss_dict["entropy"] + valid_loss_dict["pos_energy"] < self.model._config.model.th_bp_pos_energy:
-                        self.model._config.model.bool_bp_pos_energy = False
-                    # else:
-                    #     self.model._config.model.bool_bp_pos_energy = True
+                        
                         
         if not is_training:
             val_loss_dict = {**val_loss_dict, **self._hist_handler.get_hist_images(), **self._hist_handler.get_scatter_plots()}
@@ -337,6 +350,7 @@ class EngineAtlas(EngineCaloV3):
             val_loss_dict["RBM energy"] = rbm_energy_hist
             config_string = f'RBM_{epoch}_{batch_idx}'
             encoded_data_energy = self._energy_encoded_data()
+            # if epoch % 500 == 0:
             self._model_creator.save_RBM_state(config_string, encoded_data_energy)
                     
             wandb.log(val_loss_dict)
@@ -369,7 +383,7 @@ class EngineAtlas(EngineCaloV3):
         """
         ϵ = in_data/true_energy
         x = R + (1-2*R)*ϵ
-        u = torch.log(x/(1-x)) - torch.log(torch.tensor([R/(1-R)]).to(x.device)) #torch.log(torch.tensor([δ/(1-δ)]))
+        u = torch.log(x*(1-R)/(R*(1-x))) # - torch.log(torch.tensor([R/(1-R)]).to(x.device)) #torch.log(torch.tensor([δ/(1-δ)]))
         return u
 
         
@@ -382,7 +396,6 @@ class EngineAtlas(EngineCaloV3):
         x[torch.isclose(x, torch.tensor([0]).to(dtype=x.dtype, device=x.device)) ] = 0.0
         
         return x
-
     
     def _update_histograms(self, in_data, output_activations, true_energy):
         """
@@ -390,7 +403,7 @@ class EngineAtlas(EngineCaloV3):
         """
         # Samples with uniformly distributed energies - [0, 100]
         self._model.sampler._batch_size = true_energy.shape[0]
-        sample_energies, sample_data = self._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy)
+        sample_energies, sample_data = self._model.generate_samples_cond(num_samples=true_energy.shape[0], true_energy=true_energy)
         
         if self._config.qpu.val_w_qpu:
             try:

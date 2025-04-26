@@ -138,11 +138,20 @@ def run(config=None):
     engine.device=dev    
     #instantiate and register optimisation algorithm
     engine.optimiser = torch.optim.Adam(model.parameters(),
-                                        lr=config.engine.learning_rate, weight_decay=config.engine.weight_decay)
+                                        lr=config.engine.learning_rate)
     #add the model instance to the engine namespace
     engine.model = model
     # add the modelCreator instance to engine namespace
     engine.model_creator = modelCreator
+    if 'discriminator' in engine._config.engine.keys() and engine._config.engine.discriminator:
+        engine.critic.to(dev)
+        engine.critic_2.to(dev)
+    
+    if 'exact_rbm_grad' in config.keys() and config.exact_rbm_grad:
+        for name, param in engine.model.named_parameters():
+            if 'prior' in name:
+                param.requires_grad = False
+            print(name, param.requires_grad)
 
     _epoch = 0
     dummy_variable = 0
@@ -152,7 +161,7 @@ def run(config=None):
         modelCreator.load_state(config.run_path, dev)
         # _epoch = get_epochs(config.run_path)
         # temp solution to get total number of epochs this model has been trained on
-        fn = create_filenames_dict(config.run_path)
+        fn = create_filenames_dict(config.run_path, config.data.entity)
         _epoch = fn["size"]
         # if config.freeze_vae:
         #     for name, param in engine.model.named_parameters():
@@ -177,16 +186,21 @@ def run(config=None):
                 dummy_variable = 1
                 
         if "train" in config.task:
+            engine.model.train()
             engine.fit(epoch=epoch, is_training=True, mode="train")
 
         if "validate" in config.task:
-            engine.fit(epoch=epoch, is_training=False, mode="validate")
+            engine.model.eval()
+            with torch.no_grad():
+                engine.fit(epoch=epoch, is_training=False, mode="validate")
             
         if epoch % 10 == 0:
             engine._save_model(name=str(epoch))
 
     if "test" in config.task:
-        engine.fit(epoch=epoch, is_training=False, mode="test")
+        engine.model.eval()
+        with torch.no_grad():
+            engine.fit(epoch=epoch, is_training=False, mode="test")
 
     if config.save_state:
         config_string = "_".join(str(i) for i in [config.model.model_type, 
@@ -199,7 +213,7 @@ def run(config=None):
                                                   config.data.data_type,
                                                   config.tag, "latest"])
         run_path = os.path.join(wandb.run.dir, "{0}.pth".format(config_string))
-        lnZais_list, lnZrais_list, en_encoded_list = get_Zs(run_path, engine, dev, 10)
+        lnZais_list, lnZrais_list, en_encoded_list = get_Zs(run_path, engine, dev, 10, config.data.entity)
         save_plot(lnZais_list, lnZrais_list, en_encoded_list, run_path)
 
     logger.info("run() finished successfully.")

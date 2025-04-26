@@ -21,14 +21,18 @@ wandb_enabled: 1
 
 # zephyr-luian1
 # robust-serenity-216
-run_path: "/home/luian1/CaloQVAE/outputs_sym/wandb/run-20240716_092439-ja6l8prq/files/AtlasConditionalQVAE3D_atlas_default_latest.pth"
+# run_path: "/home/luian1/CaloQVAE/outputs_sym/wandb/run-20240716_092439-ja6l8prq/files/AtlasConditionalQVAE3D_atlas_default_latest.pth"
+
+# zephyr-luian1
+# royal-thunuder-232
+# run_path: "/home/luian1/CaloQVAE/outputs_sym/wandb/run-20240722_235537-ws2su3jq/files/AtlasConditionalQVAE3DHD_atlas_default_latest.pth"
 
 
 output_path: /fast_scratch_1/luian1/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 2
+  - 0
 
 task:
   - train
@@ -36,7 +40,7 @@ task:
   - test
 
 defaults:
-  - model: atlasCondQVAE3D
+  - model: atlasCondQVAE3DHD
   - data: atlasML2
   - engine: dvaeatlas_training_peg
   - qpu: peggy
@@ -58,3 +62,5 @@ defaults:
 # engine: atlasPeggyBeta
 usinglayers: False
 reducedata: True
+exact_rbm_grad : True
+rbm_grad_centered : True

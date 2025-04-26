@@ -184,3 +184,77 @@ class PGBS:
         :return batch_size of the BGS samples
         """
         return self._batch_size
+    
+    def gradient_rbm(self, post_samples, n_nodes_p, rbmMethod):
+        #Gen data for gradient
+        post_zetas = torch.cat(post_samples, 1)
+        data_mean = post_zetas.mean(dim=0)
+        torch.clamp_(data_mean, min=1e-4, max=(1. - 1e-4))
+        vh_data_mean = (post_zetas.transpose(0,1) @ post_zetas) / post_zetas.size(0)
+
+        p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_cond(post_zetas[:, :n_nodes_p],
+                                             post_zetas[:, n_nodes_p:2*n_nodes_p],
+                                             post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
+                                             post_zetas[:, 3*n_nodes_p:], method=rbmMethod)
+
+        post_zetas_gen = torch.cat([p0_state,p1_state,p2_state,p3_state], dim=1)
+        data_gen = post_zetas_gen.mean(dim=0)
+        torch.clamp_(data_gen, min=1e-4, max=(1. - 1e-4));
+        vh_gen_mean = (post_zetas_gen.transpose(0,1) @ post_zetas_gen) / post_zetas_gen.size(0)
+        
+        # compute gradient
+        self.grad = {"bias": {}, "weight":{}}
+        for i in range(4):
+            self.grad["bias"][str(i)] = data_mean[n_nodes_p*i:n_nodes_p*(i+1)] - data_gen[n_nodes_p*i:n_nodes_p*(i+1)]
+            
+        for i in range(3):
+            for j in [0,1,2,3]:
+                if j > i:
+                    self.grad["weight"][str(i)+str(j)] = (vh_data_mean[n_nodes_p*i:n_nodes_p*(i+1),n_nodes_p*j:n_nodes_p*(j+1)] - vh_gen_mean[n_nodes_p*i:n_nodes_p*(i+1),n_nodes_p*j:n_nodes_p*(j+1)]) * self._prbm._weight_mask_dict[str(i)+str(j)]
+
+        # for i in range(3):
+        #     for j in [0,1,2,3]:
+        #         if j > i:
+        #             self.grad["weight"][str(i)+str(j)] = (data_mean[n_nodes_p*i:n_nodes_p*(i+1)].unsqueeze(1) @ data_mean[n_nodes_p*j:n_nodes_p*(j+1)].unsqueeze(0) - data_gen[n_nodes_p*i:n_nodes_p*(i+1)].unsqueeze(1) @ data_gen[n_nodes_p*j:n_nodes_p*(j+1)].unsqueeze(0)) * self._prbm._weight_mask_dict[str(i)+str(j)]
+
+    def gradient_rbm_centered(self, post_samples, n_nodes_p, rbmMethod):
+        #Gen data for gradient
+        post_zetas = torch.cat(post_samples, 1)
+        data_mean = post_zetas.mean(dim=0)
+        torch.clamp_(data_mean, min=1e-4, max=(1. - 1e-4))
+        vh_data_cov = torch.cov(post_zetas.T)
+
+        p0_state, p1_state, p2_state, p3_state = self.block_gibbs_sampling_cond(post_zetas[:, :n_nodes_p],
+                                             post_zetas[:, n_nodes_p:2*n_nodes_p],
+                                             post_zetas[:, 2*n_nodes_p:3*n_nodes_p],
+                                             post_zetas[:, 3*n_nodes_p:], method=rbmMethod)
+
+        post_zetas_gen = torch.cat([p0_state,p1_state,p2_state,p3_state], dim=1)
+        data_gen = post_zetas_gen.mean(dim=0)
+        torch.clamp_(data_gen, min=1e-4, max=(1. - 1e-4));
+        vh_gen_cov = torch.cov(post_zetas_gen.T)
+
+        # compute gradient
+        self.grad = {"bias": {}, "weight":{}}
+        for i in range(3):
+            for j in [0,1,2,3]:
+                if j > i:
+                    self.grad["weight"][str(i)+str(j)] = (vh_data_cov[n_nodes_p*i:n_nodes_p*(i+1),n_nodes_p*j:n_nodes_p*(j+1)] - vh_gen_cov[n_nodes_p*i:n_nodes_p*(i+1),n_nodes_p*j:n_nodes_p*(j+1)]) * self._prbm._weight_mask_dict[str(i)+str(j)]
+                    
+        
+        for i in range(4):
+            self.grad["bias"][str(i)] = data_mean[n_nodes_p*i:n_nodes_p*(i+1)] - data_gen[n_nodes_p*i:n_nodes_p*(i+1)]
+            for j in range(4):
+                if j > i:
+                    self.grad["bias"][str(i)] = self.grad["bias"][str(i)] - 0.5 * torch.matmul(self.grad["weight"][str(i)+str(j)], (data_mean[n_nodes_p*j:n_nodes_p*(j+1)] + data_gen[n_nodes_p*j:n_nodes_p*(j+1)]))
+                elif j < i:
+                    self.grad["bias"][str(i)] = self.grad["bias"][str(i)] - 0.5 * torch.matmul(self.grad["weight"][str(j)+str(i)].T , (data_mean[n_nodes_p*j:n_nodes_p*(j+1)] + data_gen[n_nodes_p*j:n_nodes_p*(j+1)]))
+    
+    def update_params(self, lr=0.01):
+        for i in range(4):
+            self._prbm.bias_dict[str(i)] = self._prbm.bias_dict[str(i)] + lr * self.grad["bias"][str(i)]
+
+        for i in range(3):
+            for j in [0,1,2,3]:
+                if j > i:
+                    self._prbm.weight_dict[str(i)+str(j)] = self._prbm.weight_dict[str(i)+str(j)] + lr * self.grad["weight"][str(i)+str(j)]

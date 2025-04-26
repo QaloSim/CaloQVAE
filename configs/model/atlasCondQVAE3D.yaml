@@ -18,12 +18,14 @@ encoder_hidden_nodes:
 # n_latent_nodes: 512
 #for PB
 n_latent_hierarchy_lvls: 3
+# n_latent_nodes: 1024
+# n_latent_nodes_per_p: 1024
 # n_latent_nodes: 512
 # n_latent_nodes_per_p: 512
 n_latent_nodes: 302
 n_latent_nodes_per_p: 302
 
-encodertype: SmallPB3Dv2
+encodertype: SmallPB3Dv3
 #Large, Small, SmallUnconditioned, SmallPosEnc
 decodertype: SmallPB3Dv2
 # Small, SmallUnconditioned, SmallPosEnc, SmallUnconditionedAct, SmallHitsToAct, SmallCharm, SmallUnconditionedHits
@@ -36,8 +38,16 @@ fullyconnected: False
 topology: zephyr
 alpha: 0.0
 gamma: 0.0
+
+# weighted_ae_loss: True
+# pos_mse_weight: 0.8
+# neg_mse_weight: 0.01
+# coefficient: 0.0001
+
 mse_weight: 0.5
 coefficient: 0.01
 interpolation_param: 1.0
 bce_weights_power: 0.0
 rbmMethod: CD
+bool_bp_pos_energy: True
+dropout_prob: 0.0
