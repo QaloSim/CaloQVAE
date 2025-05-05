@@ -10,20 +10,15 @@ freeze_vae: 1
 
 wandb_enabled: 1
 
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-19/02-13-29/wandb/run-20250119_021330-vj9yai2u/files/AtlasConditionalQVAE3D_atlas_default_200.pth"
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-19/02-12-57/wandb/run-20250119_021258-4tg1wl7s/files/AtlasConditionalQVAE3D_atlas_default_200.pth"
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-18/22-03-41/wandb/run-20241218_220342-nqwgiewh/files/AtlasConditionalQVAE3D_atlas_default_200.pth"
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-19/02-13-29/wandb/run-20250121_132020-vj9yai2u/files/AtlasConditionalQVAE3D_atlas_default_450.pth"
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2024-12-18/22-03-41/wandb/run-20250121_132833-nqwgiewh/files/AtlasConditionalQVAE3D_atlas_default_330.pth"
-# run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-01-24/17-42-08/wandb/run-20250124_174209-cktk5qod/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-04-09/18-29-20/wandb/run-20250409_182921-26napvo7/files/AtlasConditionalQVAE3D_atlas_default_230.pth"
+
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-04-26/20-59-35/wandb/run-20250426_205936-a7l6engz/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 0
+  - 1
 
 task:
   - train
@@ -31,10 +26,12 @@ task:
   - test
 
 defaults:
-  - model: atlasCondQVAE3D
+  # - model: atlasCondQVAE3D
+  - model: atlasCondQVAE3DHD
   - data: atlasDGX
   - engine: dvaeatlas_training_peg
   - qpu: peggy
+
 
 # model: gumboltatlascrbmcnndcond
 # model: gumboltatlascrbmfcn
