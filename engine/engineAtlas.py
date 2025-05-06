@@ -22,6 +22,7 @@ from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 from utils.plotting.HighLevelFeatures import HighLevelFeatures as HLF
+from utils.plotting.HighLevelFeatsAtlasReg import HighLevelFeatures_ATLAS_regular as HLF2
 # HLF_1_photons = HLF('photon', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_photons.xml')
 # HLF_1_pions = HLF('pion', filename='/raid/javier/Datasets/CaloVAE/data/atlas/binning_dataset_1_pions.xml')
 
@@ -40,6 +41,9 @@ class EngineAtlas(EngineCaloV3):
         elif self._config.data.particle == 'electron':
             self.HLF = HLF('electron', filename=self._config.data.binning_xml_electrons)
             self.HLF.relevantLayers = [5,10,15,20,25,30,35,40,44]
+        elif self._config.data.particle == 'electron2':
+            self.HLF = HLF2('electron2', filename=self._config.data.binning_atlas_reg)
+            self.HLF.relevantLayers = [0,1,2,3,12,13,14]
             
         self.R = self._config.engine.r_param
         self._std = self._config.data.std
