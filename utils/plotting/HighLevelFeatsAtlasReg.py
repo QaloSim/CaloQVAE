@@ -125,7 +125,7 @@ class HighLevelFeatures_ATLAS_regular:
             ax.set_title(title, fontsize=15)
 
     def DrawSingleShower(self, data, filename=None, title=None, scale='equal_bin',
-                         vmin=1e-6, vmax=1e2, cmap='rainbow'):
+                         vmin=1e-4, vmax=1e4, cmap='rainbow'):
         """
         Plot all specified layers of the calorimeter for the given event in a composite figure.
 

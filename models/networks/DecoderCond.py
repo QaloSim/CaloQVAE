@@ -559,7 +559,7 @@ class DecoderCNNPB3Dv3Reg(BasicDecoderV3): #use this one
                    nn.PReLU(64, 0.02),
 
                    PeriodicConvTranspose3d(64, 1, (2,2,3), (1,1,2), 1),
-                   nn.BatchNorm3d(1),
+                   # nn.BatchNorm3d(1),
                    # self.dropout,
                    nn.PReLU(1, 1.0),
 
@@ -575,7 +575,7 @@ class DecoderCNNPB3Dv3Reg(BasicDecoderV3): #use this one
                    nn.PReLU(64, 0.02),
 
                    PeriodicConvTranspose3d(64, 1, (2,2,3), (1,1,2), 1),
-                   nn.BatchNorm3d(1),
+                   # nn.BatchNorm3d(1),
                    # self.dropout,
                    nn.PReLU(1, 0.02),
 
