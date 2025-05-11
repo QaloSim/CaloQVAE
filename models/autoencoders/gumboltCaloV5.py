@@ -7,7 +7,7 @@ Author : Abhi (abhishek@myumanitoba.ca)
 
 # Torch imports
 import torch
-from torch.nn import ReLU, MSELoss, BCEWithLogitsLoss, L1Loss, Sigmoid
+from torch.nn import ReLU, MSELoss, BCEWithLogitsLoss, L1Loss, Sigmoid, LeakyReLU
 from torch.nn.functional import binary_cross_entropy_with_logits
 
 # DiVAE.models imports
@@ -18,6 +18,8 @@ from models.networks.hierarchicalEncoder import HierarchicalEncoder
 # DiVAE.utils imports
 from utils.dists.gumbelmod import GumbelMod
 
+from models.samplers.GibbsSampling import GS
+
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
@@ -26,14 +28,27 @@ class GumBoltCaloV5(GumBolt):
     def __init__(self, **kwargs):
         super(GumBoltCaloV5, self).__init__(**kwargs)
         self._model_type = "GumBoltCaloV5"
-        self._energy_activation_fct = ReLU()
+        self._energy_activation_fct = LeakyReLU(0.02)
         self._hit_activation_fct = Sigmoid()
         self._output_loss = MSELoss(reduction="none")
         self._hit_loss = BCEWithLogitsLoss(reduction="none")
         
         self._hit_smoothing_dist_mod = GumbelMod()
         
-    def forward(self, x, is_training):
+    def _create_sampler(self, rbm=None):
+        """
+        - Overrides _create_sampler in discreteVAE.py
+        
+        Returns:
+            Gibbs Sampler
+        """
+        logger.debug("GumBoltCaloCRBM::_create_sampler")
+        return GS(batch_size=self._config.engine.rbm_batch_size,
+                   RBM=self.prior,
+                   n_gibbs_sampling_steps\
+                       =self._config.engine.n_gibbs_sampling_steps)
+        
+    def forward(self, x, is_training, beta_smoothing_fct=5):
         """
         - Overrides forward in dvaepp.py
         
@@ -47,7 +62,7 @@ class GumBoltCaloV5(GumBolt):
         
 	    #Step 1: Feed data through encoder
         in_data = torch.cat([x[0], x[1]], dim=1)
-        out.beta, out.post_logits, out.post_samples = self.encoder(in_data, is_training)
+        out.beta, out.post_logits, out.post_samples = self.encoder(in_data, is_training, beta_smoothing_fct)
         post_samples = torch.cat(out.post_samples, 1)
         post_samples = torch.cat([post_samples, x[1]], dim=1)
         
@@ -58,7 +73,7 @@ class GumBoltCaloV5(GumBolt):
         out.output_activations = self._energy_activation_fct(output_activations) * self._hit_smoothing_dist_mod(output_hits, beta, is_training)
         return out
     
-    def loss(self, input_data, fwd_out):
+    def loss(self, input_data, fwd_out, true_energy=None):
         logger.debug("loss")
         
         kl_loss, entropy, pos_energy, neg_energy = self.kl_divergence(fwd_out.post_logits, fwd_out.post_samples)
@@ -72,11 +87,12 @@ class GumBoltCaloV5(GumBolt):
         
         return {"ae_loss":ae_loss, "kl_loss":kl_loss, "hit_loss":hit_loss,
                 "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
-    
+        
     def generate_samples(self, num_samples=64, true_energy=None):
         """
         generate_samples()
         """
+        # self.sampler._batch_size = num_samples   #< JQTM
         true_energies = []
         num_iterations = max(num_samples//self.sampler.get_batch_size(), 1)
         samples = []
@@ -89,6 +105,7 @@ class GumBoltCaloV5(GumBolt):
                 true_e = torch.rand((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * 100.
             else:
                 true_e = torch.ones((rbm_vis.size(0), 1), device=rbm_vis.device).detach() * true_energy
+                # true_e = true_energy
             prior_samples = torch.cat([rbm_vis, rbm_hid, true_e], dim=1)
             
             output_hits, output_activations = self.decoder(prior_samples)

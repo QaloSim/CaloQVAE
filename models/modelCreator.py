@@ -34,6 +34,17 @@ from models.autoencoders.gumboltCaloV7 import GumBoltCaloV7
 from models.autoencoders.gumboltCaloCRBM import GumBoltCaloCRBM
 from models.autoencoders.gumboltCaloPRBM import GumBoltCaloPRBM
 from models.autoencoders.atlasVAE import ATLASVAE
+from models.autoencoders.gumboltAtlasCRBMCNN import GumBoltAtlasCRBMCNN
+from models.autoencoders.gumboltAtlasPRBMCNN import GumBoltAtlasPRBMCNN
+from models.autoencoders.gumboltAtlasPRBMFCN import GumBoltAtlasPRBMFCN
+from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
+from models.autoencoders.gumboltAtlasCRBMCNNV2 import GumBoltAtlasCRBMCNNV2
+from models.autoencoders.gumboltAtlasPRBMCNN_nohits import GumBoltAtlasPRBMCNNnohits
+from models.autoencoders.gumboltAtlasPRBMCNN_nohits import GumBoltAtlasPRBMCNNnohits
+from models.autoencoders.AtlasConditionalQVAE import AtlasConditionalQVAE
+from models.autoencoders.AtlasConditionalQVAE3D import AtlasConditionalQVAE3D
+from models.autoencoders.AtlasConditionalQVAE3Db import AtlasConditionalQVAE3Db
+from models.autoencoders.AtlasConditionalQVAE3DHD import AtlasConditionalQVAE3DHD
 
 _MODEL_DICT={
     "AE": AutoEncoder, 
@@ -55,7 +66,17 @@ _MODEL_DICT={
     "GumBoltCaloV7": GumBoltCaloV7,
     "GumBoltCaloCRBM": GumBoltCaloCRBM,
     "GumBoltCaloPRBM": GumBoltCaloPRBM,
-    "ATLASVAE": ATLASVAE
+    "ATLASVAE": ATLASVAE,
+    "GumBoltAtlasCRBMCNN": GumBoltAtlasCRBMCNN,
+    "GumBoltAtlasPRBMCNN": GumBoltAtlasPRBMCNN,
+    "GumBoltAtlasPRBMFCN": GumBoltAtlasPRBMFCN,
+    "GumBoltAtlasCRBMCNNDCond": GumBoltAtlasCRBMCNNDCond,
+    "GumBoltAtlasCRBMCNNV2": GumBoltAtlasCRBMCNNV2,
+    "GumBoltAtlasPRBMCNNnohits": GumBoltAtlasPRBMCNNnohits,
+    "AtlasConditionalQVAE": AtlasConditionalQVAE,
+    "AtlasConditionalQVAE3D": AtlasConditionalQVAE3D,
+    "AtlasConditionalQVAE3Db": AtlasConditionalQVAE3Db,
+    "AtlasConditionalQVAE3DHD": AtlasConditionalQVAE3DHD,
 }
 
 class ModelCreator(object):
@@ -75,8 +96,8 @@ class ModelCreator(object):
                 #TODO change init arguments. Ideally, the model does not carry
                 #specific information about the dataset. 
                 self.model = model_class(
-                    flat_input_size=dataMgr.get_flat_input_size(),
-                    train_ds_mean=dataMgr.get_train_dataset_mean(),
+                    flat_input_size=[dataMgr.get_flat_input_size()],
+                    train_ds_mean=10, #dataMgr.get_train_dataset_mean(),
                     activation_fct=self._default_activation_fct,
                     cfg=self._config)
                 
@@ -112,6 +133,20 @@ class ModelCreator(object):
         # Save the model parameter dict
         torch.save(state_dict, path)
         
+    def save_RBM_state(self, cfg_string='test', encoded_data_energy=None):
+        logger.info("Saving RBM state")
+        if not os.path.exists(os.path.join(wandb.run.dir, "RBM")):
+            # Create the directory
+            os.makedirs(os.path.join(wandb.run.dir, "RBM"))
+        pathW = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_weights'))
+        pathB = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_biases'))
+        pathE = os.path.join(wandb.run.dir, "RBM", "{0}.pth".format(cfg_string + '_EncEn'))
+        
+        # Save the dictionary to a file
+        torch.save(self._model.prior._weight_dict, pathW)
+        torch.save(self._model.prior._bias_dict, pathB)
+        torch.save(encoded_data_energy, pathE)
+        
     def load_state(self, run_path, device):
         logger.info("Loading state")
         model_loc = run_path
@@ -128,6 +163,14 @@ class ModelCreator(object):
                 if module in local_module_keys:
                     print("Loading weights for module = ", module)
                     getattr(self._model, module).load_state_dict(checkpoint[module])
+                    
+    def load_RBM_state(self, run_path, device):
+        logger.info("Loading RBM state")
+        model_loc = run_path
+        # Load the dictionary with all tensors mapped to the CPU
+        loaded_dict = torch.load(model_loc, map_location=device)
+        return loaded_dict
+
 
 if __name__=="__main__":
     logger.info("Willkommen!")

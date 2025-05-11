@@ -1,4 +1,4 @@
 
 _target_: models.samplers.pcd.PCD
-n_gibbs_sampling_steps: 40
+n_gibbs_sampling_steps: 100
 batch_size: 32

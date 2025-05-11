@@ -159,7 +159,9 @@ class EngineCaloV3(Engine):
                             input_images.append(input_image)
                             recon_images.append(recon_image)
                             sample_images.append(sample_image)
-                        
+
+#                         logger.info(input_images[0].shape)
+
                         batch_loss_dict["input"] = plot_calo_images(input_images)
                         batch_loss_dict["recon"] = plot_calo_images(recon_images)
                         batch_loss_dict["sample"] = plot_calo_images(sample_images)
@@ -218,6 +220,7 @@ class EngineCaloV3(Engine):
         true_energy = true_energy.to(self._device).float()
         
         return in_data, true_energy, in_data_flat
+#         return torch.log1p((in_data/true_energy)/0.04), true_energy, in_data_flat #<------JQTM: log(1+reduced_energy/R) w/ R=0.05 for photons
     
     def _update_histograms(self, in_data, output_activations):
         """

@@ -1,0 +1,24 @@
+tag: default
+debug: False
+load_data_from_pkl: 0
+
+save_state: 1
+load_state: 0
+save_hists: 1
+
+wandb_enabled: 1
+
+output_path: /fast_scratch_1/jtoledo/outputs
+device: gpu
+gpu_list:
+  - 3
+
+task:
+  - train
+  - validate
+  - test
+
+defaults:
+  - model: gumboltcalocrbm
+  - data: atlas
+  - engine: dvaecalo_training

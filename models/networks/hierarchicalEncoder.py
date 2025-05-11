@@ -134,7 +134,7 @@ class HierarchicalEncoder(BasicEncoder):
             
         return posterior, post_samples
 
-    def forward(self, x, is_training=True):
+    def forward(self, x, is_training=True, beta_smoothing_fct=5):
         """ This function defines a hierarchical approximate posterior distribution. The length of the output is equal 
             to n_latent_hierarchy_lvls and each element in the list is a DistUtil object containing posterior distribution 
             for the group of latent nodes in each hierarchy level. 
@@ -167,9 +167,12 @@ class HierarchicalEncoder(BasicEncoder):
             post_logits.append(logits)
             
             # Scalar tensor - device doesn't matter but made explicit
-            beta = torch.tensor(self._config.model.beta_smoothing_fct,
-                                dtype=torch.float, device=logits.device,
-                                requires_grad=False)
+            # beta = torch.tensor(self._config.model.beta_smoothing_fct,
+            #                     dtype=torch.float, device=logits.device,
+            #                     requires_grad=False)
+            beta = torch.tensor(beta_smoothing_fct,
+                            dtype=torch.float, device=logits.device,
+                            requires_grad=False)
             
             samples=self.smoothing_dist_mod(logits, beta, is_training)
             
