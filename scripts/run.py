@@ -186,7 +186,10 @@ def run(config=None):
                 engine._config.model.rbmMethod = "PCD"
                 logger.info(f'RBM will use {engine._config.model.rbmMethod}')
                 dummy_variable = 1
-                
+
+        if config.qpu_training:
+            model.update_QAbeta(True)
+        
         if "train" in config.task:
             engine.model.train()
             engine.fit(epoch=epoch, is_training=True, mode="train")
