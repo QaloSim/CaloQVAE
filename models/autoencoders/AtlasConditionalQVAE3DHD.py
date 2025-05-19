@@ -25,6 +25,8 @@ from CaloQVAE.models.samplers import pgbs
 from models.networks.EncoderCond import EncoderHierarchyPB_BinEv2
 from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2, DecoderCNNPB3Dv3, DecoderCNNPBHD_MIRRORv1
 
+from dwave.system.temperatures import maximum_pseudolikelihood_temperature
+
 import time
 
 from CaloQVAE import logging
@@ -40,6 +42,7 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         super(AtlasConditionalQVAE3DHD, self).__init__(**kwargs)
         self._model_type = "AtlasConditionalQVAE3DHD"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        self._upQAbeta = False
         
     def _create_prior(self):
         """Override _create_prior in GumBoltCaloV6.py
@@ -268,6 +271,8 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         #     return {"ae_loss":ae_loss, "kl_loss":kl_loss,
         #         "entropy":entropy, "pos_energy":pos_energy, "neg_energy":neg_energy}
 
+    def update_QAbeta(self, v: bool):
+        self.upQAbeta = v
     
     def kl_divergence(self, post_logits, post_samples, is_training=True):
         """Overrides kl_divergence in GumBolt.py
@@ -300,17 +305,25 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
                                      ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
                                      ps_pos[:, 3*n_nodes_p:])
 
-        # Compute gradient computation of the logZ term
-        p0_state, p1_state, p2_state, p3_state \
-            = self.sampler.block_gibbs_sampling_cond(ps_pos[:, :n_nodes_p],
-                                     ps_pos[:, n_nodes_p:2*n_nodes_p],
-                                     ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
-                                     ps_pos[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
-        
-        #beta, _, _, _ = self.find_beta()
-        #beta = 7.5
-        #p0_state, p1_state, p2_state, p3_state = self.dwave_sampling(num_samples=self._config.engine.rbm_batch_size, measure_time=False, beta=1.0/beta)
+        if config.qpu_training:
+            # Beta update config per epoch 
+            # if self.upQAbeta:
+            #     beta, _, _, _, _ = self.find_beta()
+            #     self.upQAbeta = False
 
+            
+            T,T_bootstrap =  maximum_pseudolikelihood_temperature(bqm, sampleset)
+            beta = 1/T
+            #beta = 7.5
+            p0_state, p1_state, p2_state, p3_state = self.dwave_sampling(num_samples=self._config.engine.rbm_batch_size, measure_time=False, beta=1.0/beta)
+            
+        else:
+            # Compute gradient computation of the logZ term
+            p0_state, p1_state, p2_state, p3_state \
+                = self.sampler.block_gibbs_sampling_cond(ps_pos[:, :n_nodes_p],
+                                         ps_pos[:, n_nodes_p:2*n_nodes_p],
+                                         ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
+                                         ps_pos[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
         
         # neg_energy = - self.energy_exp(p0_state, p1_state, p2_state, p3_state)
         neg_energy = - self.energy_exp_cond(p0_state, p1_state, p2_state, p3_state)
@@ -318,8 +331,7 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         # Estimate of the kl-divergence
         kl_loss = entropy + pos_energy + neg_energy
         return kl_loss, entropy, pos_energy, neg_energy
-
-    
+        
     def energy_exp_cond(self, p0_state, p1_state, p2_state, p3_state):
         """Energy expectation value under the 4-partite BM
         Overrides energy_exp in gumbolt.py
@@ -445,7 +457,7 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         else:
             response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False)
 
-        dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
+        dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples_cond(response, qubit_idxs)
         # dwave_samples, dwave_energies = response.record['sample'], response.record['energy']
         dwave_samples = torch.tensor(dwave_samples, dtype=torch.float).to(prbm_weights['01'].device)
 
@@ -822,7 +834,7 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
                 J[edge] = dwave_weights_np[wKey][idx_map[partition_edge_1][edge[1]]][idx_map[partition_edge_0][edge[0]]]
         return h, J, qubit_idxs, idx_dict, dwave_weights, dwave_bias
         
-    def find_beta(self, num_reads=128, beta_init=10.0, lr=0.01, num_epochs = 20, delta = 2.0, method = 1, TOL=True, const = 1.0, adaptive = True):
+    def find_beta(self, num_reads=128, beta_init=10, lr=0.01, num_epochs = 20, delta = 4.0, method = 2, TOL=True, const = 1.0, adaptive = True):
         delta_init = delta
         lr_init = lr
         
@@ -851,7 +863,7 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
 
 
             response = self._qpu_sampler.sample_ising(h, J, num_reads=num_reads, auto_scale=False)
-            dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples(response, qubit_idxs)
+            dwave_samples, dwave_energies, origSamples = self.batch_dwave_samples_cond(response, qubit_idxs)
             # dwave_samples, dwave_energies = response.record['sample'], response.record['energy']
 
             nonpl = len(idx_dict['0'])
@@ -887,7 +899,27 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         beta = beta_list[-1]
         # self.sampler._batch_size = sample_size
         return beta, beta_list, rbm_energy_list, dwave_energies_list, thrsh_met
-    
+
+    def DW_find_beta(self, beta_init=10):
+        beta = beta_init
+        _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
+        h, J, qubit_idxs, idx_dict, _, _ = self.ising_model(1.0 / beta)
+        bqm = dimod.BinaryQuadraticModel.from_ising(h, J)
+
+
+        # Obtain raw partitions RBM sampleset
+        p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(ps_pos[:, :n_nodes_p],
+                                         ps_pos[:, n_nodes_p:2*n_nodes_p],
+                                         ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
+                                         ps_pos[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
+        p0_ising = p0_state * 2 - 1
+        p1_ising = p1_state * 2 - 1
+        p2_ising = p2_state * 2 - 1
+        p3_ising = p3_state * 2 - 1
+        rbm_energies = self.ising_energy(p0_ising, p1_ising, p2_ising, p3_ising, dwave_weights_rbm, dwave_bias_rbm)
+        rbm_energies = rbm_energies.detach().cpu().numpy()
+
+        
     def remove_gaps(self, lst):
         # Create a sorted set of the unique elements in the list
         unique_sorted = sorted(set(lst))
@@ -923,6 +955,19 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         dense_matrix = sparse_matrix.to_dense()
         return dense_matrix
     
+    # def batch_dwave_samples_cond(self, response, qubit_idxs):
+    #     """
+    #     This replaces gumboltAtlasCRBMCNN.
+    #     After Hao figured we could use response.record instead of response.data.
+    #     """
+    #     original_list = qubit_idxs
+    #     sequential_qubit_idxs = self.remove_gaps(qubit_idxs)
+    #     dense_matrix = self.create_sparse_matrix(sequential_qubit_idxs)
+        
+    #     batch_samples = torch.mm(dense_matrix, torch.tensor(response).transpose(0,1).float()).transpose(0,1)
+
+    #     return batch_samples.numpy(), 0, 0
+
     def batch_dwave_samples_cond(self, response, qubit_idxs):
         """
         This replaces gumboltAtlasCRBMCNN.
@@ -932,6 +977,17 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         sequential_qubit_idxs = self.remove_gaps(qubit_idxs)
         dense_matrix = self.create_sparse_matrix(sequential_qubit_idxs)
         
-        batch_samples = torch.mm(dense_matrix, torch.tensor(response).transpose(0,1).float()).transpose(0,1)
+        # --- NEW: extract raw samples from the dimod.SampleSet ---
+        # response.record.sample is shape (num_reads, total_qubits)
+        samples_np = response.record.sample.astype(np.float32)
+        
+        # build a torch tensor of shape (num_qubits, num_reads)
+        samples_t = torch.from_numpy(samples_np).transpose(0, 1)
+        
+        # apply your (latent_dim × num_qubits) × (num_qubits × num_reads) matmul
+        bat = torch.mm(dense_matrix, samples_t)
+        
+        # transpose back to (num_reads × latent_dim)
+        batch_samples = bat.transpose(0, 1)
 
         return batch_samples.numpy(), 0, 0

@@ -6,15 +6,15 @@ data_type: atlas
 # dataset: dataset1pion
 _layers: 
   - showers
-# particle_type: electron-ds2
-# z: 45
-# r: 9
-# phi: 16
+particle_type: electron-ds2
+z: 45
+r: 9
+phi: 16
 
-particle_type: atlas_reg2
-z: 7
-r: 24
-phi: 14
+# particle_type: atlas_reg2
+# z: 7
+# r: 24
+# phi: 14
 
 
 dataset: dataset2
@@ -23,8 +23,8 @@ frac_test_dataset: 0.1
 frac_train_dataset: 0.8
 
 # particle: pion
-# particle: electron
-particle: electron2
+particle: electron
+# particle: electron2
 
 scaled: False
 # scaler_path: /raid/javier/Datasets/CaloVAE/data/atlas_scaled/pions1_scaler.gz
