@@ -19,7 +19,7 @@ phi: 14
 
 dataset: dataset2
 
-frac_test_dataset: 0.1
+frac_test_dataset: 0.01
 frac_train_dataset: 0.8
 
 # particle: pion

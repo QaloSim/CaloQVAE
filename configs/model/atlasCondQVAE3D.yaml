@@ -44,8 +44,8 @@ gamma: 0.0
 # neg_mse_weight: 0.01
 # coefficient: 0.0001
 
-mse_weight: 0.5
-coefficient: 0.01
+mse_weight: 0.25
+coefficient: 0.05
 interpolation_param: 1.0
 bce_weights_power: 0.0
 rbmMethod: CD

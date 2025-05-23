@@ -11,14 +11,14 @@ freeze_vae: 1
 wandb_enabled: 1
 
 
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-04-26/20-59-35/wandb/run-20250426_205936-a7l6engz/files/AtlasConditionalQVAE3D_atlas_default_250.pth"
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-05-05/12-28-38/wandb/run-20250505_122838-yxe5n555/files/AtlasConditionalQVAE3DHD_atlas_default_120.pth"
 
 
 output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 2
+  - 4
 
 task:
   - train
