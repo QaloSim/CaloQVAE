@@ -20,6 +20,7 @@ outputs/
 
 # Shell scripts you don’t want versioned
 runIL.sh
+metsIL.sh
 
 ######################
 ##### Manual Additions

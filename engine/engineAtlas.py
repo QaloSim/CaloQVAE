@@ -151,12 +151,16 @@ class EngineAtlas(EngineCaloV3):
                         kl_gamma = 0.
                         
                     ae_gamma = 1. if ae_enabled else 0.
-                        
+
+                    # for beta QA tracking:
+                    if _config.qpu_training:
+                        batch_loss_dict["betaQA"] = self._model._beta
+                    
                     batch_loss_dict["gamma"] = kl_gamma
                     batch_loss_dict["LeakyReLUSlope"] = slope_act_fct
                     batch_loss_dict["beta"] = beta_smoothing_fct
                     batch_loss_dict["epoch"] = gamma*num_epochs
-                    
+
                     batch_loss_dict["ahep_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["entropy"] + batch_loss_dict["pos_energy"] + batch_loss_dict["hit_loss"]
                     batch_loss_dict["ah_loss"] = batch_loss_dict["ae_loss"] + batch_loss_dict["hit_loss"]
                     
@@ -295,13 +299,14 @@ class EngineAtlas(EngineCaloV3):
                         batch_loss_dict["input"] = plot_calo_images(input_images, self.HLF)
                         batch_loss_dict["recon"] = plot_calo_images(recon_images, self.HLF)
                         batch_loss_dict["sample"] = plot_calo_images(sample_images, self.HLF)
-            
                         
                         if not is_training:
                             for key in batch_loss_dict.keys():
                                 if key not in val_loss_dict.keys():
                                     val_loss_dict[key] = batch_loss_dict[key]
-                        
+
+                    
+                    
                     if is_training:
                         wandb.log(batch_loss_dict)
                         if (batch_idx % max((num_batches//100), 1)) == 0:

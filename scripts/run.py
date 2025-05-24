@@ -191,10 +191,14 @@ def run(config=None):
             model.update_QAbeta(True)
         
         if "train" in config.task:
+            if config.qpu_training:
+                model.update_QAbeta(True)
             engine.model.train()
             engine.fit(epoch=epoch, is_training=True, mode="train")
 
         if "validate" in config.task:
+            if config.qpu_training:
+                model.update_QAbeta(True)
             engine.model.eval()
             with torch.no_grad():
                 engine.fit(epoch=epoch, is_training=False, mode="validate")

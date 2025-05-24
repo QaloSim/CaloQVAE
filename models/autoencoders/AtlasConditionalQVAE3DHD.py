@@ -25,7 +25,8 @@ from CaloQVAE.models.samplers import pgbs
 from models.networks.EncoderCond import EncoderHierarchyPB_BinEv2
 from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2, DecoderCNNPB3Dv3, DecoderCNNPBHD_MIRRORv1
 
-from dwave.system.temperatures import maximum_pseudolikelihood_temperature
+import dimod
+from dwave.system.temperatures import maximum_pseudolikelihood_temperature as mple
 
 import time
 
@@ -42,6 +43,7 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         super(AtlasConditionalQVAE3DHD, self).__init__(**kwargs)
         self._model_type = "AtlasConditionalQVAE3DHD"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
+        self._beta = 7.5 
         self._upQAbeta = False
         
     def _create_prior(self):
@@ -287,6 +289,8 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         # Concatenate all hierarchy levels
         logits_q_z = torch.cat(post_logits, 1)
         post_zetas = torch.cat(post_samples, 1)
+        print("post_logits: ", post_logits, "post_samples: ", post_samples)
+        print(logits_q_z.shape, post_zetas.shape)
 
         # Compute cross-entropy b/w post_logits and post_samples
         # entropy = - self._bce_loss(logits_q_z, post_zetas)
@@ -305,17 +309,17 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
                                      ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
                                      ps_pos[:, 3*n_nodes_p:])
 
-        if config.qpu_training:
+        if self._config.qpu_training:
             # Beta update config per epoch 
-            # if self.upQAbeta:
-            #     beta, _, _, _, _ = self.find_beta()
-            #     self.upQAbeta = False
-
+            if self.upQAbeta:
+                self._beta, _, _, _, _ = self.find_beta()
+                # self._beta = self.DW_find_beta(cond = ps_pos[:, :n_nodes_p])
+                self.upQAbeta = False
             
-            T,T_bootstrap =  maximum_pseudolikelihood_temperature(bqm, sampleset)
-            beta = 1/T
+            # T,T_bootstrap =  maximum_pseudolikelihood_temperature(bqm, sampleset)
+            # beta = 1/T
             #beta = 7.5
-            p0_state, p1_state, p2_state, p3_state = self.dwave_sampling(num_samples=self._config.engine.rbm_batch_size, measure_time=False, beta=1.0/beta)
+            p0_state, p1_state, p2_state, p3_state = self.dwave_sampling(num_samples=self._config.engine.rbm_batch_size, measure_time=False, beta=1.0/self._beta)
             
         else:
             # Compute gradient computation of the logZ term
@@ -332,17 +336,52 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         kl_loss = entropy + pos_energy + neg_energy
         return kl_loss, entropy, pos_energy, neg_energy
         
+    # def mmd_loss(self, post_logits, is_training=True):
+    #     if self._config.qpu_training:
+    #         # Beta update config per epoch 
+    #         if self.upQAbeta:
+    #             self._beta, _, _, _, _ = self.find_beta()
+    #             # self._beta = self.DW_find_beta(cond = ps_pos[:, :n_nodes_p])
+    #             self.upQAbeta = False
+            
+    #         # T,T_bootstrap =  maximum_pseudolikelihood_temperature(bqm, sampleset)
+    #         # beta = 1/T
+    #         #beta = 7.5
+    #         p0_state, p1_state, p2_state, p3_state = self.dwave_sampling(num_samples=self._config.engine.rbm_batch_size, measure_time=False, beta=1.0/self._beta)
+            
+    #     else:
+    #         # Compute gradient computation of the logZ term
+    #         p0_state, p1_state, p2_state, p3_state \
+    #             = self.sampler.block_gibbs_sampling_cond(ps_pos[:, :n_nodes_p],
+    #                                      ps_pos[:, n_nodes_p:2*n_nodes_p],
+    #                                      ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
+    #                                      ps_pos[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
+
+    #     # Convert to Ising basis
+    #     p0_ising = p0_state * 2 - 1
+    #     p1_ising = p1_state * 2 - 1
+    #     p2_ising = p2_state * 2 - 1
+    #     p3_ising = p3_state * 2 - 1
+       
+    #     spins = torch.cat([p0_ising, p1_ising, p2_ising, p3_ising], dim=1)
+    #     post_zetas = torch.cat(post_logits, dim=1)
+    #     print(post_zetas, spins) 
+        
+    
+        #MMD(z, q)
+        
+        
     def energy_exp_cond(self, p0_state, p1_state, p2_state, p3_state):
-        """Energy expectation value under the 4-partite BM
-        Overrides energy_exp in gumbolt.py
+        # Energy expectation value under the 4-partite BM
+        # Overrides energy_exp in gumbolt.py
 
-        :param p0_state (torch.Tensor) : (batch_size, n_nodes_p1)
-        :param p1_state (torch.Tensor) : (batch_size, n_nodes_p2)
-        :param p2_state (torch.Tensor) : (batch_size, n_nodes_p3)
-        :param p3_state (torch.Tensor) : (batch_size, n_nodes_p4)
+        # :param p0_state (torch.Tensor) : (batch_size, n_nodes_p1)
+        # :param p1_state (torch.Tensor) : (batch_size, n_nodes_p2)
+        # :param p2_state (torch.Tensor) : (batch_size, n_nodes_p3)
+        # :param p3_state (torch.Tensor) : (batch_size, n_nodes_p4)
 
-        :return energy expectation value over the current batch
-        """
+        # :return energy expectation value over the current batch
+        
         w_dict = self.prior.weight_dict
         b_dict = self.prior.bias_dict
 
@@ -450,6 +489,8 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
                 wKey = partition_edge_1 + partition_edge_0
                 J[edge] = dwave_weights_np[wKey][idx_map[partition_edge_1][edge[1]]][idx_map[partition_edge_0][edge[0]]]
 
+        # print(torch.tensor(list(h.values())).abs().max(), torch.tensor(list(J.values())).abs().max())
+        
         if measure_time:
             start = time.perf_counter()
             response = self._qpu_sampler.sample_ising(h, J, num_reads=num_samples, answer_mode='raw', auto_scale=False)
@@ -900,25 +941,33 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         # self.sampler._batch_size = sample_size
         return beta, beta_list, rbm_energy_list, dwave_energies_list, thrsh_met
 
-    def DW_find_beta(self, beta_init=10):
+    def DW_find_beta(self, cond, beta_init=10):
         beta = beta_init
         _,_,_,_, dwave_weights_rbm, dwave_bias_rbm = self.ising_model(1.0)
         h, J, qubit_idxs, idx_dict, _, _ = self.ising_model(1.0 / beta)
         bqm = dimod.BinaryQuadraticModel.from_ising(h, J)
-
+        g_bqm = dimod.to_networkx_graph(bqm)
 
         # Obtain raw partitions RBM sampleset
-        p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(ps_pos[:, :n_nodes_p],
-                                         ps_pos[:, n_nodes_p:2*n_nodes_p],
-                                         ps_pos[:, 2*n_nodes_p:3*n_nodes_p],
-                                         ps_pos[:, 3*n_nodes_p:], method=self._config.model.rbmMethod)
+        p0_state, p1_state, p2_state, p3_state = self.sampler.block_gibbs_sampling_cond(cond)
         p0_ising = p0_state * 2 - 1
         p1_ising = p1_state * 2 - 1
         p2_ising = p2_state * 2 - 1
         p3_ising = p3_state * 2 - 1
-        rbm_energies = self.ising_energy(p0_ising, p1_ising, p2_ising, p3_ising, dwave_weights_rbm, dwave_bias_rbm)
-        rbm_energies = rbm_energies.detach().cpu().numpy()
-
+       
+        spins = torch.cat([p0_ising, p1_ising, p2_ising, p3_ising], dim=1)
+        print(spins)
+        print(spins.shape)
+        print(spins.mean(0))
+        # print(g_bqm.nodes)
+        # print(bqm)
+        print(torch.tensor(list(h.values())).abs().max(), torch.tensor(list(J.values())).abs().max())
+        h_range, j_range = self._qpu_sampler.properties["h_range"], self._qpu_sampler.properties["j_range"]
+        print(h_range, j_range)
+        
+        beta = 1 / mple(bqm, (spins.detach().cpu().numpy(), g_bqm.nodes), T_guess = beta)[0]
+        logger.info(f'mple: beta = {beta}')
+        return beta
         
     def remove_gaps(self, lst):
         # Create a sorted set of the unique elements in the list
@@ -991,3 +1040,45 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         batch_samples = bat.transpose(0, 1)
 
         return batch_samples.numpy(), 0, 0
+
+# Code for MMD LOSS
+from functools import partial
+from math import ceil, prod
+import networkx as nx
+import numpy as np
+import torch
+from einops import rearrange
+from torch import nn
+from torch.nn.init import kaiming_normal_
+from torch.nn.utils.parametrizations import spectral_norm
+from torchvision.transforms import Resize
+
+class RadialBasisFunction(nn.Module):
+    def __init__(self, n_kernels=10, mul_factor=2.0, bandwidth=None):
+        super().__init__()
+        bandwidth_multipliers = mul_factor ** (torch.arange(n_kernels) - n_kernels // 2)
+        self.register_buffer("bandwidth_multipliers", bandwidth_multipliers)
+        self.bandwidth = bandwidth
+    def get_bandwidth(self, l2_dist):
+        if self.bandwidth is None:
+            n_samples = l2_dist.shape[0]
+            return l2_dist.sum() / (n_samples**2 - n_samples)
+        return self.bandwidth
+    def forward(self, X):
+        l2 = torch.cdist(X, X) ** 2
+        bandwidth = self.get_bandwidth(l2.detach()) * self.bandwidth_multipliers
+        res = torch.exp(-l2.unsqueeze(0) / bandwidth.reshape(-1, 1, 1)).sum(dim=0)
+        return res
+        
+class MMDLoss(nn.Module):
+    def __init__(self, kernel):
+        super().__init__()
+        self.kernel = kernel
+    def forward(self, X, Y):
+        K = self.kernel(torch.vstack([X.flatten(1), Y.flatten(1)]))
+        n = X.shape[0]
+        XX = K[:n, :n].mean()
+        YY = K[n:, n:].mean()
+        XY = K[:n, n:].mean()
+        mmd = XX - 2 * XY + YY
+        return mmd
