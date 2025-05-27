@@ -14,27 +14,29 @@ from models.samplers.GibbsSampling import GS
 
 # from utils.stats.partition import Stats
 from utils.stats.cond_partition import Stats
-from utils.flux_biases import h_to_fluxbias #This should change to dwave's repo
+# from utils.flux_biases import h_to_fluxbias #This should change to dwave's repo
+from dwave.system.temperatures import h_to_fluxbias
 
 # DiVAE.models imports
 # from models.autoencoders.gumboltAtlasCRBMCNNDecCond import GumBoltAtlasCRBMCNNDCond
 from models.autoencoders.gumboltAtlasPRBMCNN import GumBoltAtlasPRBMCNN
+from models.autoencoders.AtlasConditionalQVAE import AtlasConditionalQVAE
 from CaloQVAE.models.rbm import pegasusRBM, zephyrRBM
 from CaloQVAE.models.samplers import pgbs
 
 from models.networks.EncoderCond import EncoderHierarchyPB_BinEv2
-from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2, DecoderCNNPB3Dv3, DecoderCNNPBHD_MIRRORv1
+from models.networks.DecoderCond import DecoderCNNPB, DecoderCNNPBv2, DecoderCNNPBv3, DecoderCNNPBv4, DecoderCNNPBv4_HEMOD, DecoderCNNPB_HEv1, DecoderCNNPB3Dv1, DecoderCNNPB3Dv2, DecoderCNNPB3Dv3, DecoderCNNPB3Dv4, DecoderCNNPB3Dv5, DecoderCNNPB3DCholesky, DecoderCNNPB3DSelfAtt, DecoderCNNPB3Dv3Reg
+
+import time
 
 import dimod
 from dwave.system.temperatures import maximum_pseudolikelihood_temperature as mple
-
-import time
 
 from CaloQVAE import logging
 logger = logging.getLogger(__name__)
 
 
-class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
+class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN): #(GumBoltAtlasPRBMCNN): #AtlasConditionalQVAE
     """
     GumBolt
     """
@@ -43,8 +45,6 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         super(AtlasConditionalQVAE3DHD, self).__init__(**kwargs)
         self._model_type = "AtlasConditionalQVAE3DHD"
         self._bce_loss = BCEWithLogitsLoss(reduction="none")
-        self._beta = 7.5 
-        self._upQAbeta = False
         
     def _create_prior(self):
         """Override _create_prior in GumBoltCaloV6.py
@@ -150,17 +150,37 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallPB3Dv2":
-            return DecoderCNNPB_HEv1(node_sequence=self._decoder_nodes,
+            return DecoderCNNPB3Dv2(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
         elif self._config.model.decodertype == "SmallPB3Dv3":
-            return DecoderCNNPB_HEv1(node_sequence=self._decoder_nodes,
+            return DecoderCNNPB3Dv3(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
-        elif self._config.model.decodertype == "SmallPBHDMIRRORv1":
-            return DecoderCNNPBHD_MIRRORv1(node_sequence=self._decoder_nodes,
+        elif self._config.model.decodertype == "SmallPB3Dv3Reg":
+            return DecoderCNNPB3Dv3Reg(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3Dv4":
+            return DecoderCNNPB3Dv4(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3Dv5":
+            return DecoderCNNPB3Dv5(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3Dv6":
+            return DecoderCNNPB3DCholesky(node_sequence=self._decoder_nodes,
+                              activation_fct=self._activation_fct,
+                              num_output_nodes = self._flat_input_size,
+                              cfg=self._config)
+        elif self._config.model.decodertype == "SmallPB3Dv7":
+            return DecoderCNNPB3DSelfAtt(node_sequence=self._decoder_nodes,
                               activation_fct=self._activation_fct,
                               num_output_nodes = self._flat_input_size,
                               cfg=self._config)
@@ -1040,45 +1060,3 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         batch_samples = bat.transpose(0, 1)
 
         return batch_samples.numpy(), 0, 0
-
-# Code for MMD LOSS
-from functools import partial
-from math import ceil, prod
-import networkx as nx
-import numpy as np
-import torch
-from einops import rearrange
-from torch import nn
-from torch.nn.init import kaiming_normal_
-from torch.nn.utils.parametrizations import spectral_norm
-from torchvision.transforms import Resize
-
-class RadialBasisFunction(nn.Module):
-    def __init__(self, n_kernels=10, mul_factor=2.0, bandwidth=None):
-        super().__init__()
-        bandwidth_multipliers = mul_factor ** (torch.arange(n_kernels) - n_kernels // 2)
-        self.register_buffer("bandwidth_multipliers", bandwidth_multipliers)
-        self.bandwidth = bandwidth
-    def get_bandwidth(self, l2_dist):
-        if self.bandwidth is None:
-            n_samples = l2_dist.shape[0]
-            return l2_dist.sum() / (n_samples**2 - n_samples)
-        return self.bandwidth
-    def forward(self, X):
-        l2 = torch.cdist(X, X) ** 2
-        bandwidth = self.get_bandwidth(l2.detach()) * self.bandwidth_multipliers
-        res = torch.exp(-l2.unsqueeze(0) / bandwidth.reshape(-1, 1, 1)).sum(dim=0)
-        return res
-        
-class MMDLoss(nn.Module):
-    def __init__(self, kernel):
-        super().__init__()
-        self.kernel = kernel
-    def forward(self, X, Y):
-        K = self.kernel(torch.vstack([X.flatten(1), Y.flatten(1)]))
-        n = X.shape[0]
-        XX = K[:n, :n].mean()
-        YY = K[n:, n:].mean()
-        XY = K[:n, n:].mean()
-        mmd = XX - 2 * XY + YY
-        return mmd
