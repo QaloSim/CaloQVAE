@@ -6,13 +6,23 @@ data_type: atlas
 # dataset: dataset1pion
 _layers: 
   - showers
-particle_type: electron-ds2
 dataset: dataset2
 
 frac_test_dataset: 0.1
 frac_train_dataset: 0.8
 
-particle: electron
+#particle: electron
+particle: electron2
+
+particle_type: electron-ds2
+z: 45
+r: 9
+phi: 16
+
+# particle_type: atlas_reg2
+# z: 7
+# r: 24
+# phi: 14
 
 scaled: True
 #scaler_path: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_highStat_En_4_scaler.gz
@@ -42,12 +52,17 @@ atlas_input_pionEn4: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_hi
 atlas_input_pionEn5: /fast_scratch_1/caloqvae/data/atlas_scaled/pions_samples_highStat_En_5.hdf5
 atlas_input_pionEn6: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_6.hdf5
 atlas_input_pionEn7: /fast_scratch_1/caloqvae/data/atlas/pions_samples_highStat_En_7.hdf5
-#atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3/dataset_2_1.hdf5
-atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/dataset_2_1.hdf5
+atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3/dataset_2_1.hdf5
+#atlas_input_electron: /fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/dataset_2_1.hdf5
 #atlas_input_electron:/fast_scratch_1/caloqvae/data/atlas_dataset2and3_scaled/uniform_dataset_2_1.hdf5
+atlas_input_regular2: /fast_scratch_1/caloqvae/data/atlas_regular/dataset_eta_025_positive_cat.hdf5
+
 
 binning_xml_electrons: /fast_scratch_1/caloqvae/data/atlas_dataset2and3/binning_dataset_2.xml
 binning_xml_photons: /fast_scratch_1/caloqvae/data/atlas/binning_dataset_1_photons.xml
 binning_xml_pions: /fast_scratch_1/caloqvae/data/atlas/binning_dataset_1_pions.xml
+binning_atlas_reg: /fast_scratch_1/caloqvae/data/atlas_regular/dataset_eta_025_positive_cat.hdf5
 
+atlas_electron_eta050: /fast_scratch_1/caloqvae/data/atlas_regular_cat/dataset_eta_050_positive_cat.hdf5
 entity: caloqvae
+std: 1.0

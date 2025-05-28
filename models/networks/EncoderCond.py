@@ -753,9 +753,9 @@ class EncoderBlockPBH3Dv3(nn.Module):
         self._config = cfg
         self.num_input_nodes = num_input_nodes
         self.n_latent_nodes = n_latent_nodes
-        self.z = self._config.data.z #45
-        self.r = self._config.data.r #9
-        self.phi = self._config.data.phi #16
+        self.z = self._config.data.z #7
+        self.r = self._config.data.r #24
+        self.phi = self._config.data.phi #14
         
         self.seq1 = nn.Sequential(
                    # nn.Linear(self.num_input_nodes, 24*24),
@@ -765,21 +765,26 @@ class EncoderBlockPBH3Dv3(nn.Module):
                    nn.BatchNorm3d(32),
                    nn.PReLU(32, 0.02),
     
-                   PeriodicConv3d_v2(32, 64, (3,3,3), (2,1,1), 1),
+#                    PeriodicConv3d_v2(32, 64, (3,3,3), (2,1,1), 1),
+                   PeriodicConv3d_v2(32, 64, (1,3,3), (1,2,2), 1),
+
                    nn.BatchNorm3d(64),
                    nn.PReLU(64, 0.02),
 
-                   PeriodicConv3d_v2(64, 128, (3,3,3), (1,2,1), 1),
+                   PeriodicConv3d_v2(64, 128, (3,3,3), (1,2,2), 1),
                    nn.BatchNorm3d(128),
                    nn.PReLU(128, 0.02),
                 )
 
         self.seq2 = nn.Sequential(
-                           PeriodicConv3d_v2(129, 256, (3,3,3), (2,2,1), 0),
+#                            PeriodicConv3d_v2(129, 256, (3,3,3), (2,2,1), 0),
+                           PeriodicConv3d_v2(129, 256, (1,3,3), (1,2,2), 0),
+
                            nn.BatchNorm3d(256),
                            nn.PReLU(256, 0.02),
 
-                           PeriodicConv3d_v2(256, self.n_latent_nodes, (3,3,3), (1,2,2), 0),
+#                            PeriodicConv3d_v2(256, self.n_latent_nodes, (3,3,3), (1,2,2), 0),
+                           PeriodicConv3d_v2(256, self.n_latent_nodes, (1,1,2), (1,1,2), 0),
                            nn.PReLU(self.n_latent_nodes, 1.0),
                            nn.Flatten(),
                         )

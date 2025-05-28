@@ -53,7 +53,18 @@ class PGBS:
         p_activations = (torch.matmul(pa_state, weights_ax) +
                          torch.matmul(pb_state, weights_bx) +
                          torch.matmul(pc_state, weights_cx) + bias_x)
+        
+        # debugging ##################
+#         sigmoid_p = torch.sigmoid(p_activations)
+#         if torch.isnan(sigmoid_p).any() or (sigmoid_p < 0).any() or (sigmoid_p > 1).any() or (torch.isnan(sigmoid_p).any()):
+#             print('TOTAL nan:', torch.isnan(p_activations).sum())
+#             print("p_activations:", p_activations)
+#             print("sigmoid(p_activations):", sigmoid_p)
+#             raise ValueError("error")
+
+    
         return torch.bernoulli(torch.sigmoid(p_activations))
+
 
     def block_gibbs_sampling(self, p0=None,p1=None,p2=None,p3=None, method='Rdm'):
         """block_gibbs_sampling()
@@ -273,11 +284,18 @@ class PGBS:
                 elif j < i:
                     self.grad["bias"][str(i)] = self.grad["bias"][str(i)] - 0.5 * torch.matmul(self.grad["weight"][str(j)+str(i)].T , (data_mean[n_nodes_p*j:n_nodes_p*(j+1)] + data_gen[n_nodes_p*j:n_nodes_p*(j+1)]))
     
-    def update_params(self, lr=0.01):
+    def update_params(self, lr=0.01, l2_lambda=0.007):
         for i in range(4):
             self._prbm.bias_dict[str(i)] = self._prbm.bias_dict[str(i)] + lr * self.grad["bias"][str(i)]
 
+        # Update weights with L2 weight decay
         for i in range(3):
-            for j in [0,1,2,3]:
+            for j in [0, 1, 2, 3]:
                 if j > i:
-                    self._prbm.weight_dict[str(i)+str(j)] = self._prbm.weight_dict[str(i)+str(j)] + lr * self.grad["weight"][str(i)+str(j)]
+                    key = str(i) + str(j)
+                    weight = self._prbm.weight_dict[key]
+                    grad = self.grad["weight"][key]
+
+                    # Apply L2 regularization
+                    weight_update = grad - l2_lambda * weight
+                    self._prbm.weight_dict[key] = weight + lr * weight_update

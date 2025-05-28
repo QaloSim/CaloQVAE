@@ -18,7 +18,7 @@ output_path: /fast_scratch_1/jtoledo/outputs
 num_workers: 16
 device: gpu
 gpu_list:
-  - 2
+  - 3
 
 task:
   - train
@@ -26,9 +26,9 @@ task:
   - test
 
 defaults:
-  - model: atlasCondQVAE3D
-  # - model: atlasCondQVAE3DHD
-  - data: atlasDGX
+  #- model: atlasCondQVAE3D
+  - model: atlasCondQVAE3DHD
+  - data: atlasML2
   - engine: dvaeatlas_training_peg
   - qpu: peggy
 

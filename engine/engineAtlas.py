@@ -43,7 +43,7 @@ class EngineAtlas(EngineCaloV3):
             self.HLF.relevantLayers = [5,10,15,20,25,30,35,40,44]
         elif self._config.data.particle == 'electron2':
             self.HLF = HLF2('electron2', filename=self._config.data.binning_atlas_reg)
-            self.HLF.relevantLayers = [0,1,2,3,12,13,14]
+            self.HLF.relevantLayers = [0, 1, 2, 3, 12, 13, 14]
             
         self.R = self._config.engine.r_param
         self._std = self._config.data.std
@@ -79,6 +79,7 @@ class EngineAtlas(EngineCaloV3):
             # slope = self._config.engine.slope_activation_fct
         return slope
 
+
     def fit(self, epoch, is_training=True, mode="train"):
         logger.debug("Fitting model. Train mode: {0}".format(is_training))
 
@@ -107,6 +108,7 @@ class EngineAtlas(EngineCaloV3):
         ae_enabled = self._config.engine.ae_enabled
         epoch_anneal_start = self._config.engine.epoch_annealing_start
         total_batches = num_batches*(num_epochs-epoch_anneal_start+1)
+        learning_rate = 0.01
         
         # cl_lambda = self._config.engine.cl_lambda
         
@@ -166,7 +168,7 @@ class EngineAtlas(EngineCaloV3):
                             self.model.sampler.gradient_rbm_centered(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
                         else:
                             self.model.sampler.gradient_rbm(fwd_output.post_samples, self._config.model.n_latent_nodes_per_p, self._config.model.rbmMethod )
-                        self.model.sampler.update_params()
+                        self.model.sampler.update_params(learning_rate)
                         batch_loss_dict["loss"] = batch_loss_dict["loss"].sum()
                         try:
                             batch_loss_dict["loss"].backward()
@@ -223,6 +225,9 @@ class EngineAtlas(EngineCaloV3):
                                                                                           len(data_loader),
                                                                                           100.*batch_idx/len(data_loader),
                                                                                           batch_loss_dict["loss"].sum()))
+                    #self._log_rbm_wandb()
+#                     self._log_rbm_hist_wandb()
+                    
                     
                     if (batch_idx % (num_batches//2)) == 0:
                         if self._config.data.scaled:
@@ -388,6 +393,7 @@ class EngineAtlas(EngineCaloV3):
         """
         CaloDiff Transformation Scheme
         """
+        scaling_energy = max(torch.max(in_data), torch.max(true_energy))
         ϵ = in_data/true_energy #*self.e_scale
         x = R + (1-2*R)*ϵ
         u = torch.log(x*(1-R)/(R*(1-x)))/self._std
@@ -531,41 +537,84 @@ class EngineAtlas(EngineCaloV3):
         # Return the loss dictionary
         return ret_loss_dict
         
+#     def _log_rbm_wandb(self):
+#         """
+#         Log RBM parameter values in wandb
+#         - Logs the histogram for the rbm parameter distributions
+#         - Logs the range of the rbm parameters
+#         """
+#         prior_weights = self._model.prior.weights.detach().cpu().numpy()
+#         prior_visible_bias = self._model.prior.visible_bias.detach().cpu().numpy()
+#         prior_hidden_bias = self._model.prior.hidden_bias.detach().cpu().numpy()
+        
+#         prior_weights = prior_weights.flatten()
+#         prior_weights = prior_weights[prior_weights.nonzero()]
+                        
+#         # Tracking RBM parameter distributions during training
+#         prior_weights_hist = np.histogram(prior_weights, range=(-2, 2), bins=512)
+#         prior_weights_hist_vals = np.log(prior_weights_hist[0])
+#         prior_weights_hist_vals = np.where(np.isinf(prior_weights_hist_vals), 0., prior_weights_hist_vals)
+#         prior_weights_hist = (prior_weights_hist_vals, prior_weights_hist[1])
+        
+#         wandb.log({"prior._weights":wandb.Histogram(np_histogram=prior_weights_hist),
+#                    "prior._visible_bias":wandb.Histogram(prior_visible_bias),
+#                    "prior._hidden_bias":wandb.Histogram(prior_hidden_bias)})
+                        
+#         # Tracking the range of RBM parameters
+#         wandb.log({"prior._weights_max":np.amax(prior_weights), "prior._weights_min":np.amin(prior_weights),
+#                    "prior._visible_bias_max":np.amax(prior_visible_bias), "prior._visible_bias_min":np.amin(prior_visible_bias),
+#                    "prior._hidden_bias_max":np.amax(prior_hidden_bias), "prior._hidden_bias_min":np.amin(prior_hidden_bias)})
     def _log_rbm_wandb(self):
         """
-        Log RBM parameter values in wandb
-        - Logs the histogram for the rbm parameter distributions
-        - Logs the range of the rbm parameters
+        Log RBM parameter values in wandb, across all partitions:
+          - histogram for each weight/bias partition (with log-scaled counts)
+          - range (min/max) for each weight/bias partition
         """
-        prior_weights = self._model.prior.weights.detach().cpu().numpy()
-        prior_visible_bias = self._model.prior.visible_bias.detach().cpu().numpy()
-        prior_hidden_bias = self._model.prior.hidden_bias.detach().cpu().numpy()
-        
-        prior_weights = prior_weights.flatten()
-        prior_weights = prior_weights[prior_weights.nonzero()]
-                        
-        # Tracking RBM parameter distributions during training
-        prior_weights_hist = np.histogram(prior_weights, range=(-2, 2), bins=512)
-        prior_weights_hist_vals = np.log(prior_weights_hist[0])
-        prior_weights_hist_vals = np.where(np.isinf(prior_weights_hist_vals), 0., prior_weights_hist_vals)
-        prior_weights_hist = (prior_weights_hist_vals, prior_weights_hist[1])
-        
-        wandb.log({"prior._weights":wandb.Histogram(np_histogram=prior_weights_hist),
-                   "prior._visible_bias":wandb.Histogram(prior_visible_bias),
-                   "prior._hidden_bias":wandb.Histogram(prior_hidden_bias)})
-                        
-        # Tracking the range of RBM parameters
-        wandb.log({"prior._weights_max":np.amax(prior_weights), "prior._weights_min":np.amin(prior_weights),
-                   "prior._visible_bias_max":np.amax(prior_visible_bias), "prior._visible_bias_min":np.amin(prior_visible_bias),
-                   "prior._hidden_bias_max":np.amax(prior_hidden_bias), "prior._hidden_bias_min":np.amin(prior_hidden_bias)})
+        histograms = {}
+        stats = {}
+
+        # Loop through weight partitions
+        for key, w in self.model.prior.weight_dict.items():
+            w_np = w.detach().cpu().numpy().flatten()
+            w_np = w_np[w_np != 0]
+
+            hist_vals, bin_edges = np.histogram(w_np, range=(-2, 2), bins=512)
+
+            # log of counts without spamming warnings
+            with np.errstate(divide='ignore'):
+                log_vals = np.log(hist_vals)
+            log_vals = np.where(np.isinf(log_vals), 0.0, log_vals)
+
+            np_hist = (log_vals, bin_edges)
+            histograms[f"prior.weights_{key}"] = wandb.Histogram(np_histogram=np_hist)
+
+            # min/max stats
+            if w_np.size:
+                stats[f"prior.weights_{key}_min"] = w_np.min()
+                stats[f"prior.weights_{key}_max"] = w_np.max()
+            else:
+                stats[f"prior.weights_{key}_min"] = 0.0
+                stats[f"prior.weights_{key}_max"] = 0.0
+
+        for key, b in self.model.prior.bias_dict.items():
+            b_np = b.detach().cpu().numpy()
+
+            histograms[f"prior.bias_{key}"] = wandb.Histogram(b_np)
+            stats[f"prior.bias_{key}_min"] = float(b_np.min())
+            stats[f"prior.bias_{key}_max"] = float(b_np.max())
+        wandb.log(histograms)
+        wandb.log(stats)
+
+
+    
         
     def _log_rbm_hist_wandb(self):
         """
         Log RBM parameter custom histograms in wandb
         """
-        prior_weights = self._model.prior.weights.detach().cpu().numpy()
-        prior_visible_bias = self._model.prior.visible_bias.detach().cpu().numpy()
-        prior_hidden_bias = self._model.prior.hidden_bias.detach().cpu().numpy()
+        prior_weights = self.model.prior.weights.detach().cpu().numpy()
+        prior_visible_bias = self.model.prior.visible_bias.detach().cpu().numpy()
+        prior_hidden_bias = self.model.prior.hidden_bias.detach().cpu().numpy()
         
         prior_weights = prior_weights.flatten()
         prior_weights = prior_weights[prior_weights.nonzero()]
@@ -578,6 +627,19 @@ class EngineAtlas(EngineCaloV3):
         weights = [[weight] for weight in prior_weights]
         weights_table = wandb.Table(data=weights, columns=["weights"])
         wandb.log({"rbm_weights": wandb.plot.histogram(weights_table, "weights", title=None)})
+        
+#     def _log_weight_stats(self):
+#         for name, param in self._model.named_parameters():
+#             if param.requires_grad:
+#                 data = param.data.detach().cpu()
+#                 wandb.log({
+#                     f"weights/{name}/mean": data.mean(),
+#                     f"weights/{name}/std": data.std(),
+#                     f"weights/{name}/max": data.max(),
+#                     f"weights/{name}/min": data.min(),
+#                     f"weights/{name}/absmax": data.abs().max(),
+#                 })
+
         
     def _energy_encoded_data(self):
         partition_size=self._config.model.n_latent_nodes_per_p

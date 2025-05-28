@@ -1401,7 +1401,8 @@ class DecoderCNNPBHD_MIRRORv1(BasicDecoderV3):
         # FOR THE MIRROR HD, LET 3 SUBDECODERS GENERATE z1', z2', z3', 
         # THEN LAST SUBDECODER GENERATES THE ENTIRE SHOWER
         self.n_layers_per_subdec = 11
-        self.layer_step = self._config.model.n_layers_per_subdec*144
+#         self.layer_step = self._config.model.n_layers_per_subdec*144
+        self.layer_step = self._config.model.n_layers_per_subdec*24*14
          # varies depending on if last layer is > or < layer step
         self.hierarchical_lvls = 4
 
@@ -1411,7 +1412,9 @@ class DecoderCNNPBHD_MIRRORv1(BasicDecoderV3):
         inp_layers[0] = self.latent_nodes
         out_layers = self.hierarchical_lvls * [self.layer_step]
 
-        out_layers[self.hierarchical_lvls - 1] += (6480 - self.hierarchical_lvls * self.layer_step)
+#         out_layers[self.hierarchical_lvls - 1] += (6480 - self.hierarchical_lvls * self.layer_step)
+        out_layers[self.hierarchical_lvls - 1] += (2352 - self.hierarchical_lvls * self.layer_step)
+
         # print(self.raw_layers)
 
         # Unbalanced Hierachical Decoder
@@ -1419,9 +1422,11 @@ class DecoderCNNPBHD_MIRRORv1(BasicDecoderV3):
         # out_layers[0:5] = [sum(out_layers[0:5])]
 
         # MIRROR HD, LAST DECODER GENERATES ENTIRE SHOWER
-        out_layers[-1] = 6480
-        self.raw_layers = [layers - self.latent_nodes for layers in inp_layers] + [6480]
-        
+#         out_layers[-1] = 6480
+#         self.raw_layers = [layers - self.latent_nodes for layers in inp_layers] + [6480]
+        out_layers[-1] = 2352
+        self.raw_layers = [layers - self.latent_nodes for layers in inp_layers] + [2352]
+
         # Check Layers
         print("Layer Inputs: ", inp_layers)
         print("Layer Outputs: ", out_layers)
@@ -1478,17 +1483,27 @@ class DecoderCNNPBHD_MIRRORv1(BasicDecoderV3):
                 # print("ins 1: ", x.shape)
         return self.x1, self.x2
 
+class CropLayer(nn.Module):
+    def forward(self, x):
+        return x[:, :, :, 1:15, :]
 
 class DecoderCNNPB3Dv4_HEMOD(BasicDecoderV3):
     def __init__(self, num_input_nodes, num_output_nodes, output_activation_fct=nn.Identity(), **kwargs):
         super(DecoderCNNPB3Dv4_HEMOD, self).__init__(**kwargs)
         self._output_activation_fct=output_activation_fct
         self.num_input_nodes = num_input_nodes
-        self.z = 45
-        self.r = 9
-        self.phi = 16
+#         self.z = 45
+#         self.r = 9
+#         self.phi = 16
+        self.z= 7
+        self.r= 24
+        self.phi= 14
+
+
         self.hierarchal_outputs = num_output_nodes
-        self.output_layers = int(self.hierarchal_outputs / 144)
+#         self.output_layers = int(self.hierarchal_outputs / 144)
+        self.output_layers = int(self.hierarchal_outputs / (self.r * self.phi))
+
 
         # self.n_latent_nodes = self._config.model.n_latent_nodes
         # self.n_latent_nodes = self._config.model.n_latent_nodes_per_p * 4
@@ -1502,49 +1517,61 @@ class DecoderCNNPB3Dv4_HEMOD(BasicDecoderV3):
                    # nn.Unflatten(1, (self._node_sequence[0][0]-1, 1,1)),
                    nn.Unflatten(1, (self.num_input_nodes, 1, 1, 1)),
 
-                   PeriodicConvTranspose3d(self.num_input_nodes, 512, (3,3,2), (2,1,1), 0),
+#                    PeriodicConvTranspose3d(self.num_input_nodes, 512, (3,3,2), (2,1,1), 0),
+            
+                   PeriodicConvTranspose3d(self.num_input_nodes, 512, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=0),
                    nn.BatchNorm3d(512),
                    # self.dropout,
                    nn.PReLU(512, 0.02),
                    
 
-                   PeriodicConvTranspose3d(512, 128, (5,3,3), (2,1,1), 0),
+#                    PeriodicConvTranspose3d(512, 128, (5,3,3), (2,1,1), 0),
+                   PeriodicConvTranspose3d(512, 128, kernel_size=(3, 3, 3), stride=(2, 2, 2), padding=0),
                    nn.BatchNorm3d(128),
                    nn.PReLU(128, 0.02),
                                    )
-        
         self._layers2 = nn.Sequential(
-                   PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+#                    PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+                   PeriodicConvTranspose3d(129, 64, (1,3,5), (1,2,3), 0),
+
                    nn.BatchNorm3d(64),
                    # self.dropout,
                    nn.PReLU(64, 0.02),
 
-                   PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+#                    PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+                   PeriodicConvTranspose3d(64, 32, (1,2,2), (1,1,1), 0),
                    nn.BatchNorm3d(32),
                    # self.dropout,
                    nn.PReLU(32, 1.0),
 
-                   PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+#                    PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+                   PeriodicConvTranspose3d(32, 1, (1,1,1), (1,1,1), 0),
+                   CropLayer(),
                    PeriodicConv3d(1, 1, (self.z - self.output_layers + 1, 1, 1), (1,1,1), 0),
                    # nn.BatchNorm3d(45),
                    nn.PReLU(1, 1.0)
                                    )
         
         self._layers3 = nn.Sequential(
-                   PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+#                    PeriodicConvTranspose3d(129, 64, (3,3,2), (2,1,1), 0),
+                   PeriodicConvTranspose3d(129, 64, (1,3,5), (1,2,3), 0),
                    nn.GroupNorm(1,64),
                    # self.dropout,
                    nn.SiLU(64),
                    # Residual(PreNorm(64, LinearAttention(64, cylindrical = False))),
                    LinearAttention(64, cylindrical = False),
 
-                   PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+#                    PeriodicConvTranspose3d(64, 32, (5,3,3), (2,2,1), 0),
+                    PeriodicConvTranspose3d(64, 32, (1,2,2), (1,1,1), 0),
+
                    nn.GroupNorm(1,32),
                    # self.dropout,
                    nn.SiLU(32),
                    LinearAttention(32, cylindrical = False),
 
-                   PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+#                    PeriodicConvTranspose3d(32, 1, (5,2,3), (1,1,1), 0),
+                   PeriodicConvTranspose3d(32, 1, (1,1,1), (1,1,1), 0),
+                   CropLayer(),
                    PeriodicConv3d(1, 1, (self.z - self.output_layers + 1, 1, 1), (1,1,1), 0),
                    # nn.BatchNorm3d(45),
                    nn.SiLU(1),

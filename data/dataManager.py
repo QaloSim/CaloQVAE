@@ -305,6 +305,8 @@ class DataManagerBeta(object):
                 'pionEn6':   self._config.data.atlas_input_pionEn6,
                 'pionEn7':   self._config.data.atlas_input_pionEn7,
             'electron-ds2': self._config.data.atlas_input_electron,
+                    'atlas_reg2': self._config.data.atlas_input_regular2,
+
         }
         
     def load_data(self):

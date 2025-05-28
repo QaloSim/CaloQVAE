@@ -1,0 +1,5 @@
+export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+export WANDB_BASE_URL=http://localhost:8080
+export WANDB_API_KEY=local-c5cb05220de6fddba15c5b30701376d464f98f5e
+export DWAVE_API_TOKEN=4Fq8-98e991a786ff04f4f4b6ab5466629411358ce418
+python scripts/run.py

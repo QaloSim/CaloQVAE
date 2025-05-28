@@ -38,12 +38,12 @@ class ZephyrRBM(nn.Module):
         self._weight_dict = nn.ParameterDict()
         self._bias_dict = nn.ParameterDict()
         self._nodes_per_partition = nodes_per_partition
-        if self._nodes_per_partition > 302 and fullyconnected == False:
-            logger.warn("No more than 302 nodes per partition for Adv2 \
-                        at the time being. Will set partitions to 302. \
-                        Otherwise, stop job, reduce nodes per partition and restart.")
-            # fullyconnected = True
-            self._nodes_per_partition = 302
+        # if self._nodes_per_partition > 302 and fullyconnected == False:
+        #     logger.warn("No more than 302 nodes per partition for Adv2 \
+        #                 at the time being. Will set partitions to 302. \
+        #                 Otherwise, stop job, reduce nodes per partition and restart.")
+        #     # fullyconnected = True
+        #     self._nodes_per_partition = 302
         self._weight_mask_dict = nn.ParameterDict()
 
         # Fully-connected or Pegasus-restricted 4-partite BM
@@ -203,7 +203,14 @@ class ZephyrRBM(nn.Module):
         """
 
     def load_coordinates(self):
-        self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr'})
+        try:
+            self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr', 'chip_id':'Advantage2_system1.1'})
+        except:
+            self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr', 'chip_id':'Advantage2_system2.6'})
+            logger.warn("Switching to Zephyr prototype. No more than 302 nodes per partition for Adv2 \
+                     at the time being. Will set partitions to 302. \
+                     Otherwise, stop job, reduce nodes per partition and restart.")
+            self._nodes_per_partition=302
         self.m, self.t = self._qpu_sampler.properties['topology']['shape']
         graph = dnx.zephyr_graph(m=self.m, t=self.t,
                              node_list=self._qpu_sampler.nodelist, edge_list=self._qpu_sampler.edgelist)
