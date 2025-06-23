@@ -20,10 +20,10 @@ encoder_hidden_nodes:
 n_latent_hierarchy_lvls: 3
 # n_latent_nodes: 1024
 # n_latent_nodes_per_p: 1024
-# n_latent_nodes: 512
-# n_latent_nodes_per_p: 512
-n_latent_nodes: 302
-n_latent_nodes_per_p: 302
+n_latent_nodes: 512
+n_latent_nodes_per_p: 512
+# n_latent_nodes: 302
+# n_latent_nodes_per_p: 302
 
 encodertype: SmallPB3Dv3Reg
 #Large, Small, SmallUnconditioned, SmallPosEnc

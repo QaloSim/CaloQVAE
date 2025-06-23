@@ -52,7 +52,7 @@ class AtlasConditionalQVAE3DHD(GumBoltAtlasPRBMCNN):
         if 'topology' in self._config.model and self._config.model.topology == 'pegasus':
             return pegasusRBM.PegasusRBM(nodes_per_partition, True, self._config.model.fullyconnected)
         elif 'topology' in self._config.model and self._config.model.topology == 'zephyr':
-            return zephyrRBM.ZephyrRBM(nodes_per_partition, self._config.model.fullyconnected)
+            return zephyrRBM.ZephyrRBM(nodes_per_partition, self._config.model.fullyconnected, self._config.model)
         else:
             return pegasusRBM.PegasusRBM(nodes_per_partition, True, self._config.model.fullyconnected)
         

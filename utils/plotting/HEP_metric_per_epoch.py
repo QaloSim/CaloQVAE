@@ -169,10 +169,10 @@ def gen_synth_data(engine, R, reducedata, data_loader):
                 recon_data = engine._reduceinv(fwd_output.output_activations, true_energy, R=R)
                 engine._model.sampler._batch_size = true_energy.shape[0]
                 if True:
-                    sample_energies, sample_data = engine._model.generate_samples_cond(num_samples=true_energy.shape[0], true_energy=true_energy, measure_time=True)
+                    sample_energies, sample_data = engine._model.generate_samples_cond(num_samples=true_energy.shape[0], true_energy=true_energy, measure_time=False)
                     # sample_energies_qpu, sample_data_qpu = engine.model.generate_samples_qpu_cond(true_energy=true_energy, num_samples=1, thrsh=30, beta=1/beta0)
                 else:
-                    sample_energies, sample_data = engine._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy, measure_time=True)
+                    sample_energies, sample_data = engine._model.generate_samples(num_samples=true_energy.shape[0], true_energy=true_energy, measure_time=False)
                     # sample_energies_qpu, sample_data_qpu = engine._model.generate_samples_qpu(num_samples=true_energy.shape[0], true_energy=true_energy, measure_time=True, beta=1/beta0)
                 engine._model.sampler._batch_size = engine._config.engine.rbm_batch_size
                 sample_data = engine._reduceinv(sample_data, sample_energies, R=R)

@@ -23,6 +23,19 @@ n_layers_per_subdec: 15
 # n_latent_nodes_per_p: 512
 n_latent_nodes: 302
 n_latent_nodes_per_p: 302
+w_std: 
+  - 1.0
+  - 1.0
+  - 1.0
+  - 0.01
+  - 0.01
+  - 0.01
+b_std: 
+  - 0.01
+  - 0.01
+  - 0.01
+  - 0.01
+
 
 encodertype: SmallPB3Dv3
 #Large, Small, SmallUnconditioned, SmallPosEnc

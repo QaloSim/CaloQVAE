@@ -21,7 +21,7 @@ class ZephyrRBM(nn.Module):
     PyTorch implementation of a quadripartite Boltzmann machine with a 
     Zephyr/Advantage2 QPU topology
     """
-    def __init__(self, nodes_per_partition: int, fullyconnected: bool = False, **kwargs):
+    def __init__(self, nodes_per_partition: int, fullyconnected: bool = False, cfg=None, **kwargs):
         """__init__()
 
         Initialize an instance of a 4-partite PegasusRBM
@@ -30,6 +30,7 @@ class ZephyrRBM(nn.Module):
         :param qpu (bool) : Only allow connections present on the QPU 
         """
         super(ZephyrRBM, self).__init__(**kwargs)
+        self._config=cfg
 
         # RBM constants
         self._n_partitions = 4
@@ -51,16 +52,16 @@ class ZephyrRBM(nn.Module):
         self.fullyconnected = fullyconnected
 
         # Dict of RBM weights for different partition combinations
-        for key in itertools.combinations(range(self._n_partitions), 2):
+        for i,key in enumerate(itertools.combinations(range(self._n_partitions), 2)):
             str_key = ''.join([str(key[i]) for i in range(len(key))])
             self._weight_dict[str_key] = nn.Parameter(
                 torch.randn(self._nodes_per_partition,
-                            self._nodes_per_partition), requires_grad=True)
+                            self._nodes_per_partition)*self._config.w_std[i], requires_grad=True)
 
         # Dict of RBM biases for each partition
         for i in range(self._n_partitions):
             self._bias_dict[str(i)] = nn.Parameter(
-                torch.randn(self._nodes_per_partition), requires_grad=True)
+                torch.randn(self._nodes_per_partition)*self._config.b_std[i], requires_grad=True)
 
         # if qpu:
         self._qubit_idx_dict, device = self.gen_qubit_idx_dict()
@@ -204,7 +205,8 @@ class ZephyrRBM(nn.Module):
 
     def load_coordinates(self):
         try:
-            self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr', 'chip_id':'Advantage2_system1.1'})
+            # self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr', 'chip_id':'Advantage2_system1.1'})
+            self._qpu_sampler = DWaveSampler(solver="Advantage2_prototype2.6")
         except:
             self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr', 'chip_id':'Advantage2_system2.6'})
             logger.warn("Switching to Zephyr prototype. No more than 302 nodes per partition for Adv2 \

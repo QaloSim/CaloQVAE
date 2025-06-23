@@ -163,6 +163,7 @@ def run(config=None):
         # temp solution to get total number of epochs this model has been trained on
         fn = create_filenames_dict(config.run_path, config.data.entity)
         _epoch = fn["size"]
+        print(_epoch)
         # if config.freeze_vae:
         #     for name, param in engine.model.named_parameters():
         #         # if 'decoder' in name or 'encoder' in name:
@@ -181,7 +182,7 @@ def run(config=None):
                     # if 'encoder' in name:
                         param.requires_grad = False
                     print(name, param.requires_grad)
-                engine.optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, engine.model.parameters()), lr=config.engine.learning_rate)
+                # engine.optimiser = torch.optim.Adam(filter(lambda p: p.requires_grad, engine.model.parameters()), lr=config.engine.learning_rate)
                 engine._save_model(name="at_freezing_point")
                 engine._config.model.rbmMethod = "PCD"
                 logger.info(f'RBM will use {engine._config.model.rbmMethod}')
