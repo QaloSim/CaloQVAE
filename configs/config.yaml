@@ -11,7 +11,7 @@ freeze_vae: 1
 wandb_enabled: 1
 
 
-run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-06-11/20-46-13/wandb/run-20250611_204614-4f745nwj/files/AtlasConditionalQVAE3DHD_atlas_default_190.pth"
+run_path: "/home/javier/Projects/CaloQVAE/outputs/2025-06-22/16-51-36/wandb/run-20250622_165137-50fhcm5s/files/AtlasConditionalQVAE3DHD_atlas_default_250.pth"
 
 
 output_path: /fast_scratch_1/jtoledo/outputs

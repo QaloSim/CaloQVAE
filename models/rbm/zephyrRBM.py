@@ -206,7 +206,7 @@ class ZephyrRBM(nn.Module):
     def load_coordinates(self):
         try:
             # self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr', 'chip_id':'Advantage2_system1.1'})
-            self._qpu_sampler = DWaveSampler(solver="Advantage2_prototype2.6")
+            self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr', 'chip_id':'Advantage2_system1.3'})
         except:
             self._qpu_sampler = DWaveSampler(solver={'topology__type': 'zephyr', 'chip_id':'Advantage2_system2.6'})
             logger.warn("Switching to Zephyr prototype. No more than 302 nodes per partition for Adv2 \
